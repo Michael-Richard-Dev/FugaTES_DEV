@@ -1,0 +1,17 @@
+﻿.vs/
+bin/
+obj/
+*.user
+*.suo
+*.rsuser
+*.userosscache
+*.sln.docstates
+appsettings.*.json
+!appsettings.Exemplo.json
+*.pfx
+*.pem
+*.key
+*.cer
+*.env
+.env*
+secrets.json

@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FugaTES.Aplicacao\FugaTES.Aplicacao.csproj" />
+    <ProjectReference Include="..\FugaTES.Persistencia\FugaTES.Persistencia.csproj" />
+    <ProjectReference Include="..\FugaTES.Infraestrutura\FugaTES.Infraestrutura.csproj" />
+  </ItemGroup>
+</Project>
