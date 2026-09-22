@@ -1,6 +1,7 @@
 ﻿using System.Xml.Linq;
 using FugaTES.HostIntegracao;
 using FugaTES.WinForms;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -98,13 +99,23 @@ public sealed class ArquiteturaTests
     public void TA12_HostIntegracao_PodeSerConstruido_Estruturalmente_SemAcessoExterno()
     {
         var builder = Host.CreateApplicationBuilder([]);
-        builder.Services.AddHostedService<HospedagemIntegracaoWorker>();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["HostIntegracao:PollInterval"] = "00:00:01",
+            ["HostIntegracao:ShutdownGracePeriod"] = "00:00:05",
+            ["HostIntegracao:ExternalMode"] = "Fake",
+            ["HostIntegracao:PersistenceMode"] = "Fake",
+            ["MotorIntegracao:LeaseDuration"] = "00:01:00",
+            ["MotorIntegracao:LeaseRenewInterval"] = "00:00:20",
+            ["MotorIntegracao:RetryBackoff"] = "00:05:00",
+            ["TimeoutProcessamentoIntegracao:Timeout"] = "00:00:45"
+        });
+        HostIntegracaoComposition.Configurar(builder);
 
         using var host = builder.Build();
 
         Assert.Contains(host.Services.GetServices<IHostedService>(), servico => servico is HospedagemIntegracaoWorker);
     }
-
     private static Dictionary<string, string[]> CarregarGrafoProjetos()
     {
         var raiz = LocalizarRaizRepositorio();

@@ -1,7 +1,7 @@
 ﻿using FugaTES.HostIntegracao;
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<HospedagemIntegracaoWorker>();
+HostIntegracaoComposition.Configurar(builder);
 
 var host = builder.Build();
 host.Run();

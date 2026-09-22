@@ -6,4 +6,7 @@
     <ProjectReference Include="..\FugaTES.Aplicacao\FugaTES.Aplicacao.csproj" />
     <ProjectReference Include="..\FugaTES.Dominio\FugaTES.Dominio.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
 </Project>

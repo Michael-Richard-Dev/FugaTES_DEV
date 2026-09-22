@@ -1,0 +1,158 @@
+using System.Data;
+using FugaTES.Aplicacao.Contratos.Recebimento;
+using FugaTES.Aplicacao.Modelos.Recebimento;
+using Npgsql;
+
+namespace FugaTES.Persistencia.Recebimento;
+
+public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource dataSource) : IRepositorioCorrelacaoRecebimento
+{
+    private const string InsertSnapshotSql = """
+        insert into fugates.correlacao_guardian_sap
+            (id, documento_logistico_referencia, material_sap, bp_emissor, bp_transportadora, centro_sap, tipo_documento, contrato_sap, operacao_contrato, tipo_operacao_sap, pedido_compras_sap, processo, direcao, estado, criado_em, atualizado_em)
+        values (@id, @documento_logistico_referencia, @material_sap, @bp_emissor, @bp_transportadora, @centro_sap, @tipo_documento, @contrato_sap, @operacao_contrato, @tipo_operacao_sap, @pedido_compras_sap, 'RECEBIMENTO', 'SAP_PARA_GUARDIAN', 'AGUARDANDO_PROTOCOLO', now(), now())
+        on conflict (documento_logistico_referencia) do nothing returning id;
+        """;
+    private const string SelectByDocumentSql = "select * from fugates.correlacao_guardian_sap where documento_logistico_referencia = @documento_logistico_referencia;";
+    private const string SelectByProtocolSql = "select * from fugates.correlacao_guardian_sap where protocolo_guardian = @protocolo_guardian;";
+    private const string AssociateProtocolSql = """
+        update fugates.correlacao_guardian_sap set protocolo_guardian = @protocolo_guardian, estado = 'AGUARDANDO_TICKET', atualizado_em = now()
+        where documento_logistico_referencia = @documento_logistico_referencia and protocolo_guardian is null returning id;
+        """;
+    private const string AssociateContractAcmSql = """
+        update fugates.correlacao_guardian_sap set contrato_acm_sap = @contrato_acm_sap, atualizado_em = now()
+        where documento_logistico_referencia = @documento_logistico_referencia and contrato_acm_sap is null returning id;
+        """;
+    private const string RegisterCallbackSql = """
+        update fugates.correlacao_guardian_sap set ticket_guardian = @ticket_guardian, callback_fingerprint = @callback_fingerprint, estado = 'TICKET_ASSOCIADO', atualizado_em = now()
+        where protocolo_guardian = @protocolo_guardian and callback_fingerprint is null returning id;
+        """;
+
+    public async Task<ResultadoRegistroSnapshotMvp> RegistrarSnapshotAsync(RecebimentoSapCpiMvp entrada, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(entrada);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        await using var insert = new NpgsqlCommand(InsertSnapshotSql, connection, transaction);
+        AddSnapshot(insert, entrada);
+        var inserted = await insert.ExecuteScalarAsync(cancellationToken) is not null;
+        var atual = await SelectByDocumentAsync(connection, transaction, entrada.DocumentoLogisticoReferencia, cancellationToken) ?? throw new InvalidOperationException("Receipt snapshot could not be loaded.");
+        await transaction.CommitAsync(cancellationToken);
+        return new(inserted ? StatusRegistroSnapshotMvp.Criada : SnapshotIgual(atual.Entrada, entrada) ? StatusRegistroSnapshotMvp.Idempotente : StatusRegistroSnapshotMvp.Conflito, atual);
+    }
+
+    public async Task<ResultadoAssociacaoProtocoloMvp> AssociarProtocoloAsync(string documentoSap, string protocoloGuardian, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        try
+        {
+            await using var update = new NpgsqlCommand(AssociateProtocolSql, connection, transaction);
+            update.Parameters.AddWithValue("documento_logistico_referencia", documentoSap);
+            update.Parameters.AddWithValue("protocolo_guardian", protocoloGuardian);
+            var associated = await update.ExecuteScalarAsync(cancellationToken) is not null;
+            var atual = await SelectByDocumentAsync(connection, transaction, documentoSap, cancellationToken) ?? throw new InvalidOperationException("Receipt snapshot was not found.");
+            await transaction.CommitAsync(cancellationToken);
+            return new(associated ? StatusAssociacaoProtocoloMvp.Associado : atual.ProtocoloGuardian == protocoloGuardian ? StatusAssociacaoProtocoloMvp.Idempotente : StatusAssociacaoProtocoloMvp.Conflito, atual);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            var atual = await ObterPorDocumentoAsync(connection, documentoSap, cancellationToken) ?? throw new InvalidOperationException("Receipt snapshot was not found.");
+            return new(StatusAssociacaoProtocoloMvp.Conflito, atual);
+        }
+    }
+
+    public async Task<ResultadoAssociacaoContratoAcmMvp> AssociarContratoAcmAsync(string documentoSap, string contratoAcmSap, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(contratoAcmSap)) throw new ArgumentException("ACM contract is absent.", nameof(contratoAcmSap));
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        await using var update = new NpgsqlCommand(AssociateContractAcmSql, connection, transaction);
+        update.Parameters.AddWithValue("documento_logistico_referencia", documentoSap);
+        update.Parameters.AddWithValue("contrato_acm_sap", contratoAcmSap);
+        var associated = await update.ExecuteScalarAsync(cancellationToken) is not null;
+        var atual = await SelectByDocumentAsync(connection, transaction, documentoSap, cancellationToken) ?? throw new InvalidOperationException("Receipt snapshot was not found.");
+        await transaction.CommitAsync(cancellationToken);
+        return new(associated ? StatusAssociacaoContratoAcmMvp.Associado : atual.Entrada.ContratoAcmSap == contratoAcmSap ? StatusAssociacaoContratoAcmMvp.Idempotente : StatusAssociacaoContratoAcmMvp.Conflito, atual);
+    }
+
+    public async Task<CorrelacaoRecebimentoMvp?> ObterPorProtocoloAsync(string protocoloGuardian, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var command = new NpgsqlCommand(SelectByProtocolSql, connection);
+        command.Parameters.AddWithValue("protocolo_guardian", protocoloGuardian);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? Map(reader) : null;
+    }
+
+    public async Task<ResultadoRegistroCallbackMvp> RegistrarCallbackAsync(CallbackGuardianMvp callback, CancellationToken cancellationToken)
+    {
+        var fingerprint = CallbackGuardianMvpFingerprint.Calcular(callback);
+        var ticket = callback.Sequencial.Trim();
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        try
+        {
+            await using var update = new NpgsqlCommand(RegisterCallbackSql, connection, transaction);
+            update.Parameters.AddWithValue("protocolo_guardian", callback.ProtocoloGuardian);
+            update.Parameters.AddWithValue("ticket_guardian", ticket);
+            update.Parameters.AddWithValue("callback_fingerprint", fingerprint);
+            var registered = await update.ExecuteScalarAsync(cancellationToken) is not null;
+            var atual = await SelectByProtocolAsync(connection, transaction, callback.ProtocoloGuardian, cancellationToken) ?? throw new InvalidOperationException("Guardian callback correlation was not found.");
+            await transaction.CommitAsync(cancellationToken);
+            var status = registered ? StatusRegistroCallbackMvp.Novo : atual.TicketGuardian == ticket && atual.CallbackFingerprint == fingerprint ? StatusRegistroCallbackMvp.Idempotente : StatusRegistroCallbackMvp.Conflito;
+            return new(status, registered ? atual with { Callback = callback } : atual);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            var atual = await ObterPorProtocoloAsync(callback.ProtocoloGuardian, cancellationToken) ?? throw new InvalidOperationException("Guardian callback correlation was not found.");
+            return new(StatusRegistroCallbackMvp.Conflito, atual);
+        }
+    }
+
+    private static async Task<CorrelacaoRecebimentoMvp?> SelectByDocumentAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, string document, CancellationToken token)
+    {
+        await using var command = new NpgsqlCommand(SelectByDocumentSql, connection, transaction);
+        command.Parameters.AddWithValue("documento_logistico_referencia", document);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        return await reader.ReadAsync(token) ? Map(reader) : null;
+    }
+
+    private static async Task<CorrelacaoRecebimentoMvp?> SelectByProtocolAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, string protocol, CancellationToken token)
+    {
+        await using var command = new NpgsqlCommand(SelectByProtocolSql, connection, transaction);
+        command.Parameters.AddWithValue("protocolo_guardian", protocol);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        return await reader.ReadAsync(token) ? Map(reader) : null;
+    }
+
+    private static async Task<CorrelacaoRecebimentoMvp?> ObterPorDocumentoAsync(NpgsqlConnection connection, string document, CancellationToken token)
+    {
+        await using var command = new NpgsqlCommand(SelectByDocumentSql, connection);
+        command.Parameters.AddWithValue("documento_logistico_referencia", document);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        return await reader.ReadAsync(token) ? Map(reader) : null;
+    }
+
+    private static CorrelacaoRecebimentoMvp Map(NpgsqlDataReader reader)
+    {
+        var document = reader.GetString(reader.GetOrdinal("documento_logistico_referencia"));
+        var input = new RecebimentoSapCpiMvp(reader.GetString(reader.GetOrdinal("processo")), "FLX_RECEBIMENTO", reader.GetString(reader.GetOrdinal("material_sap")), reader.GetString(reader.GetOrdinal("bp_emissor")), reader.GetString(reader.GetOrdinal("bp_transportadora")), reader.GetString(reader.GetOrdinal("contrato_sap")), document, string.Empty, reader.GetString(reader.GetOrdinal("centro_sap")), reader.GetString(reader.GetOrdinal("operacao_contrato")), reader.GetString(reader.GetOrdinal("tipo_documento")), NullableString(reader, "pedido_compras_sap"), reader.GetInt16(reader.GetOrdinal("tipo_operacao_sap")), NullableString(reader, "contrato_acm_sap"));
+        return new(document, NullableString(reader, "protocolo_guardian"), input, NullableString(reader, "ticket_guardian"), null, ParseState(reader.GetString(reader.GetOrdinal("estado"))), NullableString(reader, "callback_fingerprint"));
+    }
+
+    private static string? NullableString(NpgsqlDataReader reader, string name) { var ordinal = reader.GetOrdinal(name); return reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal); }
+    private static EstadoCorrelacaoGuardianSap ParseState(string state) => state switch { "AGUARDANDO_PROTOCOLO" => EstadoCorrelacaoGuardianSap.AguardandoProtocolo, "AGUARDANDO_TICKET" => EstadoCorrelacaoGuardianSap.AguardandoTicket, "TICKET_ASSOCIADO" => EstadoCorrelacaoGuardianSap.TicketAssociado, _ => throw new InvalidOperationException("Unknown correlation state.") };
+    private static void AddSnapshot(NpgsqlCommand command, RecebimentoSapCpiMvp input)
+    {
+        command.Parameters.AddWithValue("id", Guid.NewGuid()); command.Parameters.AddWithValue("documento_logistico_referencia", input.DocumentoLogisticoReferencia);
+        command.Parameters.AddWithValue("material_sap", input.Material); command.Parameters.AddWithValue("bp_emissor", input.BusinessPartnerEmissor);
+        command.Parameters.AddWithValue("bp_transportadora", input.BusinessPartnerTransportadora); command.Parameters.AddWithValue("centro_sap", input.Centro);
+        command.Parameters.AddWithValue("tipo_documento", input.TipoDocumento); command.Parameters.AddWithValue("contrato_sap", input.Contrato);
+        command.Parameters.AddWithValue("operacao_contrato", input.OperacaoContrato); command.Parameters.AddWithValue("tipo_operacao_sap", input.TipoOperacaoSap);
+        command.Parameters.AddWithValue("pedido_compras_sap", NpgsqlTypes.NpgsqlDbType.Text, (object?)input.PedidoCompras ?? DBNull.Value);
+    }
+    private static bool SnapshotIgual(RecebimentoSapCpiMvp left, RecebimentoSapCpiMvp right) => left.DocumentoLogisticoReferencia == right.DocumentoLogisticoReferencia && left.Material == right.Material && left.BusinessPartnerEmissor == right.BusinessPartnerEmissor && left.BusinessPartnerTransportadora == right.BusinessPartnerTransportadora && left.Centro == right.Centro && left.TipoDocumento == right.TipoDocumento && left.Contrato == right.Contrato && left.OperacaoContrato == right.OperacaoContrato && left.TipoOperacaoSap == right.TipoOperacaoSap && left.PedidoCompras == right.PedidoCompras;
+}

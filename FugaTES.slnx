@@ -1,10 +1,12 @@
 ﻿<Solution>
   <Folder Name="/src/">
+    <Project Path="src/FugaTES.Callback.Http/FugaTES.Callback.Http.csproj" />
     <Project Path="src/FugaTES.Aplicacao/FugaTES.Aplicacao.csproj" />
     <Project Path="src/FugaTES.Dominio/FugaTES.Dominio.csproj" />
     <Project Path="src/FugaTES.HostIntegracao/FugaTES.HostIntegracao.csproj" />
     <Project Path="src/FugaTES.Infraestrutura/FugaTES.Infraestrutura.csproj" />
     <Project Path="src/FugaTES.Integracao.SAP/FugaTES.Integracao.SAP.csproj" />
+    <Project Path="src/FugaTES.Integracao.Guardian/FugaTES.Integracao.Guardian.csproj" />
     <Project Path="src/FugaTES.Integracao.Toledo/FugaTES.Integracao.Toledo.csproj" />
     <Project Path="src/FugaTES.Persistencia/FugaTES.Persistencia.csproj" />
     <Project Path="src/FugaTES.WinForms/FugaTES.WinForms.csproj" />

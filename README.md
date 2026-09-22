@@ -24,6 +24,7 @@ FugaTES.HostIntegracao = host autônomo de processamento.
 
 - docs/Arquitetura/
 - docs/Incrementos/000/
+- docs/Incrementos/001/BUSINESS_PARTNER_SAP_READ_ONLY.md
 - docs/Persistencia/
 
 SAP, Toledo e PostgreSQL ainda não estão implementados nesta fundação.
