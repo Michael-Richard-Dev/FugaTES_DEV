@@ -1,10 +1,18 @@
 using System.Globalization;
 using FugaTES.Aplicacao.Modelos.Toledo;
+using FugaTES.Aplicacao.Modelos.ContratosSapToledo;
 
 namespace FugaTES.Callback.Http;
 
 public static class SapContractInboundMapper
 {
+    public static ContratoSapToledoSnapshot MapearSnapshot(SapContractInboundItemHttpDto item) => new(
+        item.SistemaBalanca, item.NumeroContrato ?? string.Empty, item.TipoContrato, item.DescricaoTipoContrato,
+        item.DataEmissao, item.DataEntregaInicio, item.DataEntregaFim, item.DiasToler, item.DataLimiteEntrega,
+        item.StatusContrato, item.QuantidadeContrato, item.QuantidadeSaldoDevolucao, item.IdParceiro, item.Material,
+        item.TipoPesagem, item.TabelaQualidadeID, item.TabelaQualidadeVersao, item.TabelaQualidadeVersaoValidade,
+        item.Observacao, item.ValorUnitario, item.Centro, item.OperacaoContrato,
+        item.CentroOpcional?.Select(x => x.Centro).ToArray() ?? []);
     public static IReadOnlyList<ContratoToledo> Mapear(SapContractInboundHttpDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);

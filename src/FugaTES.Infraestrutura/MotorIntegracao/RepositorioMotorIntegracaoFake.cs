@@ -89,6 +89,11 @@ public sealed class RepositorioMotorIntegracaoFake : IMotorIntegracaoRepository
         }
     }
 
+    public Task<IntegracaoMotor?> ObterPorIdAsync(Guid integracaoId, CancellationToken cancellationToken)
+    {
+        lock (gate) return Task.FromResult(integracoes.GetValueOrDefault(integracaoId));
+    }
+
     public Task<ClaimIntegracaoMotor?> ClaimarEspecificamenteAsync(Guid integracaoId, EstadoIntegracao estadoEsperado, TipoDisparoPendente? tipoDisparoEsperado, string fingerprintEsperado, IdentidadeWorkerIntegracao worker, TimeSpan leaseDuration, DateTimeOffset agoraUtc, CancellationToken cancellationToken)
     {
         lock (gate)

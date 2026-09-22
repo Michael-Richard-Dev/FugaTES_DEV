@@ -10,6 +10,8 @@ public interface IMotorIntegracaoRepository
 
     Task<ResultadoRegistroIntegracao> RegistrarCandidatoAsync(CandidatoIntegracao candidato, DateTimeOffset agoraUtc, CancellationToken cancellationToken);
 
+    Task<IntegracaoMotor?> ObterPorIdAsync(Guid integracaoId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<IntegracaoMotor>> SelecionarCandidatosPreClaimAsync(DateTimeOffset agoraUtc, CancellationToken cancellationToken);
 
     Task<ClaimIntegracaoMotor?> ClaimarEspecificamenteAsync(Guid integracaoId, EstadoIntegracao estadoEsperado, TipoDisparoPendente? tipoDisparoEsperado, string fingerprintEsperado, IdentidadeWorkerIntegracao worker, TimeSpan leaseDuration, DateTimeOffset agoraUtc, CancellationToken cancellationToken);

@@ -63,44 +63,30 @@ public sealed class MotorIntegracaoServico
 
         foreach (var integracao in elegiveis)
         {
-            var validacao = validador.Validar(integracao);
-            if (!validacao.Aprovada)
-            {
-                await repository.RegistrarValidacaoReprovadaAsync(
-                    integracao.Id,
-                    integracao.CorrelationId,
-                    validacao.DiagnosticoSanitizado ?? "validacao-reprovada",
-                    agora,
-                    cancellationToken);
-                houveReprovacao = true;
-                continue;
-            }
-
-            var claim = await repository.ClaimarEspecificamenteAsync(
-                integracao.Id,
-                integracao.Estado,
-                integracao.TipoDisparoPendente,
-                integracao.FingerprintSha256,
-                worker,
-                options.LeaseDuration,
-                agora,
-                cancellationToken);
-
-            if (claim is null)
-            {
-                continue;
-            }
-
-            var envioMarcado = await repository.MarcarEnvioIniciadoAsync(claim.IntegracaoId, claim.TentativaId, claim.FencingToken, claim.Worker, timeProvider.GetUtcNow(), cancellationToken);
-            if (!envioMarcado)
-            {
-                return CicloMotorIntegracaoResultado.EnvioNaoMarcado;
-            }
-
-            return await ProcessarComHeartbeatAsync(claim, cancellationToken);
+            var resultado = await TentarProcessarAsync(integracao, worker, agora, cancellationToken);
+            if (resultado == CicloMotorIntegracaoResultado.ValidacaoReprovada) { houveReprovacao = true; continue; }
+            if (resultado == CicloMotorIntegracaoResultado.ClaimNaoAdquirido) continue;
+            return resultado;
         }
 
         return houveReprovacao ? CicloMotorIntegracaoResultado.ValidacaoReprovada : CicloMotorIntegracaoResultado.NenhumTrabalho;
+    }
+
+    public async Task<CicloMotorIntegracaoResultado> ExecutarPorIdAsync(Guid integracaoId, CancellationToken cancellationToken)
+    {
+        var integracao = await repository.ObterPorIdAsync(integracaoId, cancellationToken);
+        if (integracao is null) return CicloMotorIntegracaoResultado.NenhumTrabalho;
+        return await TentarProcessarAsync(integracao, identidadeWorkerProvider.Obter(), timeProvider.GetUtcNow(), cancellationToken);
+    }
+
+    private async Task<CicloMotorIntegracaoResultado> TentarProcessarAsync(IntegracaoMotor integracao, IdentidadeWorkerIntegracao worker, DateTimeOffset agora, CancellationToken cancellationToken)
+    {
+        var validacao = validador.Validar(integracao);
+        if (!validacao.Aprovada) { await repository.RegistrarValidacaoReprovadaAsync(integracao.Id, integracao.CorrelationId, validacao.DiagnosticoSanitizado ?? "validacao-reprovada", agora, cancellationToken); return CicloMotorIntegracaoResultado.ValidacaoReprovada; }
+        var claim = await repository.ClaimarEspecificamenteAsync(integracao.Id, integracao.Estado, integracao.TipoDisparoPendente, integracao.FingerprintSha256, worker, options.LeaseDuration, agora, cancellationToken);
+        if (claim is null) return CicloMotorIntegracaoResultado.ClaimNaoAdquirido;
+        if (!await repository.MarcarEnvioIniciadoAsync(claim.IntegracaoId, claim.TentativaId, claim.FencingToken, claim.Worker, timeProvider.GetUtcNow(), cancellationToken)) return CicloMotorIntegracaoResultado.EnvioNaoMarcado;
+        return await ProcessarComHeartbeatAsync(claim, cancellationToken);
     }
 
     private async Task<CicloMotorIntegracaoResultado> ProcessarComHeartbeatAsync(ClaimIntegracaoMotor claim, CancellationToken cancellationToken)
@@ -197,4 +183,5 @@ public enum CicloMotorIntegracaoResultado
     ValidacaoReprovada,
     ResultadoIndeterminado,
     CanceladoExterno
+    ,ClaimNaoAdquirido
 }

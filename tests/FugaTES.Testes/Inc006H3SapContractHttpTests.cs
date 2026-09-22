@@ -157,10 +157,12 @@ public sealed class Inc006H3SapContractHttpTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["SapInbound:BasicAuth:Username"] = username,
-            ["SapInbound:BasicAuth:Password"] = password
+            ["SapInbound:BasicAuth:Password"] = password,
+            ["SapContractInbound:OfflineEnabled"] = "true"
         }).Build();
-        var services = new ServiceCollection()
-            .AddSingleton<IConfiguration>(configuration)
+        var collection = new ServiceCollection().AddSingleton<IConfiguration>(configuration);
+        SapContractInboundOfflineComposition.ConfigurarServicos(collection, configuration);
+        var services = collection
             .AddSingleton(gateway)
             .AddSingleton<IContratoToledoGateway>(gateway)
             .AddScoped<EnviarContratoToledoCasoDeUso>()

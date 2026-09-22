@@ -234,6 +234,18 @@ public sealed class Inc006SapContratoInboundTests
     }
 
     [Fact]
+    public async Task T22_ReplayConcluidoRetorna201SemSegundoEfeitoToledo()
+    {
+        var (context, gateway) = ContextoHttp(JsonAutoritativo);
+        await SapContractInboundEndpoint.HandleAsync(context);
+        context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonAutoritativo));
+        context.Response.Body = new MemoryStream();
+        await SapContractInboundEndpoint.HandleAsync(context);
+        Assert.Equal(StatusCodes.Status201Created, context.Response.StatusCode);
+        Assert.Equal(1, gateway.Chamadas);
+    }
+
+    [Fact]
     public void T21_ItemNuloNoBatchEhRejeitado()
     {
         Assert.Throws<ArgumentException>(() =>
@@ -267,10 +279,12 @@ public sealed class Inc006SapContratoInboundTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["SapInbound:BasicAuth:Username"] = username,
-            ["SapInbound:BasicAuth:Password"] = password
+            ["SapInbound:BasicAuth:Password"] = password,
+            ["SapContractInbound:OfflineEnabled"] = "true"
         }).Build();
-        var services = new ServiceCollection()
-            .AddSingleton<IConfiguration>(configuration)
+        var collection = new ServiceCollection().AddSingleton<IConfiguration>(configuration);
+        SapContractInboundOfflineComposition.ConfigurarServicos(collection, configuration);
+        var services = collection
             .AddSingleton<IContratoToledoGateway>(gateway)
             .AddScoped<EnviarContratoToledoCasoDeUso>()
             .BuildServiceProvider();

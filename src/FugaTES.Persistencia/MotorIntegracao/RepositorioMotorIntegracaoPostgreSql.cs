@@ -48,6 +48,15 @@ public sealed class RepositorioMotorIntegracaoPostgreSql : IMotorIntegracaoRepos
     public async Task<ResultadoRegistroIntegracao> RegistrarCandidatoAsync(CandidatoIntegracao candidato, DateTimeOffset agoraUtc, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(candidato);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        var result = await RegistrarCandidatoNaTransacaoAsync(connection, transaction, candidato, Guid.NewGuid(), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
+    }
+
+    internal static async Task<ResultadoRegistroIntegracao> RegistrarCandidatoNaTransacaoAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, CandidatoIntegracao candidato, Guid id, CancellationToken cancellationToken)
+    {
         const string sql = """
             insert into integracao (
                 id, origem, destino, operacao, chave_negocio, fingerprint_sha256, estado,
@@ -59,8 +68,8 @@ public sealed class RepositorioMotorIntegracaoPostgreSql : IMotorIntegracaoRepos
                 clock_timestamp(), clock_timestamp())
             on conflict (fingerprint_sha256) do nothing;
             """;
-        await using var command = dataSource.CreateCommand(sql);
-        command.Parameters.AddWithValue("id", Guid.NewGuid());
+        await using var command = new NpgsqlCommand(sql, connection, transaction);
+        command.Parameters.AddWithValue("id", id);
         command.Parameters.AddWithValue("origem", candidato.Origem);
         command.Parameters.AddWithValue("destino", candidato.Destino);
         command.Parameters.AddWithValue("operacao", candidato.Operacao);
@@ -237,6 +246,20 @@ public sealed class RepositorioMotorIntegracaoPostgreSql : IMotorIntegracaoRepos
         await RegistrarAuditoriaAsync(connection, transaction, integracaoId, "VALIDACAO_REPROVADA", null, null, null, correlationId, diagnosticoSanitizado, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<IntegracaoMotor?> ObterPorIdAsync(Guid integracaoId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            select i.id, i.origem, i.destino, i.operacao, i.chave_negocio, i.fingerprint_sha256,
+                   i.correlation_id, i.estado, i.tipo_disparo_pendente, i.proxima_tentativa_em,
+                   i.fencing_token, i.worker_proprietario, i.lease_expira_em, i.fase_envio, i.tentativa_atual_id
+            from integracao i where i.id = @integracao_id;
+            """;
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("integracao_id", integracaoId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? LerIntegracao(reader) : null;
     }
 
     public async Task<bool> MarcarEnvioIniciadoAsync(Guid integracaoId, Guid tentativaId, long fencingToken, string worker, DateTimeOffset agoraUtc, CancellationToken cancellationToken)

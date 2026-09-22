@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using FugaTES.Aplicacao.CasosDeUso.Toledo;
 using FugaTES.Aplicacao.Resultados.Toledo;
+using FugaTES.Aplicacao.Servicos.ContratosSapToledo;
 
 namespace FugaTES.Callback.Http;
 
@@ -36,14 +37,16 @@ public static class SapContractInboundEndpoint
                 ?? throw new ArgumentException("Request body is required.");
             if (dto.Contrato?.Count != 1)
                 throw new ArgumentException("Contrato collection must contain exactly one item.");
-            var contratos = SapContractInboundMapper.Mapear(dto);
-            var useCase = context.RequestServices.GetRequiredService<EnviarContratoToledoCasoDeUso>();
-            var resultados = await useCase.ExecutarLoteAsync(contratos, context.RequestAborted).ConfigureAwait(false);
-            if (resultados.Single().Status != StatusOperacaoToledo.Sucesso)
+            var snapshot = SapContractInboundMapper.MapearSnapshot(dto.Contrato.Single()!);
+            var useCase = context.RequestServices.GetRequiredService<ProcessarContratoSapToledoIdempotenteCasoDeUso>();
+            var resultado = await useCase.ExecutarAsync(snapshot, Guid.NewGuid().ToString("N"), context.RequestAborted).ConfigureAwait(false);
+            if (resultado == ResultadoContratoSapToledo.ValidacaoConhecida)
             {
                 await WriteBusinessErrorAsync(context, "processamento rejeitado.").ConfigureAwait(false);
                 return;
             }
+            if (resultado is not (ResultadoContratoSapToledo.Concluida or ResultadoContratoSapToledo.IdempotenteConcluida))
+            { await WriteAsync(context, StatusCodes.Status500InternalServerError, new { mensagem = "Erro interno." }).ConfigureAwait(false); return; }
 
             await WriteAsync(context, StatusCodes.Status201Created, new { mensagem = "Sucesso." }).ConfigureAwait(false);
         }
