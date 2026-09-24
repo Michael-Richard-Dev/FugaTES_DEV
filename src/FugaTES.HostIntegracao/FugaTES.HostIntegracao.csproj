@@ -11,6 +11,7 @@
     <ProjectReference Include="..\FugaTES.Aplicacao\FugaTES.Aplicacao.csproj" />
     <ProjectReference Include="..\FugaTES.Persistencia\FugaTES.Persistencia.csproj" />
     <ProjectReference Include="..\FugaTES.Integracao.SAP\FugaTES.Integracao.SAP.csproj" />
+    <ProjectReference Include="..\FugaTES.Integracao.Guardian\FugaTES.Integracao.Guardian.csproj" />
     <ProjectReference Include="..\FugaTES.Integracao.Toledo\FugaTES.Integracao.Toledo.csproj" />
     <ProjectReference Include="..\FugaTES.Infraestrutura\FugaTES.Infraestrutura.csproj" />
   </ItemGroup>

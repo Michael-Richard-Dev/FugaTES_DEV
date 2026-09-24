@@ -84,11 +84,22 @@ public sealed class Inc006G2SapPesagemOutboundTests
     }
 
     [Fact]
-    public async Task NrProtocoloNaoEhDerivadoDoDocumentoOuProtocoloGuardian()
+    public async Task NrProtocoloSemValorExplicitoPermaneceNulo()
     {
         var handler = SuccessHandler();
         await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
         Assert.Null(PostJson(handler)["to_Pesagem"]![0]!["NrProtocolo"]);
+    }
+
+    [Fact]
+    public async Task NrProtocoloUsaIdentificadorGuardianPersistido()
+    {
+        var handler = SuccessHandler();
+        await Gateway(handler).EnviarAsync(Fixture() with { NumeroProtocolo = "12345", ProtocoloCriadoEm = new DateTimeOffset(2026, 9, 24, 11, 38, 28, TimeSpan.FromHours(-3)) }, CancellationToken.None);
+        var item = PostJson(handler)["to_Pesagem"]![0]!;
+        Assert.Equal("12345", item["NrProtocolo"]!.GetValue<string>());
+        Assert.Null(item["DtProtocolo"]);
+        Assert.Null(item["HrProtocolo"]);
     }
 
     [Theory]

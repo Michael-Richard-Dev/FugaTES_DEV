@@ -54,9 +54,7 @@ public static class GuardianCallbackHttpComposition
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(services);
         ConfigurarBase(services);
-        ConfigurarCorrelacaoEmMemoria(services);
-        services.AddSingleton(guardian);
-        services.AddSingleton(options);
+        GuardianEngineStageAComposition.ConfigurarOffline(services, guardian, options);
         services.AddScoped<ProcessarRecebimentoMvpCasoDeUso>();
         return services;
     }

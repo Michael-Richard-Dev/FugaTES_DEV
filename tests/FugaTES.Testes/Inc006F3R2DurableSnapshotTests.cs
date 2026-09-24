@@ -117,7 +117,7 @@ public sealed class Inc006F3R2DurableSnapshotTests
     public async Task NumeroContratoNaoGeraContratoAcm()
     {
         var repository = await RepositoryAsync();
-        var correlation = await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None);
+        var correlation = await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None, DateTimeOffset.UnixEpoch);
 
         Assert.Null(correlation.Correlacao.Entrada.ContratoAcmSap);
         Assert.Equal("0000001008", correlation.Correlacao.Entrada.Contrato);
@@ -154,7 +154,7 @@ public sealed class Inc006F3R2DurableSnapshotTests
     public async Task CallbackSemContratoAcmFalhaAntesDoGatewayESemRegistrarTicket()
     {
         var repository = await RepositoryAsync();
-        await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None);
+        await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None, DateTimeOffset.UnixEpoch);
         var sap = new PesagemSapMvpGatewayFake();
         var useCase = new ProcessarCallbackGuardianMvpCasoDeUso(repository, sap);
 
@@ -169,7 +169,7 @@ public sealed class Inc006F3R2DurableSnapshotTests
     {
         var repository = await RepositoryAsync();
         await repository.AssociarContratoAcmAsync("DOC-1", "ACM-WIRE", CancellationToken.None);
-        await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None);
+        await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None, DateTimeOffset.UnixEpoch);
         var sap = new PesagemSapMvpGatewayFake();
 
         var result = await new ProcessarCallbackGuardianMvpCasoDeUso(repository, sap).ExecutarAsync(Callback(), CancellationToken.None);

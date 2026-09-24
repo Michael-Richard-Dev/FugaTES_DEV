@@ -9,15 +9,15 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
 {
     private const string InsertSnapshotSql = """
         insert into fugates.correlacao_guardian_sap
-            (id, documento_logistico_referencia, material_sap, bp_emissor, bp_transportadora, centro_sap, tipo_documento, contrato_sap, operacao_contrato, tipo_operacao_sap, pedido_compras_sap, processo, direcao, estado, criado_em, atualizado_em)
-        values (@id, @documento_logistico_referencia, @material_sap, @bp_emissor, @bp_transportadora, @centro_sap, @tipo_documento, @contrato_sap, @operacao_contrato, @tipo_operacao_sap, @pedido_compras_sap, 'RECEBIMENTO', 'SAP_PARA_GUARDIAN', 'AGUARDANDO_PROTOCOLO', now(), now())
+            (id, documento_logistico_referencia, material_sap, bp_emissor, bp_transportadora, centro_sap, tipo_documento, contrato_sap, operacao_contrato, tipo_operacao_sap, pedido_compras_sap, tipo_contrato, url_para_retorno, processo, direcao, estado, criado_em, atualizado_em)
+        values (@id, @documento_logistico_referencia, @material_sap, @bp_emissor, @bp_transportadora, @centro_sap, @tipo_documento, @contrato_sap, @operacao_contrato, @tipo_operacao_sap, @pedido_compras_sap, @tipo_contrato, @url_para_retorno, 'RECEBIMENTO', 'SAP_PARA_GUARDIAN', 'AGUARDANDO_PROTOCOLO', now(), now())
         on conflict (documento_logistico_referencia) do nothing returning id;
         """;
     private const string SelectByDocumentSql = "select * from fugates.correlacao_guardian_sap where documento_logistico_referencia = @documento_logistico_referencia;";
     private const string SelectByProtocolSql = "select * from fugates.correlacao_guardian_sap where protocolo_guardian = @protocolo_guardian;";
     private const string AssociateProtocolSql = """
-        update fugates.correlacao_guardian_sap set protocolo_guardian = @protocolo_guardian, estado = 'AGUARDANDO_TICKET', atualizado_em = now()
-        where documento_logistico_referencia = @documento_logistico_referencia and protocolo_guardian is null returning id;
+        update fugates.correlacao_guardian_sap set protocolo_guardian = @protocolo_guardian, protocolo_criado_em = @protocolo_criado_em, estado = 'AGUARDANDO_TICKET', atualizado_em = now()
+        where documento_logistico_referencia = @documento_logistico_referencia and protocolo_guardian is null and protocolo_criado_em is null returning id;
         """;
     private const string AssociateContractAcmSql = """
         update fugates.correlacao_guardian_sap set contrato_acm_sap = @contrato_acm_sap, atualizado_em = now()
@@ -41,8 +41,16 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
         return new(inserted ? StatusRegistroSnapshotMvp.Criada : SnapshotIgual(atual.Entrada, entrada) ? StatusRegistroSnapshotMvp.Idempotente : StatusRegistroSnapshotMvp.Conflito, atual);
     }
 
-    public async Task<ResultadoAssociacaoProtocoloMvp> AssociarProtocoloAsync(string documentoSap, string protocoloGuardian, CancellationToken cancellationToken)
+    public async Task<CorrelacaoRecebimentoMvp?> ObterPorDocumentoAsync(string documentoSap, CancellationToken cancellationToken)
     {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        return await ObterPorDocumentoAsync(connection, documentoSap, cancellationToken);
+    }
+
+    public async Task<ResultadoAssociacaoProtocoloMvp> AssociarProtocoloAsync(string documentoSap, string protocoloGuardian, CancellationToken cancellationToken, DateTimeOffset protocoloCriadoEm)
+    {
+        if (protocoloCriadoEm == default) throw new ArgumentException("Protocol creation timestamp is required.", nameof(protocoloCriadoEm));
+        var instante = new DateTimeOffset(protocoloCriadoEm.ToUniversalTime().Ticks / 10 * 10, TimeSpan.Zero);
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         try
@@ -50,10 +58,11 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
             await using var update = new NpgsqlCommand(AssociateProtocolSql, connection, transaction);
             update.Parameters.AddWithValue("documento_logistico_referencia", documentoSap);
             update.Parameters.AddWithValue("protocolo_guardian", protocoloGuardian);
+            update.Parameters.AddWithValue("protocolo_criado_em", NpgsqlTypes.NpgsqlDbType.TimestampTz, instante);
             var associated = await update.ExecuteScalarAsync(cancellationToken) is not null;
             var atual = await SelectByDocumentAsync(connection, transaction, documentoSap, cancellationToken) ?? throw new InvalidOperationException("Receipt snapshot was not found.");
             await transaction.CommitAsync(cancellationToken);
-            return new(associated ? StatusAssociacaoProtocoloMvp.Associado : atual.ProtocoloGuardian == protocoloGuardian ? StatusAssociacaoProtocoloMvp.Idempotente : StatusAssociacaoProtocoloMvp.Conflito, atual);
+            return new(associated ? StatusAssociacaoProtocoloMvp.Associado : atual.ProtocoloGuardian == protocoloGuardian && atual.ProtocoloCriadoEm == instante ? StatusAssociacaoProtocoloMvp.Idempotente : StatusAssociacaoProtocoloMvp.Conflito, atual);
         }
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
         {
@@ -139,8 +148,10 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
     private static CorrelacaoRecebimentoMvp Map(NpgsqlDataReader reader)
     {
         var document = reader.GetString(reader.GetOrdinal("documento_logistico_referencia"));
-        var input = new RecebimentoSapCpiMvp(reader.GetString(reader.GetOrdinal("processo")), "FLX_RECEBIMENTO", reader.GetString(reader.GetOrdinal("material_sap")), reader.GetString(reader.GetOrdinal("bp_emissor")), reader.GetString(reader.GetOrdinal("bp_transportadora")), reader.GetString(reader.GetOrdinal("contrato_sap")), document, string.Empty, reader.GetString(reader.GetOrdinal("centro_sap")), reader.GetString(reader.GetOrdinal("operacao_contrato")), reader.GetString(reader.GetOrdinal("tipo_documento")), NullableString(reader, "pedido_compras_sap"), reader.GetInt16(reader.GetOrdinal("tipo_operacao_sap")), NullableString(reader, "contrato_acm_sap"));
-        return new(document, NullableString(reader, "protocolo_guardian"), input, NullableString(reader, "ticket_guardian"), null, ParseState(reader.GetString(reader.GetOrdinal("estado"))), NullableString(reader, "callback_fingerprint"));
+        var input = new RecebimentoSapCpiMvp(reader.GetString(reader.GetOrdinal("processo")), "FLX_RECEBIMENTO", reader.GetString(reader.GetOrdinal("material_sap")), reader.GetString(reader.GetOrdinal("bp_emissor")), reader.GetString(reader.GetOrdinal("bp_transportadora")), reader.GetString(reader.GetOrdinal("contrato_sap")), document, NullableString(reader, "tipo_contrato") ?? string.Empty, reader.GetString(reader.GetOrdinal("centro_sap")), reader.GetString(reader.GetOrdinal("operacao_contrato")), reader.GetString(reader.GetOrdinal("tipo_documento")), NullableString(reader, "pedido_compras_sap"), reader.GetInt16(reader.GetOrdinal("tipo_operacao_sap")), NullableString(reader, "contrato_acm_sap"), NullableString(reader, "url_para_retorno"));
+        var createdOrdinal = reader.GetOrdinal("protocolo_criado_em");
+        var created = reader.IsDBNull(createdOrdinal) ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.SpecifyKind(reader.GetDateTime(createdOrdinal), DateTimeKind.Utc));
+        return new(document, NullableString(reader, "protocolo_guardian"), input, NullableString(reader, "ticket_guardian"), null, ParseState(reader.GetString(reader.GetOrdinal("estado"))), NullableString(reader, "callback_fingerprint"), created);
     }
 
     private static string? NullableString(NpgsqlDataReader reader, string name) { var ordinal = reader.GetOrdinal(name); return reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal); }
@@ -153,6 +164,8 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
         command.Parameters.AddWithValue("tipo_documento", input.TipoDocumento); command.Parameters.AddWithValue("contrato_sap", input.Contrato);
         command.Parameters.AddWithValue("operacao_contrato", input.OperacaoContrato); command.Parameters.AddWithValue("tipo_operacao_sap", input.TipoOperacaoSap);
         command.Parameters.AddWithValue("pedido_compras_sap", NpgsqlTypes.NpgsqlDbType.Text, (object?)input.PedidoCompras ?? DBNull.Value);
+        command.Parameters.AddWithValue("tipo_contrato", NpgsqlTypes.NpgsqlDbType.Text, (object?)input.TipoContrato ?? DBNull.Value);
+        command.Parameters.AddWithValue("url_para_retorno", NpgsqlTypes.NpgsqlDbType.Text, (object?)input.UrlParaRetorno ?? DBNull.Value);
     }
-    private static bool SnapshotIgual(RecebimentoSapCpiMvp left, RecebimentoSapCpiMvp right) => left.DocumentoLogisticoReferencia == right.DocumentoLogisticoReferencia && left.Material == right.Material && left.BusinessPartnerEmissor == right.BusinessPartnerEmissor && left.BusinessPartnerTransportadora == right.BusinessPartnerTransportadora && left.Centro == right.Centro && left.TipoDocumento == right.TipoDocumento && left.Contrato == right.Contrato && left.OperacaoContrato == right.OperacaoContrato && left.TipoOperacaoSap == right.TipoOperacaoSap && left.PedidoCompras == right.PedidoCompras;
+    private static bool SnapshotIgual(RecebimentoSapCpiMvp left, RecebimentoSapCpiMvp right) => left.DocumentoLogisticoReferencia == right.DocumentoLogisticoReferencia && left.Material == right.Material && left.BusinessPartnerEmissor == right.BusinessPartnerEmissor && left.BusinessPartnerTransportadora == right.BusinessPartnerTransportadora && left.Centro == right.Centro && left.TipoDocumento == right.TipoDocumento && left.Contrato == right.Contrato && left.OperacaoContrato == right.OperacaoContrato && left.TipoOperacaoSap == right.TipoOperacaoSap && left.PedidoCompras == right.PedidoCompras && left.TipoContrato == right.TipoContrato && left.UrlParaRetorno == right.UrlParaRetorno;
 }

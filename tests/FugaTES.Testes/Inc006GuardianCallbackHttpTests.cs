@@ -95,6 +95,20 @@ public sealed class Inc006GuardianCallbackHttpTests
         Assert.Single(fixture.Sap.Recebidas);
     }
 
+    [Theory]
+    [InlineData("PROTOCOLO-001", 200, 1)]
+    [InlineData("OUTRO-PROTOCOLO", 409, 0)]
+    public async Task VoTicketProtocoloCloud_ReconciliaAntesDoSap(string cloud, int expectedStatus, int expectedSapCalls)
+    {
+        var fixture = await Fixture.CreateAsync();
+        var json = ValidJson()[..^1] + $",\"VO_TICKET\":{{\"ProtocoloCloud\":\"{cloud}\"}}}}";
+
+        var response = await fixture.PostAsync(json);
+
+        Assert.Equal(expectedStatus, response.StatusCode);
+        Assert.Equal(expectedSapCalls, fixture.Sap.Recebidas.Count);
+    }
+
     [Fact]
     public async Task CancellationToken_da_requisicao_e_propagado()
     {
@@ -131,7 +145,7 @@ public sealed class Inc006GuardianCallbackHttpTests
                 new RecebimentoSapCpiMvp("RECEBIMENTO", "FLX_RECEBIMENTO", "MAT-001", "BP-EMISSOR", "BP-TRANSPORTADORA", "CONTRATO-001", "DOC-001", "COMPRA", "CENTRO-001", "ENTRADA", "NF", "PO-001", 7, "ACM-001"),
                 CancellationToken.None);
             await repository.AssociarContratoAcmAsync("DOC-001", "ACM-001", CancellationToken.None);
-            await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None);
+            await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None, DateTimeOffset.UnixEpoch);
             return new Fixture(provider, provider.GetRequiredService<PesagemSapMvpGatewayFake>());
         }
 

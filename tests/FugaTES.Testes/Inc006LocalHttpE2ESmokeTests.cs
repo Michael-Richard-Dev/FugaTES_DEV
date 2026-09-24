@@ -5,6 +5,7 @@ using FugaTES.Aplicacao.CasosDeUso.Recebimento;
 using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Modelos.Guardian;
 using FugaTES.Aplicacao.Modelos.Recebimento;
+using FugaTES.Aplicacao.Servicos.MotorIntegracao;
 using FugaTES.Callback.Http;
 using FugaTES.Infraestrutura.Recebimento;
 using FugaTES.Integracao.Toledo.Set26;
@@ -39,6 +40,8 @@ public sealed class Inc006LocalHttpE2ESmokeTests
         {
             var recebimento = scope.ServiceProvider.GetRequiredService<ProcessarRecebimentoMvpCasoDeUso>();
             await recebimento.ExecutarAsync(Input(), CancellationToken.None);
+            await scope.ServiceProvider.GetRequiredService<MotorIntegracaoServico>()
+                .ExecutarUmCicloAsync(CancellationToken.None);
         }
 
         await app.StartAsync();

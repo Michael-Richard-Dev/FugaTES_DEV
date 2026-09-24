@@ -103,16 +103,40 @@ public sealed class Inc006GuardianHttpSet26Tests
     [Fact]
     public async Task PreCadastro_usa_payload_set26_sem_legados_e_retorna_protocolo()
     {
-        var handler = SuccessHandler("{\"protocol\":\"PROTOCOLO-001\"}");
+        var handler = SuccessHandler("{\"id\":12345,\"dataCadastro\":\"2026-09-24T11:38:28-03:00\"}");
         var resultado = await HttpClient(handler).EnviarAsync(PreCadastro(), CancellationToken.None);
 
-        Assert.Equal("PROTOCOLO-001", resultado.Valor);
+        Assert.Equal("12345", resultado.Valor);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 11, 38, 28, TimeSpan.FromHours(-3)), resultado.DataCadastro);
         var request = handler.Requests[1];
         Assert.Equal("https://guardian.invalid/api/set26/pre-cadastro", request.Uri.AbsoluteUri);
         var dados = JsonNode.Parse(request.Body)!["dadosProtocoloPreCadastro"]!;
         Assert.Equal([1000, 1002, 1003], dados["camposAdicionais"]!.AsArray().Select(x => (int)x!["numero"]!));
         Assert.Equal("CONTRATO-001", (string?)dados["codigoContrato"]);
         Assert.DoesNotContain("Interno", request.Body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("{\"id\":\"12345\",\"dataCadastro\":\"2026-09-24T11:38:28-03:00\"}")]
+    [InlineData("{\"id\":12345}")]
+    [InlineData("{\"id\":12345,\"dataCadastro\":\"2026-09-24T11:38:28\"}")]
+    public async Task PreCadastro_resposta_incompleta_ou_ambigua_falha_fechado(string body)
+    {
+        var handler = SuccessHandler(body);
+        await Assert.ThrowsAsync<GuardianHttpException>(() => HttpClient(handler).EnviarAsync(PreCadastro(), CancellationToken.None));
+        Assert.Equal(1, handler.Requests.Count(x => x.Uri.AbsolutePath.EndsWith("pre-cadastro", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task PreCadastro_id_canonico_independe_do_campo_legado_configurado()
+    {
+        var handler = SuccessHandler("{\"id\":12345,\"dataCadastro\":\"2026-09-24T11:38:28-03:00\"}");
+        var client = HttpClient(handler, Options() with { PreCadastroProtocolResponseField = "protocol" });
+
+        var result = await client.EnviarAsync(PreCadastro(), CancellationToken.None);
+
+        Assert.Equal("12345", result.Valor);
+        Assert.Equal(2, handler.Requests.Count);
     }
 
     [Fact]
@@ -159,7 +183,7 @@ public sealed class Inc006GuardianHttpSet26Tests
         TokenUserField = "login",
         TokenPasswordField = "secret",
         TokenResponseField = "access_token",
-        PreCadastroProtocolResponseField = "protocol"
+        PreCadastroProtocolResponseField = "id"
     };
 
     private static PreCadastroRecebimentoGuardianSet26 PreCadastro() => new(0, "FLX_RECEBIMENTO", "MAT-001", "BP-E", "BP-T", "CONTRATO-001", 1, "DOC-001", "https://callback.invalid/guardian", [new(1000, "COMPRA"), new(1002, "CENTRO"), new(1003, "ENTRADA")]);

@@ -1,5 +1,6 @@
 ﻿using FugaTES.Aplicacao.Contratos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.MotorIntegracao;
+using FugaTES.Aplicacao.CasosDeUso.Recebimento;
 
 namespace FugaTES.Infraestrutura.MotorIntegracao;
 
@@ -42,6 +43,8 @@ public sealed class ProcessadorExternoIntegracaoFake : IProcessadorExternoIntegr
     {
         chamadas.Add(claim);
         TransacaoAtivaObservada = transacaoAtiva?.Invoke() ?? false;
+        if (claim.Operacao == GuardianPreCadastroMotorWork.Operacao)
+            return new ResultadoProcessamentoExterno(ClassificacaoFalhaIntegracao.FalhaDefinitiva);
 
         if (processamentoPendente is not null)
         {

@@ -1,4 +1,5 @@
 using FugaTES.Aplicacao.Modelos.Recebimento;
+using System.Text.Json.Serialization;
 
 namespace FugaTES.Callback.Http;
 
@@ -8,7 +9,8 @@ public sealed record GuardianCallbackHttpDto(
     decimal? PesoBruto,
     decimal? Tara,
     decimal? PesoLiquido,
-    string? Estado)
+    string? Estado,
+    [property: JsonPropertyName("VO_TICKET")] GuardianVoTicketHttpDto? VoTicket = null)
 {
     public CallbackGuardianMvp Mapear()
     {
@@ -20,6 +22,8 @@ public sealed record GuardianCallbackHttpDto(
         if (PesoBruto < 0 || Tara < 0 || PesoLiquido < 0)
             throw new ArgumentException("Callback weights are invalid.");
 
-        return new CallbackGuardianMvp(ProtocoloGuardian, Sequencial, PesoBruto.Value, Tara.Value, PesoLiquido.Value, Estado);
+        return new CallbackGuardianMvp(ProtocoloGuardian, Sequencial, PesoBruto.Value, Tara.Value, PesoLiquido.Value, Estado, VoTicket?.ProtocoloCloud);
     }
 }
+
+public sealed record GuardianVoTicketHttpDto(string? ProtocoloCloud);

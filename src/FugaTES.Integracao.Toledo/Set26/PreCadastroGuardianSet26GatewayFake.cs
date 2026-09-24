@@ -14,6 +14,6 @@ public sealed class PreCadastroGuardianSet26GatewayFake(string protocolo) : IPre
         cancellationToken.ThrowIfCancellationRequested();
         recebidos.Add(preCadastro ?? throw new ArgumentNullException(nameof(preCadastro)));
         if (string.IsNullOrWhiteSpace(protocolo)) throw new InvalidOperationException("Configured fake protocol is absent.");
-        return Task.FromResult(new ProtocoloGuardianSet26(protocolo));
+        return Task.FromResult(new ProtocoloGuardianSet26(protocolo, new DateTimeOffset(2026, 9, 24, 12, 0, 0, TimeSpan.Zero)));
     }
 }

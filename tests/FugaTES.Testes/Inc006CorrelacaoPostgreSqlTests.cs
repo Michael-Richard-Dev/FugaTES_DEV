@@ -49,10 +49,10 @@ public sealed class Inc006CorrelacaoPostgreSqlTests
     {
         var repository = new RepositorioCorrelacaoRecebimentoMemoria();
         await repository.RegistrarSnapshotAsync(Input(), CancellationToken.None);
-        await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None);
+        await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None, DateTimeOffset.UnixEpoch);
         await repository.RegistrarCallbackAsync(Callback(), CancellationToken.None);
 
-        var retry = await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None);
+        var retry = await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None, DateTimeOffset.UnixEpoch);
 
         Assert.Equal(StatusAssociacaoProtocoloMvp.Idempotente, retry.Status);
         Assert.Equal(EstadoCorrelacaoGuardianSap.TicketAssociado, retry.Correlacao.Estado);
@@ -157,7 +157,7 @@ public sealed class Inc006CorrelacaoPostgreSqlTests
         var repository = new RepositorioCorrelacaoRecebimentoMemoria();
         await repository.RegistrarSnapshotAsync(Input(), CancellationToken.None);
         await repository.AssociarContratoAcmAsync("DOC-001", "ACM-001", CancellationToken.None);
-        await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None);
+        await repository.AssociarProtocoloAsync("DOC-001", "PROTOCOLO-001", CancellationToken.None, DateTimeOffset.UnixEpoch);
         return repository;
     }
 

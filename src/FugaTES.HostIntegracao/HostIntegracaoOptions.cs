@@ -12,6 +12,7 @@ public sealed class HostIntegracaoOptions
     {
         return PollInterval > TimeSpan.Zero
             && ShutdownGracePeriod > TimeSpan.Zero
-            && string.Equals(ExternalMode, "Fake", StringComparison.OrdinalIgnoreCase);
+            && (string.Equals(ExternalMode, "Fake", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(ExternalMode, "Guardian", StringComparison.OrdinalIgnoreCase));
     }
 }

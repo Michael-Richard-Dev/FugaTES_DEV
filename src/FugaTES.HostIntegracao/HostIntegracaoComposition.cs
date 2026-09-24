@@ -1,8 +1,11 @@
 ﻿using FugaTES.Aplicacao.Configuracao;
 using FugaTES.Aplicacao.Contratos.MotorIntegracao;
+using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Servicos.MotorIntegracao;
 using FugaTES.Infraestrutura.MotorIntegracao;
+using FugaTES.Integracao.Guardian;
 using FugaTES.Persistencia.MotorIntegracao;
+using FugaTES.Persistencia.Recebimento;
 using Microsoft.Extensions.Options;
 
 namespace FugaTES.HostIntegracao;
@@ -38,7 +41,7 @@ public static class HostIntegracaoComposition
             .ValidateOnStart();
         services.AddOptions<HostIntegracaoOptions>()
             .Bind(configuration.GetRequiredSection("HostIntegracao"))
-            .Validate(options => options.EhValida(), "HostIntegracao exige PollInterval, ShutdownGracePeriod e ExternalMode=Fake.")
+            .Validate(options => options.EhValida(), "HostIntegracao exige PollInterval, ShutdownGracePeriod e ExternalMode=Fake ou Guardian.")
             .ValidateOnStart();
         services.AddOptions<HostIntegracaoPersistenceOptions>()
             .Configure(options => options.Mode = configuration["HostIntegracao:PersistenceMode"] ?? string.Empty)
@@ -68,7 +71,10 @@ public static class HostIntegracaoComposition
                 ? sp.GetRequiredService<RepositorioMotorIntegracaoPostgreSql>()
                 : sp.GetRequiredService<RepositorioMotorIntegracaoFake>();
         });
-        services.AddSingleton<IProcessadorExternoIntegracao>(sp => new ProcessadorExternoIntegracaoFake(() => sp.GetRequiredService<RepositorioMotorIntegracaoFake>().TransacaoAtiva));
+        if (string.Equals(configuration["HostIntegracao:ExternalMode"], "Guardian", StringComparison.OrdinalIgnoreCase))
+            ConfigurarGuardian(services, configuration, persistenceMode);
+        else
+            services.AddSingleton<IProcessadorExternoIntegracao>(sp => new ProcessadorExternoIntegracaoFake(() => sp.GetRequiredService<RepositorioMotorIntegracaoFake>().TransacaoAtiva));
         services.AddSingleton<IDetectorCandidatosIntegracao, DetectorCandidatosIntegracaoFake>();
         services.AddSingleton<IValidadorIntegracao, ValidadorGenericoIntegracao>();
         services.AddSingleton<IPoliticaTimeoutProcessamentoIntegracao, PoliticaTimeoutProcessamentoIntegracaoConfigurada>();
@@ -76,5 +82,17 @@ public static class HostIntegracaoComposition
         services.AddHostedService<HospedagemIntegracaoWorker>();
 
         return services;
+    }
+
+    private static void ConfigurarGuardian(IServiceCollection services, IConfiguration configuration, string? persistenceMode)
+    {
+        if (!string.Equals(persistenceMode, "PostgreSql", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(configuration.GetConnectionString(NpgsqlDataSourceFactory.ConnectionStringName)))
+            throw new InvalidOperationException("Guardian mode requires PostgreSql persistence and ConnectionStrings:FugaTES.");
+
+        services.AddGuardianRuntime(configuration);
+        services.AddScoped<IRepositorioCorrelacaoRecebimento, RepositorioCorrelacaoGuardianSapPostgreSql>();
+        services.AddScoped<ProcessadorPreCadastroGuardianMotor>();
+        services.AddScoped<IProcessadorExternoIntegracao, ProcessadorExternoIntegracaoRoteado>();
     }
 }

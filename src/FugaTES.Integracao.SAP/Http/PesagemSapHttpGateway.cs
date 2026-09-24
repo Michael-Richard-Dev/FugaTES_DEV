@@ -96,7 +96,7 @@ public sealed class PesagemSapHttpGateway(
                 QuantidadeNf: null,
                 CpfCnpjTerceiro: null,
                 NomeTerceiro: null,
-                NumeroProtocolo: null,
+                NumeroProtocolo: source.NumeroProtocolo,
                 DataProtocolo: null,
                 HoraProtocolo: null)]);
 }

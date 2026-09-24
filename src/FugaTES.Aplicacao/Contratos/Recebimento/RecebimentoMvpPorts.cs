@@ -12,8 +12,9 @@ public interface ITransportadoraGuardianSet26Gateway { Task EnviarAsync(Transpor
 public interface IRepositorioCorrelacaoRecebimento
 {
     Task<ResultadoRegistroSnapshotMvp> RegistrarSnapshotAsync(RecebimentoSapCpiMvp entrada, CancellationToken cancellationToken);
+    Task<CorrelacaoRecebimentoMvp?> ObterPorDocumentoAsync(string documentoSap, CancellationToken cancellationToken);
     Task<ResultadoAssociacaoContratoAcmMvp> AssociarContratoAcmAsync(string documentoSap, string contratoAcmSap, CancellationToken cancellationToken);
-    Task<ResultadoAssociacaoProtocoloMvp> AssociarProtocoloAsync(string documentoSap, string protocoloGuardian, CancellationToken cancellationToken);
+    Task<ResultadoAssociacaoProtocoloMvp> AssociarProtocoloAsync(string documentoSap, string protocoloGuardian, CancellationToken cancellationToken, DateTimeOffset protocoloCriadoEm);
     Task<CorrelacaoRecebimentoMvp?> ObterPorProtocoloAsync(string protocoloGuardian, CancellationToken cancellationToken);
     Task<ResultadoRegistroCallbackMvp> RegistrarCallbackAsync(CallbackGuardianMvp callback, CancellationToken cancellationToken);
 }

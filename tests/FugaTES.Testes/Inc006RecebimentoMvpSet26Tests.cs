@@ -1,9 +1,13 @@
 using System.Text.Json.Nodes;
 using FugaTES.Aplicacao.CasosDeUso.Recebimento;
+using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Modelos.Guardian;
 using FugaTES.Aplicacao.Modelos.Recebimento;
+using FugaTES.Aplicacao.Servicos.MotorIntegracao;
+using FugaTES.Callback.Http;
 using FugaTES.Infraestrutura.Recebimento;
 using FugaTES.Integracao.Toledo.Set26;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FugaTES.Testes;
 
@@ -59,15 +63,19 @@ public sealed class Inc006RecebimentoMvpSet26Tests
     }
 
     [Fact]
-    public async Task Recebimento_valido_envia_pre_cadastro_e_correlaciona_documento_com_protocolo()
+    public async Task Recebimento_valido_registra_e_motor_correlaciona_documento_com_protocolo()
     {
         var guardian = new PreCadastroGuardianSet26GatewayFake("PROTOCOLO-001");
-        var correlacoes = new RepositorioCorrelacaoRecebimentoMemoria();
-        var sut = new ProcessarRecebimentoMvpCasoDeUso(guardian, correlacoes, Opcoes());
+        using var provider = CriarServicos(guardian);
+        var correlacoes = provider.GetRequiredService<IRepositorioCorrelacaoRecebimento>();
+        var sut = provider.GetRequiredService<ProcessarRecebimentoMvpCasoDeUso>();
 
         var resultado = await sut.ExecutarAsync(Input(), CancellationToken.None);
 
-        Assert.Equal("PROTOCOLO-001", resultado.ProtocoloGuardian);
+        Assert.True(resultado.TrabalhoRegistrado);
+        Assert.Null(resultado.ProtocoloGuardian);
+        Assert.Equal(0, guardian.QuantidadeChamadas);
+        await provider.GetRequiredService<MotorIntegracaoServico>().ExecutarUmCicloAsync(CancellationToken.None);
         Assert.Equal("DOC-001", (await correlacoes.ObterPorProtocoloAsync("PROTOCOLO-001", CancellationToken.None))!.DocumentoSap);
         Assert.Equal(1, guardian.QuantidadeChamadas);
     }
@@ -76,7 +84,8 @@ public sealed class Inc006RecebimentoMvpSet26Tests
     public async Task Campo_obrigatorio_ausente_rejeita_antes_do_gateway()
     {
         var guardian = new PreCadastroGuardianSet26GatewayFake("PROTOCOLO-001");
-        var sut = new ProcessarRecebimentoMvpCasoDeUso(guardian, new RepositorioCorrelacaoRecebimentoMemoria(), Opcoes());
+        using var provider = CriarServicos(guardian);
+        var sut = provider.GetRequiredService<ProcessarRecebimentoMvpCasoDeUso>();
         var invalido = Input() with { Material = "" };
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.ExecutarAsync(invalido, CancellationToken.None));
@@ -124,12 +133,22 @@ public sealed class Inc006RecebimentoMvpSet26Tests
 
     private static async Task<(ProcessarRecebimentoMvpCasoDeUso Recebimento, ProcessarCallbackGuardianMvpCasoDeUso Callback, PesagemSapMvpGatewayFake Sap, RepositorioCorrelacaoRecebimentoMemoria Correlacoes)> CriarFluxoAsync()
     {
-        var correlacoes = new RepositorioCorrelacaoRecebimentoMemoria();
-        var recebimento = new ProcessarRecebimentoMvpCasoDeUso(new PreCadastroGuardianSet26GatewayFake("PROTOCOLO-001"), correlacoes, Opcoes());
+        using var provider = CriarServicos(new PreCadastroGuardianSet26GatewayFake("PROTOCOLO-001"));
+        var correlacoes = (RepositorioCorrelacaoRecebimentoMemoria)provider.GetRequiredService<IRepositorioCorrelacaoRecebimento>();
+        var recebimento = provider.GetRequiredService<ProcessarRecebimentoMvpCasoDeUso>();
         var sap = new PesagemSapMvpGatewayFake();
         var callback = new ProcessarCallbackGuardianMvpCasoDeUso(correlacoes, sap);
         await recebimento.ExecutarAsync(Input(), CancellationToken.None);
+        await provider.GetRequiredService<MotorIntegracaoServico>().ExecutarUmCicloAsync(CancellationToken.None);
         return (recebimento, callback, sap, correlacoes);
+    }
+
+    private static ServiceProvider CriarServicos(PreCadastroGuardianSet26GatewayFake guardian)
+    {
+        var services = new ServiceCollection();
+        GuardianEngineStageAComposition.ConfigurarOffline(services, guardian, Opcoes());
+        services.AddScoped<ProcessarRecebimentoMvpCasoDeUso>();
+        return services.BuildServiceProvider();
     }
 
     private static RecebimentoSapCpiMvp Input() => new(

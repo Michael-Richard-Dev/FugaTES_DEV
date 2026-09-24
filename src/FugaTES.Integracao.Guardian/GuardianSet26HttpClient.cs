@@ -1,6 +1,8 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Modelos.Guardian;
 
@@ -32,7 +34,6 @@ public sealed class GuardianSet26HttpClient(HttpClient httpClient, GuardianHttpO
     {
         ArgumentNullException.ThrowIfNull(preCadastro);
         var endpoint = options.ResolveEndpoint(options.PreCadastroEndpoint, nameof(options.PreCadastroEndpoint));
-        var responseField = GuardianHttpOptions.RequireField(options.PreCadastroProtocolResponseField, nameof(options.PreCadastroProtocolResponseField));
         var payload = new
         {
             configuracao = new { urlParaRetorno = preCadastro.UrlParaRetorno },
@@ -42,11 +43,16 @@ public sealed class GuardianSet26HttpClient(HttpClient httpClient, GuardianHttpO
         try
         {
             using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(cancellationToken));
-            if (!document.RootElement.TryGetProperty(responseField, out var protocolElement) ||
-                protocolElement.ValueKind != JsonValueKind.String ||
-                string.IsNullOrWhiteSpace(protocolElement.GetString()))
+            if (!document.RootElement.TryGetProperty("id", out var protocolElement) ||
+                protocolElement.ValueKind != JsonValueKind.Number ||
+                !document.RootElement.TryGetProperty("dataCadastro", out var createdElement) ||
+                createdElement.ValueKind != JsonValueKind.String ||
+                !Regex.IsMatch(createdElement.GetString()!, @"(?:Z|[+-]\d{2}:\d{2})$", RegexOptions.CultureInvariant))
                 throw new GuardianHttpException("Guardian pre-registration response is invalid.");
-            return new ProtocoloGuardianSet26(protocolElement.GetString()!);
+            var dto = document.RootElement.Deserialize<GuardianPreCadastroResponseDto>(JsonOptions);
+            if (dto is null || dto.Id <= 0 || dto.DataCadastro is null)
+                throw new GuardianHttpException("Guardian pre-registration response is invalid.");
+            return new ProtocoloGuardianSet26(dto.Id.ToString(CultureInfo.InvariantCulture), dto.DataCadastro);
         }
         catch (JsonException exception)
         {

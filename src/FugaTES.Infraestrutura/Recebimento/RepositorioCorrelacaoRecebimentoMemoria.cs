@@ -22,6 +22,12 @@ public sealed class RepositorioCorrelacaoRecebimentoMemoria : IRepositorioCorrel
         }
     }
 
+    public Task<CorrelacaoRecebimentoMvp?> ObterPorDocumentoAsync(string documentoSap, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (sync) return Task.FromResult(porDocumento.GetValueOrDefault(documentoSap));
+    }
+
     public Task<ResultadoAssociacaoContratoAcmMvp> AssociarContratoAcmAsync(string documentoSap, string contratoAcmSap, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(contratoAcmSap)) throw new ArgumentException("ACM contract is absent.", nameof(contratoAcmSap));
@@ -38,16 +44,20 @@ public sealed class RepositorioCorrelacaoRecebimentoMemoria : IRepositorioCorrel
         }
     }
 
-    public Task<ResultadoAssociacaoProtocoloMvp> AssociarProtocoloAsync(string documentoSap, string protocoloGuardian, CancellationToken cancellationToken)
+    public Task<ResultadoAssociacaoProtocoloMvp> AssociarProtocoloAsync(string documentoSap, string protocoloGuardian, CancellationToken cancellationToken, DateTimeOffset protocoloCriadoEm)
     {
+        if (protocoloCriadoEm == default) throw new ArgumentException("Protocol creation timestamp is required.", nameof(protocoloCriadoEm));
         cancellationToken.ThrowIfCancellationRequested();
         lock (sync)
         {
             if (!porDocumento.TryGetValue(documentoSap, out var atual)) throw new InvalidOperationException("Receipt snapshot was not found.");
+            var instante = new DateTimeOffset(protocoloCriadoEm.ToUniversalTime().Ticks / 10 * 10, TimeSpan.Zero);
             if (atual.ProtocoloGuardian is not null)
-                return Task.FromResult(new ResultadoAssociacaoProtocoloMvp(atual.ProtocoloGuardian == protocoloGuardian ? StatusAssociacaoProtocoloMvp.Idempotente : StatusAssociacaoProtocoloMvp.Conflito, atual));
+                return Task.FromResult(new ResultadoAssociacaoProtocoloMvp(
+                    atual.ProtocoloGuardian == protocoloGuardian && atual.ProtocoloCriadoEm == instante
+                        ? StatusAssociacaoProtocoloMvp.Idempotente : StatusAssociacaoProtocoloMvp.Conflito, atual));
             if (porProtocolo.ContainsKey(protocoloGuardian)) return Task.FromResult(new ResultadoAssociacaoProtocoloMvp(StatusAssociacaoProtocoloMvp.Conflito, atual));
-            var atualizado = atual with { ProtocoloGuardian = protocoloGuardian, Estado = EstadoCorrelacaoGuardianSap.AguardandoTicket };
+            var atualizado = atual with { ProtocoloGuardian = protocoloGuardian, ProtocoloCriadoEm = instante, Estado = EstadoCorrelacaoGuardianSap.AguardandoTicket };
             porDocumento[documentoSap] = atualizado;
             porProtocolo[protocoloGuardian] = atualizado;
             return Task.FromResult(new ResultadoAssociacaoProtocoloMvp(StatusAssociacaoProtocoloMvp.Associado, atualizado));
@@ -78,5 +88,6 @@ public sealed class RepositorioCorrelacaoRecebimentoMemoria : IRepositorioCorrel
         left.BusinessPartnerTransportadora == right.BusinessPartnerTransportadora && left.Centro == right.Centro &&
         left.TipoDocumento == right.TipoDocumento && left.Contrato == right.Contrato &&
         left.OperacaoContrato == right.OperacaoContrato && left.TipoOperacaoSap == right.TipoOperacaoSap &&
-        left.PedidoCompras == right.PedidoCompras;
+        left.PedidoCompras == right.PedidoCompras && left.TipoContrato == right.TipoContrato &&
+        left.UrlParaRetorno == right.UrlParaRetorno;
 }
