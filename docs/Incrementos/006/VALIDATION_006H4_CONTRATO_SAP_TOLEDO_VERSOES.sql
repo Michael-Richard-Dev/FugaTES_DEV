@@ -7,8 +7,8 @@
 -- F3_ROLLBACK_EXPECTED_SHA256=05D6B5BAEE860FC52A4DEC7712C01FC5E854F2B4B0CD47BECC19A30572F3BA60
 -- F3_VALIDATION_EXPECTED_SHA256=1EECD9110EA30BEE8E57B4DBD7AD86E51754D04E8A13E8863D8939DF5C9B1D54
 --
--- Baseline for this gate: F3 is still NOT applied. Therefore this validation
--- also requires fugates.correlacao_guardian_sap to remain absent.
+-- Baseline for this gate: F3 MUST already be applied and validated before H4 validation.
+-- This validation therefore requires fugates.correlacao_guardian_sap to be present.
 --
 -- Registration transaction requirement:
 -- identity lock + fingerprint dedup + version allocation + integracao INSERT
@@ -405,8 +405,8 @@ checks(name, ok) as (
     ('inc005_integracao_exact_17_columns',
         (select count(*) from inc005_actual)=17
         and not exists (select 1 from inc005_diff)),
-    ('f3_still_not_applied',
-        to_regclass('fugates.correlacao_guardian_sap') is null)
+    ('f3_applied',
+        to_regclass('fugates.correlacao_guardian_sap') is not null)
 )
 select
     jsonb_object_agg(name, ok order by name) as validation_checks,
