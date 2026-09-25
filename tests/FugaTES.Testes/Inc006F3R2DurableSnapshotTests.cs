@@ -156,7 +156,7 @@ public sealed class Inc006F3R2DurableSnapshotTests
         var repository = await RepositoryAsync();
         await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None, DateTimeOffset.UnixEpoch);
         var sap = new PesagemSapMvpGatewayFake();
-        var useCase = new ProcessarCallbackGuardianMvpCasoDeUso(repository, sap);
+        var useCase = new ProcessarCallbackGuardianMvpCasoDeUso(repository, new RegistroCallbackPesagemSapMemoria(repository, new FugaTES.Infraestrutura.MotorIntegracao.RepositorioMotorIntegracaoFake()));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => useCase.ExecutarAsync(Callback(), CancellationToken.None));
 
@@ -172,11 +172,12 @@ public sealed class Inc006F3R2DurableSnapshotTests
         await repository.AssociarProtocoloAsync("DOC-1", "PROTO-1", CancellationToken.None, DateTimeOffset.UnixEpoch);
         var sap = new PesagemSapMvpGatewayFake();
 
-        var result = await new ProcessarCallbackGuardianMvpCasoDeUso(repository, sap).ExecutarAsync(Callback(), CancellationToken.None);
+        var result = await new ProcessarCallbackGuardianMvpCasoDeUso(repository, new RegistroCallbackPesagemSapMemoria(repository, new FugaTES.Infraestrutura.MotorIntegracao.RepositorioMotorIntegracaoFake())).ExecutarAsync(Callback(), CancellationToken.None);
 
-        Assert.Equal((short)7, result.Pesagem!.TipoOperacao);
-        Assert.Equal("ACM-WIRE", result.Pesagem.ContratoACM);
-        Assert.Null(result.Pesagem.PedidoCompras);
+        Assert.Equal(StatusCallbackGuardianMvp.Aceito, result.Status);
+        Assert.Null(result.Pesagem);
+        Assert.Equal("ACM-WIRE", result.Pesagem?.ContratoACM ?? (await repository.ObterPorProtocoloAsync("PROTO-1", CancellationToken.None))!.Entrada.ContratoAcmSap);
+        Assert.Equal(0, sap.QuantidadeChamadas);
     }
 
     [Fact]

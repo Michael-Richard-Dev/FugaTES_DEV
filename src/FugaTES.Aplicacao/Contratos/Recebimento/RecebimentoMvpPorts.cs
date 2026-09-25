@@ -1,4 +1,5 @@
 using FugaTES.Aplicacao.Modelos.Guardian;
+using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 
 namespace FugaTES.Aplicacao.Contratos.Recebimento;
@@ -19,3 +20,7 @@ public interface IRepositorioCorrelacaoRecebimento
     Task<ResultadoRegistroCallbackMvp> RegistrarCallbackAsync(CallbackGuardianMvp callback, CancellationToken cancellationToken);
 }
 public interface IPesagemSapMvpGateway { Task EnviarAsync(PesagemSapMvp pesagem, CancellationToken cancellationToken); }
+public interface IRegistroCallbackPesagemSapStore
+{
+    Task<ResultadoRegistroCallbackMvp> RegistrarEEnfileirarAsync(CallbackGuardianMvp callback, CandidatoIntegracao candidato, CancellationToken cancellationToken);
+}

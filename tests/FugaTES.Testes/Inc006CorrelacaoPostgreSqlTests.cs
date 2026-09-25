@@ -4,6 +4,7 @@ using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 using FugaTES.Callback.Http;
 using FugaTES.Infraestrutura.Recebimento;
+using FugaTES.Infraestrutura.MotorIntegracao;
 using FugaTES.Persistencia.Recebimento;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -77,15 +78,16 @@ public sealed class Inc006CorrelacaoPostgreSqlTests
     {
         var repository = await RepositoryWithProtocolAsync();
         var sap = new PesagemSapMvpGatewayFake();
-        var useCase = new ProcessarCallbackGuardianMvpCasoDeUso(repository, sap);
+        var useCase = new ProcessarCallbackGuardianMvpCasoDeUso(repository,
+            new RegistroCallbackPesagemSapMemoria(repository, new RepositorioMotorIntegracaoFake()));
 
         var result = await useCase.ExecutarAsync(Callback(), CancellationToken.None);
 
-        Assert.Equal("NF", result.Pesagem!.TipoDocumento);
-        Assert.Equal("PO-001", result.Pesagem.PedidoCompras);
-        Assert.Equal("DOC-001", result.Pesagem.DocumentoSap);
-        Assert.Equal((short)7, result.Pesagem.TipoOperacao);
-        Assert.Equal("ACM-001", result.Pesagem.ContratoACM);
+        Assert.Equal(StatusCallbackGuardianMvp.Aceito, result.Status);
+        Assert.Null(result.Pesagem);
+        Assert.Equal(new PesosCallbackSapMvp(1200m, 200m, 1000m),
+            (await repository.ObterPorProtocoloAsync("PROTOCOLO-001", CancellationToken.None))!.Pesos);
+        Assert.Equal(0, sap.QuantidadeChamadas);
     }
 
     [Fact]

@@ -58,21 +58,16 @@ public sealed class Inc006LocalHttpE2ESmokeTests
                 Callback() with { PesoBruto = 1300m });
 
             Assert.Equal(HttpStatusCode.OK, nominal.StatusCode);
-            Assert.Equal("PROCESSADO", (string?)(await nominal.Content.ReadFromJsonAsync<JsonObject>())!["status"]);
+            Assert.Equal("ACEITO", (string?)(await nominal.Content.ReadFromJsonAsync<JsonObject>())!["status"]);
             var sap = app.Services.GetRequiredService<PesagemSapMvpGatewayFake>();
-            var pesagem = Assert.Single(sap.Recebidas);
-            Assert.Equal("TICKET-INC006-D1-001", pesagem.IdPesagem);
-            Assert.Equal("DOC-INC006-D1-001", pesagem.DocumentoSap);
-            Assert.Equal(1200m, pesagem.PesoBruto);
-            Assert.Equal(200m, pesagem.PesoTara);
-            Assert.Equal(1000m, pesagem.PesoAntesDesconto);
+            Assert.Empty(sap.Recebidas);
 
             Assert.Equal(HttpStatusCode.OK, identical.StatusCode);
             Assert.Equal("IDEMPOTENTE", (string?)(await identical.Content.ReadFromJsonAsync<JsonObject>())!["status"]);
-            Assert.Single(sap.Recebidas);
+            Assert.Empty(sap.Recebidas);
 
             Assert.Equal(HttpStatusCode.Conflict, conflicting.StatusCode);
-            Assert.Single(sap.Recebidas);
+            Assert.Empty(sap.Recebidas);
 
             var repository = app.Services.GetRequiredService<IRepositorioCorrelacaoRecebimento>();
             var correlation = await repository.ObterPorProtocoloAsync("PROTOCOLO-INC006-D1-001", CancellationToken.None);

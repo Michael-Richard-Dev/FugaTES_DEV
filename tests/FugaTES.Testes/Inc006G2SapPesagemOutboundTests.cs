@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FugaTES.Aplicacao.Modelos.Recebimento;
+using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Integracao.SAP.Autenticacao;
 using FugaTES.Integracao.SAP.Configuracao;
 using FugaTES.Integracao.SAP.Dtos.Pesagem;
@@ -179,8 +180,33 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task ExceptionNoPostNaoGeraBlindRetry()
     {
         var handler = HandlerWithPostException(new TaskCanceledException("synthetic timeout"));
-        await Assert.ThrowsAsync<TaskCanceledException>(() => Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<FalhaPesagemSapMvpException>(() => Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None));
+        Assert.Equal(FugaTES.Aplicacao.Modelos.MotorIntegracao.ClassificacaoFalhaIntegracao.ResultadoIndeterminado, failure.Classificacao);
         Assert.Single(handler.Requests, request => request.Method == HttpMethod.Post);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.UnprocessableEntity, ClassificacaoFalhaIntegracao.FalhaDefinitiva)]
+    [InlineData(HttpStatusCode.InternalServerError, ClassificacaoFalhaIntegracao.ResultadoIndeterminado)]
+    [InlineData(HttpStatusCode.TooManyRequests, ClassificacaoFalhaIntegracao.ResultadoIndeterminado)]
+    public async Task PostNao2xxTemClassificacaoConservadoraSemRetry(
+        HttpStatusCode status, ClassificacaoFalhaIntegracao expected)
+    {
+        var handler = HandlerWithPost(new HttpResponseMessage(status));
+        var failure = await Assert.ThrowsAsync<PesagemSapHttpException>(() =>
+            Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None));
+        Assert.Equal(expected, failure.Classificacao);
+        Assert.Single(handler.Requests, request => request.Method == HttpMethod.Post);
+    }
+
+    [Fact]
+    public async Task TokenCsrfAusenteFalhaAntesDoPost()
+    {
+        var handler = new RecordingHandler((_, _) => new HttpResponseMessage(HttpStatusCode.OK));
+        var failure = await Assert.ThrowsAsync<PesagemSapHttpException>(() =>
+            Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None));
+        Assert.Equal(ClassificacaoFalhaIntegracao.FalhaTransitoriaSegura, failure.Classificacao);
+        Assert.DoesNotContain(handler.Requests, request => request.Method == HttpMethod.Post);
     }
 
     private static PesagemSapHttpGateway Gateway(RecordingHandler handler) =>

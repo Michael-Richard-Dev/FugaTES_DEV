@@ -1,5 +1,6 @@
 using FugaTES.Aplicacao.CasosDeUso.Recebimento;
 using FugaTES.Aplicacao.Contratos.Recebimento;
+using FugaTES.Infraestrutura.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Guardian;
 using FugaTES.Infraestrutura.Recebimento;
 using FugaTES.Persistencia.Recebimento;
@@ -35,6 +36,8 @@ public static class GuardianCallbackHttpComposition
         services.AddSingleton<RepositorioCorrelacaoRecebimentoMemoria>();
         services.AddSingleton<IRepositorioCorrelacaoRecebimento>(provider =>
             provider.GetRequiredService<RepositorioCorrelacaoRecebimentoMemoria>());
+        services.AddSingleton<RepositorioMotorIntegracaoFake>();
+        services.AddSingleton<IRegistroCallbackPesagemSapStore, RegistroCallbackPesagemSapMemoria>();
     }
 
     private static void ConfigurarCorrelacaoPostgreSql(IServiceCollection services, IConfiguration configuration)
@@ -54,6 +57,7 @@ public static class GuardianCallbackHttpComposition
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(services);
         ConfigurarBase(services);
+        ConfigurarCorrelacaoEmMemoria(services);
         GuardianEngineStageAComposition.ConfigurarOffline(services, guardian, options);
         services.AddScoped<ProcessarRecebimentoMvpCasoDeUso>();
         return services;

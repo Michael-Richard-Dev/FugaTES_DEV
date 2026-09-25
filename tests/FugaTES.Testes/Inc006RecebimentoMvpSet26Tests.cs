@@ -6,6 +6,7 @@ using FugaTES.Aplicacao.Modelos.Recebimento;
 using FugaTES.Aplicacao.Servicos.MotorIntegracao;
 using FugaTES.Callback.Http;
 using FugaTES.Infraestrutura.Recebimento;
+using FugaTES.Infraestrutura.MotorIntegracao;
 using FugaTES.Integracao.Toledo.Set26;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -99,14 +100,12 @@ public sealed class Inc006RecebimentoMvpSet26Tests
 
         var resultado = await callback.ExecutarAsync(Callback(), CancellationToken.None);
 
-        Assert.Equal(StatusCallbackGuardianMvp.Processado, resultado.Status);
-        Assert.Equal("TICKET-001", resultado.Pesagem!.IdPesagem);
-        Assert.Equal(1200m, resultado.Pesagem.PesoBruto);
-        Assert.Equal(200m, resultado.Pesagem.PesoTara);
-        Assert.Equal(1000m, resultado.Pesagem.PesoAntesDesconto);
-        Assert.Equal("DOC-001", resultado.Pesagem.DocumentoSap);
-        Assert.Equal("TICKET-001", (await correlacoes.ObterPorProtocoloAsync("PROTOCOLO-001", CancellationToken.None))!.TicketGuardian);
-        Assert.Equal(1, sap.QuantidadeChamadas);
+        Assert.Equal(StatusCallbackGuardianMvp.Aceito, resultado.Status);
+        Assert.Null(resultado.Pesagem);
+        var persisted = (await correlacoes.ObterPorProtocoloAsync("PROTOCOLO-001", CancellationToken.None))!;
+        Assert.Equal("TICKET-001", persisted.TicketGuardian);
+        Assert.Equal(new PesosCallbackSapMvp(1200m, 200m, 1000m), persisted.Pesos);
+        Assert.Equal(0, sap.QuantidadeChamadas);
     }
 
     [Fact]
@@ -118,7 +117,7 @@ public sealed class Inc006RecebimentoMvpSet26Tests
         var repetido = await callback.ExecutarAsync(Callback(), CancellationToken.None);
 
         Assert.Equal(StatusCallbackGuardianMvp.Idempotente, repetido.Status);
-        Assert.Equal(1, sap.QuantidadeChamadas);
+        Assert.Equal(0, sap.QuantidadeChamadas);
     }
 
     [Fact]
@@ -128,7 +127,7 @@ public sealed class Inc006RecebimentoMvpSet26Tests
         await callback.ExecutarAsync(Callback(), CancellationToken.None);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => callback.ExecutarAsync(Callback() with { PesoBruto = 1300m }, CancellationToken.None));
-        Assert.Equal(1, sap.QuantidadeChamadas);
+        Assert.Equal(0, sap.QuantidadeChamadas);
     }
 
     private static async Task<(ProcessarRecebimentoMvpCasoDeUso Recebimento, ProcessarCallbackGuardianMvpCasoDeUso Callback, PesagemSapMvpGatewayFake Sap, RepositorioCorrelacaoRecebimentoMemoria Correlacoes)> CriarFluxoAsync()
@@ -137,7 +136,8 @@ public sealed class Inc006RecebimentoMvpSet26Tests
         var correlacoes = (RepositorioCorrelacaoRecebimentoMemoria)provider.GetRequiredService<IRepositorioCorrelacaoRecebimento>();
         var recebimento = provider.GetRequiredService<ProcessarRecebimentoMvpCasoDeUso>();
         var sap = new PesagemSapMvpGatewayFake();
-        var callback = new ProcessarCallbackGuardianMvpCasoDeUso(correlacoes, sap);
+        var store = new RegistroCallbackPesagemSapMemoria(correlacoes, provider.GetRequiredService<RepositorioMotorIntegracaoFake>());
+        var callback = new ProcessarCallbackGuardianMvpCasoDeUso(correlacoes, store);
         await recebimento.ExecutarAsync(Input(), CancellationToken.None);
         await provider.GetRequiredService<MotorIntegracaoServico>().ExecutarUmCicloAsync(CancellationToken.None);
         return (recebimento, callback, sap, correlacoes);

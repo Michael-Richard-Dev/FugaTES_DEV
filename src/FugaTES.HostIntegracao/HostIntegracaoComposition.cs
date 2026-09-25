@@ -4,6 +4,7 @@ using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Servicos.MotorIntegracao;
 using FugaTES.Infraestrutura.MotorIntegracao;
 using FugaTES.Integracao.Guardian;
+using FugaTES.Integracao.SAP.Http;
 using FugaTES.Persistencia.MotorIntegracao;
 using FugaTES.Persistencia.Recebimento;
 using Microsoft.Extensions.Options;
@@ -91,8 +92,10 @@ public static class HostIntegracaoComposition
             throw new InvalidOperationException("Guardian mode requires PostgreSql persistence and ConnectionStrings:FugaTES.");
 
         services.AddGuardianRuntime(configuration);
+        services.AddSapPesagemRuntime(configuration);
         services.AddScoped<IRepositorioCorrelacaoRecebimento, RepositorioCorrelacaoGuardianSapPostgreSql>();
         services.AddScoped<ProcessadorPreCadastroGuardianMotor>();
+        services.AddScoped<ProcessadorPesagemSapMotor>();
         services.AddScoped<IProcessadorExternoIntegracao, ProcessadorExternoIntegracaoRoteado>();
     }
 }

@@ -5,12 +5,16 @@ using FugaTES.Aplicacao.Servicos.MotorIntegracao;
 
 namespace FugaTES.HostIntegracao;
 
-public sealed class ProcessadorExternoIntegracaoRoteado(ProcessadorPreCadastroGuardianMotor guardian)
+public sealed class ProcessadorExternoIntegracaoRoteado(
+    ProcessadorPreCadastroGuardianMotor guardian, ProcessadorPesagemSapMotor sap)
     : IProcessadorExternoIntegracao
 {
     public Task<ResultadoProcessamentoExterno> ProcessarAsync(
         ClaimIntegracaoMotor claim, CancellationToken cancellationToken) =>
-        claim.Operacao == GuardianPreCadastroMotorWork.Operacao
-            ? guardian.ProcessarAsync(claim, cancellationToken)
-            : Task.FromResult(new ResultadoProcessamentoExterno(ClassificacaoFalhaIntegracao.FalhaDefinitiva));
+        claim.Operacao switch
+        {
+            GuardianPreCadastroMotorWork.Operacao => guardian.ProcessarAsync(claim, cancellationToken),
+            GuardianPesagemSapMotorWork.Operacao => sap.ProcessarAsync(claim, cancellationToken),
+            _ => Task.FromResult(new ResultadoProcessamentoExterno(ClassificacaoFalhaIntegracao.FalhaDefinitiva))
+        };
 }

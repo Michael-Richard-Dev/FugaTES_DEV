@@ -1,5 +1,7 @@
 using FugaTES.Aplicacao.Contratos.Recebimento;
+using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
+using FugaTES.Infraestrutura.MotorIntegracao;
 
 namespace FugaTES.Infraestrutura.Recebimento;
 
@@ -75,7 +77,37 @@ public sealed class RepositorioCorrelacaoRecebimentoMemoria : IRepositorioCorrel
             if (!porProtocolo.TryGetValue(callback.ProtocoloGuardian, out var atual)) throw new InvalidOperationException("Guardian callback correlation was not found.");
             var fingerprint = CallbackGuardianMvpFingerprint.Calcular(callback);
             if (atual.CallbackFingerprint is not null) return Task.FromResult(new ResultadoRegistroCallbackMvp(atual.TicketGuardian == callback.Sequencial.Trim() && atual.CallbackFingerprint == fingerprint ? StatusRegistroCallbackMvp.Idempotente : StatusRegistroCallbackMvp.Conflito, atual));
-            var atualizado = atual with { TicketGuardian = callback.Sequencial.Trim(), Callback = callback, Estado = EstadoCorrelacaoGuardianSap.TicketAssociado, CallbackFingerprint = fingerprint };
+            var atualizado = atual with { TicketGuardian = callback.Sequencial.Trim(), Callback = callback, Estado = EstadoCorrelacaoGuardianSap.TicketAssociado, CallbackFingerprint = fingerprint, Pesos = new(callback.PesoBruto, callback.Tara, callback.PesoLiquido) };
+            porProtocolo[callback.ProtocoloGuardian] = atualizado;
+            porDocumento[atual.DocumentoSap] = atualizado;
+            return Task.FromResult(new ResultadoRegistroCallbackMvp(StatusRegistroCallbackMvp.Novo, atualizado));
+        }
+    }
+
+    public Task<ResultadoRegistroCallbackMvp> RegistrarCallbackEEnfileirarAsync(
+        CallbackGuardianMvp callback, CandidatoIntegracao candidato, RepositorioMotorIntegracaoFake motor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (sync)
+        {
+            if (!porProtocolo.TryGetValue(callback.ProtocoloGuardian, out var atual))
+                throw new InvalidOperationException("Guardian callback correlation was not found.");
+            var fingerprint = CallbackGuardianMvpFingerprint.Calcular(callback);
+            var pesos = new PesosCallbackSapMvp(callback.PesoBruto, callback.Tara, callback.PesoLiquido);
+            if (atual.CallbackFingerprint is not null)
+            {
+                var same = atual.TicketGuardian == callback.Sequencial.Trim() &&
+                    atual.CallbackFingerprint == fingerprint && atual.Pesos == pesos;
+                if (same && !motor.Integracoes.Any(i => i.FingerprintSha256 == candidato.FingerprintSha256 &&
+                    i.Operacao == candidato.Operacao && i.ChaveNegocio == candidato.ChaveNegocio))
+                    throw new InvalidOperationException("Accepted callback has no registered integration.");
+                return Task.FromResult(new ResultadoRegistroCallbackMvp(same ? StatusRegistroCallbackMvp.Idempotente : StatusRegistroCallbackMvp.Conflito, atual));
+            }
+            if (motor.RegistrarCandidatoAsync(candidato, DateTimeOffset.UtcNow, cancellationToken)
+                .GetAwaiter().GetResult() != ResultadoRegistroIntegracao.Criada)
+                throw new InvalidOperationException("Callback integration identity already exists.");
+            var atualizado = atual with { TicketGuardian = callback.Sequencial.Trim(), Callback = callback,
+                Estado = EstadoCorrelacaoGuardianSap.TicketAssociado, CallbackFingerprint = fingerprint, Pesos = pesos };
             porProtocolo[callback.ProtocoloGuardian] = atualizado;
             porDocumento[atual.DocumentoSap] = atualizado;
             return Task.FromResult(new ResultadoRegistroCallbackMvp(StatusRegistroCallbackMvp.Novo, atualizado));

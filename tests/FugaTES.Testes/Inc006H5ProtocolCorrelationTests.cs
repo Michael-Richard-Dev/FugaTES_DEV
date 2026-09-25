@@ -84,7 +84,7 @@ public sealed class Inc006H5ProtocolCorrelationTests
         await repository.AssociarContratoAcmAsync("DOC-001", "ACM-1", CancellationToken.None);
         await repository.AssociarProtocoloAsync("DOC-001", "12345", CancellationToken.None, Created);
         var sap = new PesagemSapMvpGatewayFake();
-        var sut = new ProcessarCallbackGuardianMvpCasoDeUso(repository, sap);
+        var sut = new ProcessarCallbackGuardianMvpCasoDeUso(repository, new RegistroCallbackPesagemSapMemoria(repository, new FugaTES.Infraestrutura.MotorIntegracao.RepositorioMotorIntegracaoFake()));
         var callback = new CallbackGuardianMvp("12345", "TICKET-1", 1200m, 200m, 1000m, "CONCLUIDO", protocolCloud);
 
         if (conflict)
@@ -92,10 +92,10 @@ public sealed class Inc006H5ProtocolCorrelationTests
         else
         {
             var result = await sut.ExecutarAsync(callback, CancellationToken.None);
-            Assert.Equal("12345", result.Pesagem!.NumeroProtocolo);
-            Assert.Equal(Created.ToUniversalTime(), result.Pesagem.ProtocoloCriadoEm);
+            Assert.Equal(StatusCallbackGuardianMvp.Aceito, result.Status);
+            Assert.Equal("12345", (await repository.ObterPorProtocoloAsync("12345", CancellationToken.None))!.ProtocoloGuardian);
         }
-        Assert.Equal(conflict ? 0 : 1, sap.QuantidadeChamadas);
+        Assert.Equal(0, sap.QuantidadeChamadas);
     }
 
     [Fact]

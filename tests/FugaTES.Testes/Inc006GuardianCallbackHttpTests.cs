@@ -13,6 +13,17 @@ namespace FugaTES.Testes;
 public sealed class Inc006GuardianCallbackHttpTests
 {
     [Fact]
+    public async Task CallbackAceitoNaoExecutaSapNoBoundary()
+    {
+        var fixture = await Fixture.CreateAsync();
+
+        var response = await fixture.PostAsync(ValidJson());
+
+        Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
+        Assert.Empty(fixture.Sap.Recebidas);
+    }
+
+    [Fact]
     public async Task Post_valido_mapeia_sequencial_pesos_e_chega_ao_sap_fake()
     {
         var fixture = await Fixture.CreateAsync();
@@ -20,12 +31,8 @@ public sealed class Inc006GuardianCallbackHttpTests
         var response = await fixture.PostAsync(ValidJson());
 
         Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
-        Assert.Equal("PROCESSADO", (string?)response.Body["status"]);
-        var pesagem = Assert.Single(fixture.Sap.Recebidas);
-        Assert.Equal("TICKET-001", pesagem.IdPesagem);
-        Assert.Equal(1200m, pesagem.PesoBruto);
-        Assert.Equal(200m, pesagem.PesoTara);
-        Assert.Equal(1000m, pesagem.PesoAntesDesconto);
+        Assert.Equal("ACEITO", (string?)response.Body["status"]);
+        Assert.Empty(fixture.Sap.Recebidas);
     }
 
     [Fact]
@@ -37,7 +44,7 @@ public sealed class Inc006GuardianCallbackHttpTests
         var response = await fixture.PostAsync(json);
 
         Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
-        Assert.Single(fixture.Sap.Recebidas);
+        Assert.Empty(fixture.Sap.Recebidas);
     }
 
     [Theory]
@@ -80,7 +87,7 @@ public sealed class Inc006GuardianCallbackHttpTests
 
         Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
         Assert.Equal("IDEMPOTENTE", (string?)response.Body["status"]);
-        Assert.Single(fixture.Sap.Recebidas);
+        Assert.Empty(fixture.Sap.Recebidas);
     }
 
     [Fact]
@@ -92,11 +99,11 @@ public sealed class Inc006GuardianCallbackHttpTests
         var response = await fixture.PostAsync(ValidJson().Replace("1200", "1300", StringComparison.Ordinal));
 
         Assert.Equal(StatusCodes.Status409Conflict, response.StatusCode);
-        Assert.Single(fixture.Sap.Recebidas);
+        Assert.Empty(fixture.Sap.Recebidas);
     }
 
     [Theory]
-    [InlineData("PROTOCOLO-001", 200, 1)]
+    [InlineData("PROTOCOLO-001", 200, 0)]
     [InlineData("OUTRO-PROTOCOLO", 409, 0)]
     public async Task VoTicketProtocoloCloud_ReconciliaAntesDoSap(string cloud, int expectedStatus, int expectedSapCalls)
     {

@@ -27,7 +27,7 @@ public static class GuardianCallbackEndpoint
                 ?? throw new ArgumentException("Callback body is required.");
             var useCase = context.RequestServices.GetRequiredService<ProcessarCallbackGuardianMvpCasoDeUso>();
             var result = await useCase.ExecutarAsync(dto.Mapear(), context.RequestAborted);
-            var status = result.Status == StatusCallbackGuardianMvp.Processado ? "PROCESSADO" : "IDEMPOTENTE";
+            var status = result.Status == StatusCallbackGuardianMvp.Aceito ? "ACEITO" : "IDEMPOTENTE";
             context.Response.StatusCode = StatusCodes.Status200OK;
             await context.Response.WriteAsJsonAsync(new { status }, context.RequestAborted);
         }

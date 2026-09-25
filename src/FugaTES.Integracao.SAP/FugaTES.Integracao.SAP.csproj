@@ -6,4 +6,7 @@
     <ProjectReference Include="..\FugaTES.Aplicacao\FugaTES.Aplicacao.csproj" />
     <ProjectReference Include="..\FugaTES.Dominio\FugaTES.Dominio.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 </Project>

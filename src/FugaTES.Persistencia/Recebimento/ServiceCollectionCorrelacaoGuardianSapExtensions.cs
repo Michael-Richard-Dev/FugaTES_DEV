@@ -11,7 +11,9 @@ public static class ServiceCollectionCorrelacaoGuardianSapExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSourceFactory.Criar(connectionString));
-        services.AddScoped<IRepositorioCorrelacaoRecebimento, RepositorioCorrelacaoGuardianSapPostgreSql>();
+        services.AddScoped<RepositorioCorrelacaoGuardianSapPostgreSql>();
+        services.AddScoped<IRepositorioCorrelacaoRecebimento>(sp => sp.GetRequiredService<RepositorioCorrelacaoGuardianSapPostgreSql>());
+        services.AddScoped<IRegistroCallbackPesagemSapStore>(sp => sp.GetRequiredService<RepositorioCorrelacaoGuardianSapPostgreSql>());
         return services;
     }
 }

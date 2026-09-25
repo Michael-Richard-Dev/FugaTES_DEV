@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FugaTES.Aplicacao.Contratos.Recebimento;
+using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 using FugaTES.Integracao.SAP.Autenticacao;
 using FugaTES.Integracao.SAP.Configuracao;
@@ -21,31 +22,66 @@ public sealed class PesagemSapHttpGateway(
         ArgumentNullException.ThrowIfNull(pesagem);
         if (string.IsNullOrWhiteSpace(pesagem.ContratoACM))
             throw new ArgumentException("ContratoACM is required before SAP POST.", nameof(pesagem));
-        var uri = BuildUri();
+        Uri uri;
+        try { uri = BuildUri(); }
+        catch (InvalidOperationException exception)
+        {
+            throw new FalhaPesagemSapMvpException("SAP weighing pre-effect configuration failed.",
+                ClassificacaoFalhaIntegracao.FalhaDefinitiva, exception);
+        }
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(opcoes.Timeout);
 
-        using var fetch = new HttpRequestMessage(HttpMethod.Get, uri);
-        fetch.Headers.TryAddWithoutValidation("X-CSRF-Token", "Fetch");
-        await autenticacao.AplicarAsync(fetch, timeout.Token).ConfigureAwait(false);
-        using var fetchResponse = await httpClient.SendAsync(fetch, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-        if (!fetchResponse.IsSuccessStatusCode)
-            throw new PesagemSapHttpException("SAP CSRF fetch failed.", fetchResponse.StatusCode);
-        if (!fetchResponse.Headers.TryGetValues("X-CSRF-Token", out var tokenValues) ||
-            string.IsNullOrWhiteSpace(tokenValues.FirstOrDefault()))
-            throw new PesagemSapHttpException("SAP CSRF token is absent.", fetchResponse.StatusCode);
+        try
+        {
+            using var fetch = new HttpRequestMessage(HttpMethod.Get, uri);
+            fetch.Headers.TryAddWithoutValidation("X-CSRF-Token", "Fetch");
+            await autenticacao.AplicarAsync(fetch, timeout.Token).ConfigureAwait(false);
+            using var fetchResponse = await httpClient.SendAsync(fetch, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            if (!fetchResponse.IsSuccessStatusCode)
+                throw new PesagemSapHttpException("SAP CSRF fetch failed.", fetchResponse.StatusCode,
+                    fetchResponse.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                        ? ClassificacaoFalhaIntegracao.FalhaDefinitiva : ClassificacaoFalhaIntegracao.FalhaTransitoriaSegura);
+            if (!fetchResponse.Headers.TryGetValues("X-CSRF-Token", out var tokenValues) ||
+                string.IsNullOrWhiteSpace(tokenValues.FirstOrDefault()))
+                throw new PesagemSapHttpException("SAP CSRF token is absent.", fetchResponse.StatusCode,
+                    ClassificacaoFalhaIntegracao.FalhaTransitoriaSegura);
 
-        CaptureCookies(uri, fetchResponse);
-        var token = tokenValues.First()!;
-        using var post = new HttpRequestMessage(HttpMethod.Post, uri) { Content = JsonContent.Create(Map(pesagem)) };
-        post.Headers.TryAddWithoutValidation("X-CSRF-Token", token);
-        var cookies = cookieContainer.GetCookieHeader(uri);
-        if (!string.IsNullOrWhiteSpace(cookies)) post.Headers.TryAddWithoutValidation("Cookie", cookies);
-        await autenticacao.AplicarAsync(post, timeout.Token).ConfigureAwait(false);
+            CaptureCookies(uri, fetchResponse);
+            using var post = new HttpRequestMessage(HttpMethod.Post, uri) { Content = JsonContent.Create(Map(pesagem)) };
+            post.Headers.TryAddWithoutValidation("X-CSRF-Token", tokenValues.First());
+            var cookies = cookieContainer.GetCookieHeader(uri);
+            if (!string.IsNullOrWhiteSpace(cookies)) post.Headers.TryAddWithoutValidation("Cookie", cookies);
+            await autenticacao.AplicarAsync(post, timeout.Token).ConfigureAwait(false);
 
-        using var postResponse = await httpClient.SendAsync(post, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-        if (!postResponse.IsSuccessStatusCode)
-            throw new PesagemSapHttpException("SAP weighing POST failed.", postResponse.StatusCode);
+            try
+            {
+                using var postResponse = await httpClient.SendAsync(post, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+                if (!postResponse.IsSuccessStatusCode)
+                    throw new PesagemSapHttpException("SAP weighing POST failed.", postResponse.StatusCode,
+                        (int)postResponse.StatusCode >= 400 && (int)postResponse.StatusCode < 500 &&
+                        postResponse.StatusCode != HttpStatusCode.TooManyRequests
+                            ? ClassificacaoFalhaIntegracao.FalhaDefinitiva : ClassificacaoFalhaIntegracao.ResultadoIndeterminado);
+            }
+            catch (PesagemSapHttpException) { throw; }
+            catch (Exception exception)
+            {
+                throw new FalhaPesagemSapMvpException("SAP weighing POST outcome is uncertain.",
+                    ClassificacaoFalhaIntegracao.ResultadoIndeterminado, exception);
+            }
+        }
+        catch (PesagemSapHttpException) { throw; }
+        catch (FalhaPesagemSapMvpException) { throw; }
+        catch (InvalidOperationException exception)
+        {
+            throw new FalhaPesagemSapMvpException("SAP weighing pre-effect configuration failed.",
+                ClassificacaoFalhaIntegracao.FalhaDefinitiva, exception);
+        }
+        catch (Exception exception)
+        {
+            throw new FalhaPesagemSapMvpException("SAP weighing pre-effect request failed.",
+                ClassificacaoFalhaIntegracao.FalhaTransitoriaSegura, exception);
+        }
     }
 
     private Uri BuildUri()
@@ -101,7 +137,8 @@ public sealed class PesagemSapHttpGateway(
                 HoraProtocolo: null)]);
 }
 
-public sealed class PesagemSapHttpException(string message, HttpStatusCode statusCode) : Exception(message)
+public sealed class PesagemSapHttpException(string message, HttpStatusCode statusCode,
+    ClassificacaoFalhaIntegracao classificacao) : FalhaPesagemSapMvpException(message, classificacao)
 {
     public HttpStatusCode StatusCode { get; } = statusCode;
 }

@@ -1,11 +1,13 @@
 using System.Data;
 using FugaTES.Aplicacao.Contratos.Recebimento;
+using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
+using FugaTES.Persistencia.MotorIntegracao;
 using Npgsql;
 
 namespace FugaTES.Persistencia.Recebimento;
 
-public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource dataSource) : IRepositorioCorrelacaoRecebimento
+public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource dataSource) : IRepositorioCorrelacaoRecebimento, IRegistroCallbackPesagemSapStore
 {
     private const string InsertSnapshotSql = """
         insert into fugates.correlacao_guardian_sap
@@ -15,6 +17,7 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
         """;
     private const string SelectByDocumentSql = "select * from fugates.correlacao_guardian_sap where documento_logistico_referencia = @documento_logistico_referencia;";
     private const string SelectByProtocolSql = "select * from fugates.correlacao_guardian_sap where protocolo_guardian = @protocolo_guardian;";
+    private const string SelectByProtocolForUpdateSql = "select * from fugates.correlacao_guardian_sap where protocolo_guardian = @protocolo_guardian for update;";
     private const string AssociateProtocolSql = """
         update fugates.correlacao_guardian_sap set protocolo_guardian = @protocolo_guardian, protocolo_criado_em = @protocolo_criado_em, estado = 'AGUARDANDO_TICKET', atualizado_em = now()
         where documento_logistico_referencia = @documento_logistico_referencia and protocolo_guardian is null and protocolo_criado_em is null returning id;
@@ -27,6 +30,82 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
         update fugates.correlacao_guardian_sap set ticket_guardian = @ticket_guardian, callback_fingerprint = @callback_fingerprint, estado = 'TICKET_ASSOCIADO', atualizado_em = now()
         where protocolo_guardian = @protocolo_guardian and callback_fingerprint is null returning id;
         """;
+    private const string RegisterCallbackWorkSql = """
+        update fugates.correlacao_guardian_sap set ticket_guardian = @ticket_guardian,
+            callback_fingerprint = @callback_fingerprint, peso_bruto = @peso_bruto,
+            tara_final = @tara_final, peso_liquido = @peso_liquido,
+            estado = 'TICKET_ASSOCIADO', atualizado_em = now()
+        where protocolo_guardian = @protocolo_guardian and callback_fingerprint is null returning id;
+        """;
+    private const string CheckIntegrationSql = """
+        select exists(select 1 from integracao where fingerprint_sha256 = @fingerprint_sha256
+            and operacao = @operacao and chave_negocio = @chave_negocio);
+        """;
+
+    public async Task<ResultadoRegistroCallbackMvp> RegistrarEEnfileirarAsync(
+        CallbackGuardianMvp callback, CandidatoIntegracao candidato, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        ArgumentNullException.ThrowIfNull(candidato);
+        var fingerprint = CallbackGuardianMvpFingerprint.Calcular(callback);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        try
+        {
+            await using var locked = new NpgsqlCommand(SelectByProtocolForUpdateSql, connection, transaction);
+            locked.Parameters.AddWithValue("protocolo_guardian", callback.ProtocoloGuardian);
+            CorrelacaoRecebimentoMvp atual;
+            await using (var reader = await locked.ExecuteReaderAsync(cancellationToken))
+                atual = await reader.ReadAsync(cancellationToken) ? Map(reader) : throw new InvalidOperationException("Guardian callback correlation was not found.");
+
+            if (atual.CallbackFingerprint is not null)
+            {
+                var pesos = new PesosCallbackSapMvp(callback.PesoBruto, callback.Tara, callback.PesoLiquido);
+                var same = atual.TicketGuardian == callback.Sequencial.Trim() &&
+                    atual.CallbackFingerprint == fingerprint && atual.Pesos == pesos;
+                if (same)
+                {
+                    await using var check = new NpgsqlCommand(CheckIntegrationSql, connection, transaction);
+                    check.Parameters.AddWithValue("fingerprint_sha256", candidato.FingerprintSha256);
+                    check.Parameters.AddWithValue("operacao", candidato.Operacao);
+                    check.Parameters.AddWithValue("chave_negocio", candidato.ChaveNegocio);
+                    if (await check.ExecuteScalarAsync(cancellationToken) is not true)
+                        throw new InvalidOperationException("Accepted callback has no registered integration.");
+                }
+                await transaction.CommitAsync(cancellationToken);
+                return new(same ? StatusRegistroCallbackMvp.Idempotente : StatusRegistroCallbackMvp.Conflito, atual);
+            }
+
+            await using var update = new NpgsqlCommand(RegisterCallbackWorkSql, connection, transaction);
+            update.Parameters.AddWithValue("protocolo_guardian", callback.ProtocoloGuardian);
+            update.Parameters.AddWithValue("ticket_guardian", callback.Sequencial.Trim());
+            update.Parameters.AddWithValue("callback_fingerprint", fingerprint);
+            update.Parameters.AddWithValue("peso_bruto", callback.PesoBruto);
+            update.Parameters.AddWithValue("tara_final", callback.Tara);
+            update.Parameters.AddWithValue("peso_liquido", callback.PesoLiquido);
+            if (await update.ExecuteScalarAsync(cancellationToken) is null)
+                throw new InvalidOperationException("Callback snapshot could not be registered.");
+            var result = await RepositorioMotorIntegracaoPostgreSql.RegistrarCandidatoNaTransacaoAsync(
+                connection, transaction, candidato, Guid.NewGuid(), cancellationToken);
+            if (result != ResultadoRegistroIntegracao.Criada)
+                throw new InvalidOperationException("Callback integration identity already exists.");
+            await transaction.CommitAsync(cancellationToken);
+            return new(StatusRegistroCallbackMvp.Novo, atual with {
+                TicketGuardian = callback.Sequencial.Trim(), CallbackFingerprint = fingerprint,
+                Pesos = new(callback.PesoBruto, callback.Tara, callback.PesoLiquido), Callback = callback,
+                Estado = EstadoCorrelacaoGuardianSap.TicketAssociado });
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw new InvalidOperationException("Callback identity conflicts with persisted work.", exception);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
 
     public async Task<ResultadoRegistroSnapshotMvp> RegistrarSnapshotAsync(RecebimentoSapCpiMvp entrada, CancellationToken cancellationToken)
     {
@@ -151,7 +230,11 @@ public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource 
         var input = new RecebimentoSapCpiMvp(reader.GetString(reader.GetOrdinal("processo")), "FLX_RECEBIMENTO", reader.GetString(reader.GetOrdinal("material_sap")), reader.GetString(reader.GetOrdinal("bp_emissor")), reader.GetString(reader.GetOrdinal("bp_transportadora")), reader.GetString(reader.GetOrdinal("contrato_sap")), document, NullableString(reader, "tipo_contrato") ?? string.Empty, reader.GetString(reader.GetOrdinal("centro_sap")), reader.GetString(reader.GetOrdinal("operacao_contrato")), reader.GetString(reader.GetOrdinal("tipo_documento")), NullableString(reader, "pedido_compras_sap"), reader.GetInt16(reader.GetOrdinal("tipo_operacao_sap")), NullableString(reader, "contrato_acm_sap"), NullableString(reader, "url_para_retorno"));
         var createdOrdinal = reader.GetOrdinal("protocolo_criado_em");
         var created = reader.IsDBNull(createdOrdinal) ? (DateTimeOffset?)null : new DateTimeOffset(DateTime.SpecifyKind(reader.GetDateTime(createdOrdinal), DateTimeKind.Utc));
-        return new(document, NullableString(reader, "protocolo_guardian"), input, NullableString(reader, "ticket_guardian"), null, ParseState(reader.GetString(reader.GetOrdinal("estado"))), NullableString(reader, "callback_fingerprint"), created);
+        var pesoOrdinal = reader.GetOrdinal("peso_bruto");
+        var pesos = reader.IsDBNull(pesoOrdinal) ? null : new PesosCallbackSapMvp(
+            reader.GetDecimal(pesoOrdinal), reader.GetDecimal(reader.GetOrdinal("tara_final")),
+            reader.GetDecimal(reader.GetOrdinal("peso_liquido")));
+        return new(document, NullableString(reader, "protocolo_guardian"), input, NullableString(reader, "ticket_guardian"), null, ParseState(reader.GetString(reader.GetOrdinal("estado"))), NullableString(reader, "callback_fingerprint"), created, pesos);
     }
 
     private static string? NullableString(NpgsqlDataReader reader, string name) { var ordinal = reader.GetOrdinal(name); return reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal); }

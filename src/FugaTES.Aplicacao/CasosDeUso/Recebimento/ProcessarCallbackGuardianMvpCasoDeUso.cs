@@ -1,9 +1,10 @@
 using FugaTES.Aplicacao.Contratos.Recebimento;
+using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 
 namespace FugaTES.Aplicacao.CasosDeUso.Recebimento;
 
-public sealed class ProcessarCallbackGuardianMvpCasoDeUso(IRepositorioCorrelacaoRecebimento correlacoes, IPesagemSapMvpGateway sap)
+public sealed class ProcessarCallbackGuardianMvpCasoDeUso(IRepositorioCorrelacaoRecebimento correlacoes, IRegistroCallbackPesagemSapStore registro)
 {
     public async Task<ResultadoCallbackGuardianMvp> ExecutarAsync(CallbackGuardianMvp callback, CancellationToken cancellationToken)
     {
@@ -15,12 +16,12 @@ public sealed class ProcessarCallbackGuardianMvpCasoDeUso(IRepositorioCorrelacao
             throw new InvalidOperationException("Guardian ProtocoloCloud conflicts with persisted protocol.");
         var contratoAcm = contexto.Entrada.ContratoAcmSap;
         if (string.IsNullOrWhiteSpace(contratoAcm)) throw new InvalidOperationException("ACM contract is absent.");
-        var registro = await correlacoes.RegistrarCallbackAsync(callback, cancellationToken);
-        if (registro.Status == StatusRegistroCallbackMvp.Conflito) throw new InvalidOperationException("Conflicting callback was rejected.");
-        if (registro.Status == StatusRegistroCallbackMvp.Idempotente) return new(StatusCallbackGuardianMvp.Idempotente, null);
-        var entrada = registro.Correlacao.Entrada;
-        var pesagem = new PesagemSapMvp("Toledo", entrada.Centro, "E", callback.Sequencial, 1, entrada.BusinessPartnerTransportadora, entrada.Material, entrada.BusinessPartnerEmissor, callback.PesoBruto, callback.Tara, callback.PesoLiquido, entrada.TipoDocumento, entrada.PedidoCompras, entrada.DocumentoLogisticoReferencia, entrada.TipoOperacaoSap, contratoAcm, registro.Correlacao.ProtocoloGuardian, registro.Correlacao.ProtocoloCriadoEm);
-        await sap.EnviarAsync(pesagem, cancellationToken);
-        return new(StatusCallbackGuardianMvp.Processado, pesagem);
+        var fingerprint = CallbackGuardianMvpFingerprint.Calcular(callback);
+        var candidato = new CandidatoIntegracao("GUARDIAN", "SAP", GuardianPesagemSapMotorWork.Operacao,
+            callback.ProtocoloGuardian, GuardianPesagemSapMotorWork.Fingerprint(callback.ProtocoloGuardian, fingerprint), contexto.DocumentoSap);
+        var resultado = await registro.RegistrarEEnfileirarAsync(callback, candidato, cancellationToken);
+        if (resultado.Status == StatusRegistroCallbackMvp.Conflito) throw new InvalidOperationException("Conflicting callback was rejected.");
+        return new(resultado.Status == StatusRegistroCallbackMvp.Novo
+            ? StatusCallbackGuardianMvp.Aceito : StatusCallbackGuardianMvp.Idempotente, null);
     }
 }

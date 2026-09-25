@@ -43,7 +43,7 @@ public sealed class ProcessadorExternoIntegracaoFake : IProcessadorExternoIntegr
     {
         chamadas.Add(claim);
         TransacaoAtivaObservada = transacaoAtiva?.Invoke() ?? false;
-        if (claim.Operacao == GuardianPreCadastroMotorWork.Operacao)
+        if (claim.Operacao is GuardianPreCadastroMotorWork.Operacao or GuardianPesagemSapMotorWork.Operacao)
             return new ResultadoProcessamentoExterno(ClassificacaoFalhaIntegracao.FalhaDefinitiva);
 
         if (processamentoPendente is not null)
