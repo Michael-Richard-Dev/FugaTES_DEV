@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +19,64 @@ public static class SapContractInboundEndpoint
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         endpoints.MapPost(Route, HandleAsync);
+    }
+
+    public static void MapDurable(IEndpointRouteBuilder endpoints)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+        endpoints.MapPost(Route, HandleDurableAsync);
+    }
+
+    public static async Task HandleDurableAsync(HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.Connection.RemoteIpAddress is not { } remote || !IPAddress.IsLoopback(remote))
+        {
+            await WriteAsync(context, StatusCodes.Status403Forbidden, new { mensagem = "Acesso negado." });
+            return;
+        }
+        if (!context.Request.HasJsonContentType())
+        {
+            await WriteAsync(context, StatusCodes.Status415UnsupportedMediaType, new { mensagem = "Content-Type inválido." });
+            return;
+        }
+
+        try
+        {
+            var dto = await context.Request.ReadFromJsonAsync<SapContractInboundHttpDto>(context.RequestAborted)
+                ?? throw new ArgumentException("Request body is required.");
+            if (dto.Contrato?.Count != 1 || dto.Contrato.Single() is null)
+                throw new ArgumentException("Contrato collection must contain exactly one item.");
+
+            var snapshot = SapContractInboundMapper.MapearSnapshot(dto.Contrato.Single()!);
+            var correlationId = Guid.NewGuid().ToString("N");
+            var result = await context.RequestServices.GetRequiredService<AceitarContratoSapToledoDuravelCasoDeUso>()
+                .ExecutarAsync(snapshot, correlationId, context.RequestAborted);
+            await WriteAsync(context, StatusCodes.Status201Created, new
+            {
+                resultado = result.Reentrega ? "REENTREGA_IDEMPOTENTE" : "ACEITO",
+                numeroContrato = result.NumeroContrato,
+                versao = result.Versao,
+                reentrega = result.Reentrega,
+                correlationId = result.CorrelationId
+            });
+        }
+        catch (JsonException)
+        {
+            await WriteAsync(context, StatusCodes.Status400BadRequest, new { mensagem = "JSON inválido." });
+        }
+        catch (ArgumentException)
+        {
+            await WriteAsync(context, StatusCodes.Status400BadRequest, new { mensagem = "Requisição inválida." });
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            await WriteAsync(context, StatusCodes.Status500InternalServerError, new { mensagem = "Erro interno." });
+        }
     }
 
     public static async Task HandleAsync(HttpContext context)

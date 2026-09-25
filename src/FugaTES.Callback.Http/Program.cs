@@ -1,15 +1,15 @@
 using FugaTES.Callback.Http;
 
 var builder = WebApplication.CreateBuilder(args);
-var callbackOptions = GuardianCallbackHttpComposition.ConfigurarServicos(builder.Services, builder.Configuration);
-var sapContractInboundOfflineEnabled = SapContractInboundOfflineComposition.ConfigurarServicos(
-    builder.Services,
-    builder.Configuration);
+var routes = InboundHttpHostComposition.Configurar(
+    builder.Services, builder.Configuration, builder.Environment.IsDevelopment());
 
 var app = builder.Build();
 HealthEndpoint.Map(app);
-if (callbackOptions.Enabled)
-    GuardianCallbackEndpoint.Map(app, callbackOptions.Route);
-if (sapContractInboundOfflineEnabled)
+if (routes.Callback is { } callback)
+    GuardianCallbackEndpoint.Map(app, callback.Route);
+if (routes.SapProductive)
+    SapContractInboundEndpoint.MapDurable(app);
+if (routes.SapOffline)
     SapContractInboundEndpoint.Map(app);
 app.Run();
