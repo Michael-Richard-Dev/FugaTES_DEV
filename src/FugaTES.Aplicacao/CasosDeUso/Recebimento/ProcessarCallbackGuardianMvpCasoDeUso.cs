@@ -1,6 +1,7 @@
 using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
+using FugaTES.Aplicacao.Servicos.Mvp;
 
 namespace FugaTES.Aplicacao.CasosDeUso.Recebimento;
 
@@ -16,6 +17,13 @@ public sealed class ProcessarCallbackGuardianMvpCasoDeUso(IRepositorioCorrelacao
             throw new InvalidOperationException("Guardian ProtocoloCloud conflicts with persisted protocol.");
         var contratoAcm = contexto.Entrada.ContratoAcmSap;
         if (string.IsNullOrWhiteSpace(contratoAcm)) throw new InvalidOperationException("ACM contract is absent.");
+        if (AcmR106SapReturnPreflight.RequiresAcmGuards(contexto.Entrada))
+        {
+            if (contexto.Entrada.Centro != "3011" || contexto.Entrada.TipoContrato != "AC3P")
+                throw new ArgumentException("ACM_CALLBACK_CONTEXT_INVALID");
+            if (callback.Estado != "5") throw new ArgumentException("ACM_FINAL_EVENT_REQUIRED");
+            GuardianFinalWeighingPolicy.RequireFinal(callback.PesoBruto, callback.Tara, callback.PesoLiquido);
+        }
         var fingerprint = CallbackGuardianMvpFingerprint.Calcular(callback);
         var candidato = new CandidatoIntegracao("GUARDIAN", "SAP", GuardianPesagemSapMotorWork.Operacao,
             callback.ProtocoloGuardian, GuardianPesagemSapMotorWork.Fingerprint(callback.ProtocoloGuardian, fingerprint), contexto.DocumentoSap);

@@ -1,0 +1,1796 @@
+{
+  "Protected": [
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierProtocolBinding.cs",
+      "Before": "D99DC4BE26C146295BA403F1CB66CFBB9FE1B62594DC1E39BB11717CCBFE78AF",
+      "After": "D99DC4BE26C146295BA403F1CB66CFBB9FE1B62594DC1E39BB11717CCBFE78AF",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianCarrierSyncAdapter.cs",
+      "Before": "8F97B8DE1C3DC95D35349D3A4F47B7AEAC114DB6A39846F4E582A961A5A90449",
+      "After": "8F97B8DE1C3DC95D35349D3A4F47B7AEAC114DB6A39846F4E582A961A5A90449",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierDesktopComposition.cs",
+      "Before": "40E99B5E3838494A486BCB17546C31F5EE3BE36B060906446D4A1228E04C9640",
+      "After": "40E99B5E3838494A486BCB17546C31F5EE3BE36B060906446D4A1228E04C9640",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Transportadoras\\SincronizarTransportadoras.cs",
+      "Before": "29D0FD6701CCD7DE0D2DB7E3AE546492E30C073E17AA2A871F5A7F07820A377F",
+      "After": "29D0FD6701CCD7DE0D2DB7E3AE546492E30C073E17AA2A871F5A7F07820A377F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\CarrierSapDiscoveryAdapter.cs",
+      "Before": "D7C47B0BFE7512FF20A8893A803E161BBDD96DD74CEEE7665E630D599E99CEAE",
+      "After": "D7C47B0BFE7512FF20A8893A803E161BBDD96DD74CEEE7665E630D599E99CEAE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Program.cs",
+      "Before": "891D8EC9DC3C6E1EA817F5B6F5B6BD1E407B1F794ED63A8E1A306F1DEB696368",
+      "After": "891D8EC9DC3C6E1EA817F5B6F5B6BD1E407B1F794ED63A8E1A306F1DEB696368",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Runtime\\DesktopRuntime.cs",
+      "Before": "79D61E963D3936137537E2A8D1D16691A4CE71A8C41AF24DE37CD4C2547ECE33",
+      "After": "79D61E963D3936137537E2A8D1D16691A4CE71A8C41AF24DE37CD4C2547ECE33",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Runtime\\DesktopTunnel.cs",
+      "Before": "FB545DBB9AEFEAFF6B274D8A16C8410DFBBB78003FC7C49A1783E4A673C44E04",
+      "After": "FB545DBB9AEFEAFF6B274D8A16C8410DFBBB78003FC7C49A1783E4A673C44E04",
+      "Match": true
+    },
+    {
+      "Path": "C:\\FugaTES_DEV110\\FugaTES.exe",
+      "Before": "9E92340F768BB3437B942B295FA7AA48A4683E54D5D53CC976C393A745B3E7B6",
+      "After": "9E92340F768BB3437B942B295FA7AA48A4683E54D5D53CC976C393A745B3E7B6",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Sd\\SdDeliveryMvpPlanner.cs",
+      "Before": "498EF7D7A9FC778883847597F8DB59567103D4D6DDB4988205528C09793037BE",
+      "After": "498EF7D7A9FC778883847597F8DB59567103D4D6DDB4988205528C09793037BE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Sd\\SdDeliveryReadOnlyReviewService.cs",
+      "Before": "1E7416B047FBDF8FA75200D098C421A811962EAE50E41A546D8DD0745C3E3447",
+      "After": "1E7416B047FBDF8FA75200D098C421A811962EAE50E41A546D8DD0745C3E3447",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\docs\\Incrementos\\007\\MIGRATION_007_CARRIER_SYNC_R3.sql",
+      "Before": "E08C675F855177D2A559293AE2E43B0EC0E9D5F1DA2F1457235EC26E53BB5E6F",
+      "After": "E08C675F855177D2A559293AE2E43B0EC0E9D5F1DA2F1457235EC26E53BB5E6F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\docs\\Incrementos\\007\\MIGRATION_007A1_MVP_FLOW_RESULT_PROJECTION.sql",
+      "Before": "03C092CF565299884246BDAACE1D87CDEACE8A21642F9485A04F363105A7A813",
+      "After": "03C092CF565299884246BDAACE1D87CDEACE8A21642F9485A04F363105A7A813",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\docs\\Incrementos\\007\\ROLLBACK_007_CARRIER_SYNC_R3.sql",
+      "Before": "12978CA9245F21DCD43EE76B42BED083612EAE9D848B6A5F71CB8A506AC2B7E0",
+      "After": "12978CA9245F21DCD43EE76B42BED083612EAE9D848B6A5F71CB8A506AC2B7E0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\docs\\Incrementos\\007\\ROLLBACK_007A1_MVP_FLOW_RESULT_PROJECTION.sql",
+      "Before": "18AA616B5BB6EBBC72521FC1B402E7CD1F14175689AD6555387D1B8316638678",
+      "After": "18AA616B5BB6EBBC72521FC1B402E7CD1F14175689AD6555387D1B8316638678",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\docs\\Incrementos\\007\\VALIDATION_007_CARRIER_SYNC_R3.sql",
+      "Before": "9654DE0269357D40D8E9F76491C24184577CF971C5EC07ABE7BAF5FAD5477A10",
+      "After": "9654DE0269357D40D8E9F76491C24184577CF971C5EC07ABE7BAF5FAD5477A10",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\docs\\Incrementos\\007\\VALIDATION_007A1_MVP_FLOW_RESULT_PROJECTION.sql",
+      "Before": "A3C89884C09900E040BE0320A55C2FF21D4B3A69880A8E46DDC0CD63B00F6B1B",
+      "After": "A3C89884C09900E040BE0320A55C2FF21D4B3A69880A8E46DDC0CD63B00F6B1B",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\RELEASE_IDENTITY_SHA256.json",
+      "Before": "22BA9A5DC729C4B78A23B778C791F2E04D73C92DE77E60A44181E54E31682CD1",
+      "After": "22BA9A5DC729C4B78A23B778C791F2E04D73C92DE77E60A44181E54E31682CD1",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Aplicacao.dll",
+      "Before": "F563DFE22C263E31C166D012529D6267AE932CBE75569A00CE7F13AE930B0536",
+      "After": "F563DFE22C263E31C166D012529D6267AE932CBE75569A00CE7F13AE930B0536",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Aplicacao.pdb",
+      "Before": "18729AA6B114E0E6870FE3EA6D3F4F7C3A61BF06D9D179C96684E31BCD3E4026",
+      "After": "18729AA6B114E0E6870FE3EA6D3F4F7C3A61BF06D9D179C96684E31BCD3E4026",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.carrier.json",
+      "Before": "F0D9BA62F4BA2B26AC4E8199494ABBD5C29CCADCD269A412867BA72E585768F5",
+      "After": "F0D9BA62F4BA2B26AC4E8199494ABBD5C29CCADCD269A412867BA72E585768F5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.carrier.r8.20261011_163453_532.bak",
+      "Before": "20CCB0F0D5EC5A9986556B005B3E7D423F132B07D73683FEDA0D038BEB873091",
+      "After": "20CCB0F0D5EC5A9986556B005B3E7D423F132B07D73683FEDA0D038BEB873091",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.carrier.r8.20261011_164228_796.bak",
+      "Before": "20CCB0F0D5EC5A9986556B005B3E7D423F132B07D73683FEDA0D038BEB873091",
+      "After": "20CCB0F0D5EC5A9986556B005B3E7D423F132B07D73683FEDA0D038BEB873091",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Dominio.dll",
+      "Before": "88A79621B6C7B5929BF9831A16EF9DFEAA0AE64DE55E3487CCA19C8FF2FA3A45",
+      "After": "88A79621B6C7B5929BF9831A16EF9DFEAA0AE64DE55E3487CCA19C8FF2FA3A45",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Dominio.pdb",
+      "Before": "8EAE7A9AD14C9BF5217351DA8C7A00A9A9577847A0EE85CC824128AD2B617804",
+      "After": "8EAE7A9AD14C9BF5217351DA8C7A00A9A9577847A0EE85CC824128AD2B617804",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.HostIntegracao.deps.json",
+      "Before": "0B367BBA5CAB47EFEB28FA98B614A1D1E02441E4D1C6E8A095B988CC5232A015",
+      "After": "0B367BBA5CAB47EFEB28FA98B614A1D1E02441E4D1C6E8A095B988CC5232A015",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.HostIntegracao.dll",
+      "Before": "8ADD1761383E8DAFBBDD99DF0838AC2C9B20F324862F82759AEEDD5BA07E286C",
+      "After": "8ADD1761383E8DAFBBDD99DF0838AC2C9B20F324862F82759AEEDD5BA07E286C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.HostIntegracao.exe",
+      "Before": "1303CCCF457F67461D2DF2550248653E3D483B1F0CA51F6A6CDFF8AB5D156572",
+      "After": "1303CCCF457F67461D2DF2550248653E3D483B1F0CA51F6A6CDFF8AB5D156572",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.HostIntegracao.pdb",
+      "Before": "0BD20A237C950AFCCF3E09757FD4C17907FC92DBAB136910CD19E1819D79954A",
+      "After": "0BD20A237C950AFCCF3E09757FD4C17907FC92DBAB136910CD19E1819D79954A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.HostIntegracao.runtimeconfig.json",
+      "Before": "B4AAD84277C120C025A443649C4E09CA20B08725ACC12EF60940786BFB8C024F",
+      "After": "B4AAD84277C120C025A443649C4E09CA20B08725ACC12EF60940786BFB8C024F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Infraestrutura.dll",
+      "Before": "D75E23A46247F0A7671D1A12A2A716DB92332D2822F58BDAC3BE979CA606FCD4",
+      "After": "D75E23A46247F0A7671D1A12A2A716DB92332D2822F58BDAC3BE979CA606FCD4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Infraestrutura.pdb",
+      "Before": "2B4F698A32E1A9EB4EA16E63F3B4801BFEA8DD48F1EE6B91B0BB6432D24DFEE5",
+      "After": "2B4F698A32E1A9EB4EA16E63F3B4801BFEA8DD48F1EE6B91B0BB6432D24DFEE5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Integracao.Guardian.dll",
+      "Before": "CC8915E5501F046121F221A9F5BC49F2CB57F45B34805C0A7384DC5890FB2263",
+      "After": "CC8915E5501F046121F221A9F5BC49F2CB57F45B34805C0A7384DC5890FB2263",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Integracao.Guardian.pdb",
+      "Before": "E56A29635F6730FD5328951B9C2AD6950DFBD261E0B4530BBB05366BD9ADD975",
+      "After": "E56A29635F6730FD5328951B9C2AD6950DFBD261E0B4530BBB05366BD9ADD975",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Integracao.SAP.dll",
+      "Before": "D75BC84378AC608A7C09F66B2D0D2B12C7157628AE961E3F264B4B40D08EB437",
+      "After": "D75BC84378AC608A7C09F66B2D0D2B12C7157628AE961E3F264B4B40D08EB437",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Integracao.SAP.pdb",
+      "Before": "31E8CF5A58BEC8A92FEEFC1B92CB8C5826B03040267EC2B6E3C5202D85FCB2DE",
+      "After": "31E8CF5A58BEC8A92FEEFC1B92CB8C5826B03040267EC2B6E3C5202D85FCB2DE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Integracao.Toledo.dll",
+      "Before": "3DC2D16C6E46091231DDCE4C2EFAC8AEF96CDA71D32EDBB183599B1F3D188EE1",
+      "After": "3DC2D16C6E46091231DDCE4C2EFAC8AEF96CDA71D32EDBB183599B1F3D188EE1",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Integracao.Toledo.pdb",
+      "Before": "FA0EF954AAE19BECC1644DD1B78C6A04875AE8312005598D46B54E28EA70D962",
+      "After": "FA0EF954AAE19BECC1644DD1B78C6A04875AE8312005598D46B54E28EA70D962",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Persistencia.dll",
+      "Before": "86EE39899D8E64E07727EC6B9E3B9889DFECA04C971F15730D644F9ACC9D41C9",
+      "After": "86EE39899D8E64E07727EC6B9E3B9889DFECA04C971F15730D644F9ACC9D41C9",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.Persistencia.pdb",
+      "Before": "4F1F2DD2C5678E2D5E6DAEA9A9C6121206E2AEEC1371D6613B72C65D1EE55458",
+      "After": "4F1F2DD2C5678E2D5E6DAEA9A9C6121206E2AEEC1371D6613B72C65D1EE55458",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.runtime.json",
+      "Before": "6D6D1C27854F517140151607C87E2493561108AA0997C881A4AA98EBF61FC24C",
+      "After": "6D6D1C27854F517140151607C87E2493561108AA0997C881A4AA98EBF61FC24C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.WinForms.deps.json",
+      "Before": "D0961418574CD00E5A1DE4A972E7E95C96040138459BF830334DAD67C6EA21FB",
+      "After": "D0961418574CD00E5A1DE4A972E7E95C96040138459BF830334DAD67C6EA21FB",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.WinForms.dll",
+      "Before": "7F97C118DDDB5CAF619098AD3FB116315DA39CC24F46053BDB9F5B1EFFBC8626",
+      "After": "7F97C118DDDB5CAF619098AD3FB116315DA39CC24F46053BDB9F5B1EFFBC8626",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.WinForms.exe",
+      "Before": "952B00DB398E8EC4D4C8616E373FD046B798F18139E4D0DADFA8CFF6DD10BB53",
+      "After": "952B00DB398E8EC4D4C8616E373FD046B798F18139E4D0DADFA8CFF6DD10BB53",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.WinForms.pdb",
+      "Before": "96CA14547F0E1C49F8BA4E18885A6D2C111FB32191ED1C4B9FA34ED27D26E56C",
+      "After": "96CA14547F0E1C49F8BA4E18885A6D2C111FB32191ED1C4B9FA34ED27D26E56C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\FugaTES.WinForms.runtimeconfig.json",
+      "Before": "527CC967C94BAFA8646EE0FC29D0D15D3338B539E438FD77CADF7FD6746888AE",
+      "After": "527CC967C94BAFA8646EE0FC29D0D15D3338B539E438FD77CADF7FD6746888AE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\Microsoft.Extensions.Hosting.Systemd.dll",
+      "Before": "A73C97C8360B06F8DAE0A0B0AA3BE1F6ACA7EFC735164BA7522B82DC20D6A7FC",
+      "After": "A73C97C8360B06F8DAE0A0B0AA3BE1F6ACA7EFC735164BA7522B82DC20D6A7FC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\Microsoft.Extensions.Hosting.WindowsServices.dll",
+      "Before": "20CA35835126089F34663EED99DB5D901942306A67CCF7B9BBB7FF54D4428136",
+      "After": "20CA35835126089F34663EED99DB5D901942306A67CCF7B9BBB7FF54D4428136",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\Npgsql.dll",
+      "Before": "E2BCAFE1660FE4543FE9DFCABED972EC8D32259E5EA8009462CE1DE23C7034C2",
+      "After": "E2BCAFE1660FE4543FE9DFCABED972EC8D32259E5EA8009462CE1DE23C7034C2",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R3_2_STAGE_R5_1_20261011_135708_571\\WinForms\\System.ServiceProcess.ServiceController.dll",
+      "Before": "3274C2553C736435064E398F879404E8944F39790CAEE6632E6966046B3440E8",
+      "After": "3274C2553C736435064E398F879404E8944F39790CAEE6632E6966046B3440E8",
+      "Match": true
+    }
+  ],
+  "R15Evidence": [
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\build-release.log",
+      "Before": "86A7D41708BB18A17CC1C655C20E91FC34FE6574B9365D5891057B7E32734E87",
+      "After": "86A7D41708BB18A17CC1C655C20E91FC34FE6574B9365D5891057B7E32734E87",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\git-status-after.txt",
+      "Before": "971EE594ADF3DFEC13F6E885F87C6885340104473FA041EE8DAE962FF5067E82",
+      "After": "971EE594ADF3DFEC13F6E885F87C6885340104473FA041EE8DAE962FF5067E82",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\git-status-before.txt",
+      "Before": "A6BE7F97A85EA834DCD34447935A0E1D7DD04BBFB3B4DD04A11BE1DAAE16EE24",
+      "After": "A6BE7F97A85EA834DCD34447935A0E1D7DD04BBFB3B4DD04A11BE1DAAE16EE24",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\HANDOFF_HERA_V2_R15.md",
+      "Before": "13195852ECA93A10C61A41B7ED4B379D030901B557F6D8C9E48CD8D7DB0653F8",
+      "After": "13195852ECA93A10C61A41B7ED4B379D030901B557F6D8C9E48CD8D7DB0653F8",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\protected-after.json",
+      "Before": "B0A8DD8313CFD71EF0924789B2334E85C72F92EFA2B828A93DDA058665D52173",
+      "After": "B0A8DD8313CFD71EF0924789B2334E85C72F92EFA2B828A93DDA058665D52173",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\protected-before.json",
+      "Before": "D626188A5827C73D00182348D83146B8279C9848A0B58843CF8528A06194A579",
+      "After": "D626188A5827C73D00182348D83146B8279C9848A0B58843CF8528A06194A579",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\source-manifest.json",
+      "Before": "D4E229E0F6FF202CF7389462191A9B7598C880CED0F801590B923F8DC0A7365C",
+      "After": "D4E229E0F6FF202CF7389462191A9B7598C880CED0F801590B923F8DC0A7365C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\tests\\manual-readonly-r15-final.trx",
+      "Before": "D1DD2E9287B3682B6878C2E7024ACC85AF2C3C5E51E200D11DDF7A086BB67E91",
+      "After": "D1DD2E9287B3682B6878C2E7024ACC85AF2C3C5E51E200D11DDF7A086BB67E91",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\.artifacts\\manual-readonly-r15\\evidence\\tests\\manual-readonly-r15.trx",
+      "Before": "C44FA12FE873A57817049F84B2BD230CC3854A0A15896F18173502DAC0155B5E",
+      "After": "C44FA12FE873A57817049F84B2BD230CC3854A0A15896F18173502DAC0155B5E",
+      "Match": true
+    }
+  ],
+  "Source": [
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\FugaTES.Aplicacao.csproj",
+      "Before": "9EB7B79678D6D6A60977D46F56650D16E3C7FD9BCAF67BE34E7CB6D8FA0DF590",
+      "After": "9EB7B79678D6D6A60977D46F56650D16E3C7FD9BCAF67BE34E7CB6D8FA0DF590",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\MotorIntegracao\\IntegrarAgoraCasoDeUso.cs",
+      "Before": "F1158F71782134AB57DF109E7CE10716AF36DF604230E00F0FD5613B4FA636B3",
+      "After": "F1158F71782134AB57DF109E7CE10716AF36DF604230E00F0FD5613B4FA636B3",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\MotorIntegracao\\ReprocessarIntegracaoCasoDeUso.cs",
+      "Before": "761303E9B032DA0FBC689E87FC53217525BA4BEAE86A35881FB45CAE773D6429",
+      "After": "761303E9B032DA0FBC689E87FC53217525BA4BEAE86A35881FB45CAE773D6429",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Mvp\\FluxoMvpCasoDeUso.cs",
+      "Before": "6CBDB698E54B590A7AE0FDA948B97DBEFED1AD44C96F57ABC8071FF95CF38002",
+      "After": "6CBDB698E54B590A7AE0FDA948B97DBEFED1AD44C96F57ABC8071FF95CF38002",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Mvp\\ProcessarFluxosMvp.cs",
+      "Before": "B7AE437ADEC5A5694220AA4ACC17B1A7A937C5024305BC0EE89690969A577805",
+      "After": "B7AE437ADEC5A5694220AA4ACC17B1A7A937C5024305BC0EE89690969A577805",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Recebimento\\GuardianPesagemSapMotorWork.cs",
+      "Before": "F3438D2D8A29ED04196CEA2338B1A755DFC162DE65C0BF3929E91361ABBACF9D",
+      "After": "F3438D2D8A29ED04196CEA2338B1A755DFC162DE65C0BF3929E91361ABBACF9D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Recebimento\\ProcessarCallbackGuardianMvpCasoDeUso.cs",
+      "Before": "67E4B56A0745FAB0ACF785011E3EB07E41AA0F0473B8136D235B3F040D0F54B4",
+      "After": "67E4B56A0745FAB0ACF785011E3EB07E41AA0F0473B8136D235B3F040D0F54B4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Recebimento\\ProcessarEventoGuardianCasoDeUso.cs",
+      "Before": "42DE0A7C2513B62EA70868B4ACCD4B1BB16422B94398B29231734FE024F1FA47",
+      "After": "42DE0A7C2513B62EA70868B4ACCD4B1BB16422B94398B29231734FE024F1FA47",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Recebimento\\ProcessarRecebimentoMvpCasoDeUso.cs",
+      "Before": "C3C7D1AFADE7224AA670F4A66B93775A21825E1535E4F715EB5E14512BB972AE",
+      "After": "C3C7D1AFADE7224AA670F4A66B93775A21825E1535E4F715EB5E14512BB972AE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Recebimento\\RegistrarPreCadastroGuardianMotorCasoDeUso.cs",
+      "Before": "9703AA56A8B232283C90CF4BD932A6F6B22BE7FA4294F4035D0CFD309BE3E8BC",
+      "After": "9703AA56A8B232283C90CF4BD932A6F6B22BE7FA4294F4035D0CFD309BE3E8BC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\SAP\\ConsultarClienteSapCasoDeUso.cs",
+      "Before": "653827BC79F0E509A7A780C52AC790F78A1AA5B97FFCFD4D6779CC91B72A4F9A",
+      "After": "653827BC79F0E509A7A780C52AC790F78A1AA5B97FFCFD4D6779CC91B72A4F9A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\SAP\\ConsultarFornecedorSapCasoDeUso.cs",
+      "Before": "9B3A6CBC86C868A4166AAAE8BD25C5538B378FDBE3DBCB788331F035384F22E1",
+      "After": "9B3A6CBC86C868A4166AAAE8BD25C5538B378FDBE3DBCB788331F035384F22E1",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\SAP\\ConsultarTransportadoraSapCasoDeUso.cs",
+      "Before": "6987ECEA793E80F4C782D2316034205947FC306B9442F8E40E3AC73703D3999A",
+      "After": "6987ECEA793E80F4C782D2316034205947FC306B9442F8E40E3AC73703D3999A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Toledo\\EnviarClienteSapParaEmissorToledoCasoDeUso.cs",
+      "Before": "B58320596FF95950874287697CCC547AB5F0FB9A90F5E9760A9BA54A8D8C8D7E",
+      "After": "B58320596FF95950874287697CCC547AB5F0FB9A90F5E9760A9BA54A8D8C8D7E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Toledo\\EnviarContratoToledoCasoDeUso.cs",
+      "Before": "2139028914F56A01DCA58051AEFB8B4A55FFB2F86B2E04DE091D644D0EF0F8A0",
+      "After": "2139028914F56A01DCA58051AEFB8B4A55FFB2F86B2E04DE091D644D0EF0F8A0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\CasosDeUso\\Toledo\\EnviarPreCadastroToledoCasoDeUso.cs",
+      "Before": "850FFFA5EE872668A860C4CA528088E6A5DEAA7A545D55C171F3F2B19AB548D8",
+      "After": "850FFFA5EE872668A860C4CA528088E6A5DEAA7A545D55C171F3F2B19AB548D8",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Configuracao\\MotorIntegracaoOptions.cs",
+      "Before": "03F02E2BD205B22B407B0349ADD15719BCFA5D337AA141379573104A6A14F268",
+      "After": "03F02E2BD205B22B407B0349ADD15719BCFA5D337AA141379573104A6A14F268",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Consultas\\ContratosAcm\\ContratosAcmConsulta.cs",
+      "Before": "AA34A8806B98AF826DDB4E7624F8393D7618C61A096EEF1624DC3E79DF8F5492",
+      "After": "AA34A8806B98AF826DDB4E7624F8393D7618C61A096EEF1624DC3E79DF8F5492",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Consultas\\Monitor\\MonitorOperacionalConsulta.cs",
+      "Before": "C58A6CC75B4A15036F7C118085FD1B4AC81CAA082AAB3DB199CAFBDD4099B368",
+      "After": "C58A6CC75B4A15036F7C118085FD1B4AC81CAA082AAB3DB199CAFBDD4099B368",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\ContratosSapToledo\\IAcmGuardianVinculoStore.cs",
+      "Before": "F1BE2ECB7DFFD8A514E361AC64CC62F00112FF9036A5FA295C9016DC37A0DC26",
+      "After": "F1BE2ECB7DFFD8A514E361AC64CC62F00112FF9036A5FA295C9016DC37A0DC26",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\ContratosSapToledo\\IContratoGuardianRespostaComprovada.cs",
+      "Before": "A876993A59487767A673DC809C11347F0B324209536DC4618DE39AF6D58D3416",
+      "After": "A876993A59487767A673DC809C11347F0B324209536DC4618DE39AF6D58D3416",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\ContratosSapToledo\\IContratoSapToledoVersaoStore.cs",
+      "Before": "06D84A1DB189E52E21C1AC82ED6C675F36E8799531ACDDAD05E8D60238FD189F",
+      "After": "06D84A1DB189E52E21C1AC82ED6C675F36E8799531ACDDAD05E8D60238FD189F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\SAP\\IConsultaClienteSapGateway.cs",
+      "Before": "C971F23F5237C4560EA80051C55253F42D2E92054CD47FBA58E9DCE3425E513D",
+      "After": "C971F23F5237C4560EA80051C55253F42D2E92054CD47FBA58E9DCE3425E513D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\SAP\\IConsultaFornecedorSapGateway.cs",
+      "Before": "9A20D2F1EA07AFAC048A80C500BB39D7A32F894EF7EA089C9629755AC74716A4",
+      "After": "9A20D2F1EA07AFAC048A80C500BB39D7A32F894EF7EA089C9629755AC74716A4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\SAP\\IConsultaTransportadoraSapGateway.cs",
+      "Before": "0A3AD86B6466F90BA9F4202A684C2B0E5E0D03422C1E2D70501225506B9ED987",
+      "After": "0A3AD86B6466F90BA9F4202A684C2B0E5E0D03422C1E2D70501225506B9ED987",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\SAP\\MvpSapCapabilityPorts.cs",
+      "Before": "BBDFE0AE24CB9F1FE6813F0252208AAF148B093FA89B9220EADE80999ADC6747",
+      "After": "BBDFE0AE24CB9F1FE6813F0252208AAF148B093FA89B9220EADE80999ADC6747",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\Toledo\\IAutenticacaoToledoGateway.cs",
+      "Before": "6FD955DB54C90D04518B9FA1824BE3F9C8E3898C323BC77B883E8C5207ECEE0D",
+      "After": "6FD955DB54C90D04518B9FA1824BE3F9C8E3898C323BC77B883E8C5207ECEE0D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\Toledo\\IContratoToledoGateway.cs",
+      "Before": "D38FD180D0FCB517D9685ECFEC1CAA898A292C80FB2ECA5A6B2FF0129FC2F753",
+      "After": "D38FD180D0FCB517D9685ECFEC1CAA898A292C80FB2ECA5A6B2FF0129FC2F753",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\Toledo\\IEmissorToledoGateway.cs",
+      "Before": "6C3A6F688764A0A71AADDB437DF68F5397283DD8636DD1F1F3DC994EB0A0A901",
+      "After": "6C3A6F688764A0A71AADDB437DF68F5397283DD8636DD1F1F3DC994EB0A0A901",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\Toledo\\IPreCadastroToledoGateway.cs",
+      "Before": "1676565B6936858010B0809E98DA615766478AD617D920C9C6D4BD1A777B08D6",
+      "After": "1676565B6936858010B0809E98DA615766478AD617D920C9C6D4BD1A777B08D6",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Gateways\\Toledo\\ITransportadoraToledoGateway.cs",
+      "Before": "35518683FABE5C81B2B80781AF643E6505C0C114D20D908292F42D7112949070",
+      "After": "35518683FABE5C81B2B80781AF643E6505C0C114D20D908292F42D7112949070",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Guardian\\ICadastraContratoGuardianGateway.cs",
+      "Before": "58FE3EB6766A5DEF2EA5455DEAB68A0A8A2B674A274D303EDBFB654E2EABB770",
+      "After": "58FE3EB6766A5DEF2EA5455DEAB68A0A8A2B674A274D303EDBFB654E2EABB770",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Guardian\\IGuardianContratoSincronizacaoGateway.cs",
+      "Before": "480C361F20FD530C527248954303019AD8A5D450659616BD6EFF873B7C58CCB3",
+      "After": "480C361F20FD530C527248954303019AD8A5D450659616BD6EFF873B7C58CCB3",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\MotorIntegracao\\IDetectorCandidatosIntegracao.cs",
+      "Before": "F24501C2A8B94B3D9BDC135C16A28AC8BD1FD6BA7C03E4E2A62DE059064630D5",
+      "After": "F24501C2A8B94B3D9BDC135C16A28AC8BD1FD6BA7C03E4E2A62DE059064630D5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\MotorIntegracao\\IIdentidadeWorkerProvider.cs",
+      "Before": "73336ED268396E48A21DE3C3502855B7B784587012CB3CFD3EE1EDFE989BF765",
+      "After": "73336ED268396E48A21DE3C3502855B7B784587012CB3CFD3EE1EDFE989BF765",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\MotorIntegracao\\IMotorIntegracaoRepository.cs",
+      "Before": "6124B30402B421DEE86E294359656440A9A7BC00EB896F58921EACC2D5F2A014",
+      "After": "6124B30402B421DEE86E294359656440A9A7BC00EB896F58921EACC2D5F2A014",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\MotorIntegracao\\IPoliticaTimeoutProcessamentoIntegracao.cs",
+      "Before": "8E6DF8ED4A9C11D41F3DCC4C6CEDC0493015484C08991F43F86994A2937903E6",
+      "After": "8E6DF8ED4A9C11D41F3DCC4C6CEDC0493015484C08991F43F86994A2937903E6",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\MotorIntegracao\\IProcessadorExternoIntegracao.cs",
+      "Before": "A3F967D4F7570A2AB6F92DC94DA7BFAE878B89990F7BCC7B633DA1AA37517FB4",
+      "After": "A3F967D4F7570A2AB6F92DC94DA7BFAE878B89990F7BCC7B633DA1AA37517FB4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\MotorIntegracao\\IValidadorIntegracao.cs",
+      "Before": "4BD800EB09DC32E6EF6DAECDCBF622C7CA0E94E00BAD53DACA7A0824590341EC",
+      "After": "4BD800EB09DC32E6EF6DAECDCBF622C7CA0E94E00BAD53DACA7A0824590341EC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Mvp\\IResolverTransportadoraAcm.cs",
+      "Before": "933651BD10D6F599EAE26B77BCB33E6A09A8F7E72232D8133759A3964E78B141",
+      "After": "933651BD10D6F599EAE26B77BCB33E6A09A8F7E72232D8133759A3964E78B141",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Mvp\\OrquestracaoMvpPorts.cs",
+      "Before": "EC181CDC5998BDFF33128FA36A16B42C07F1AF1F44B211AA42515BC8BC2BA3CA",
+      "After": "EC181CDC5998BDFF33128FA36A16B42C07F1AF1F44B211AA42515BC8BC2BA3CA",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Recebimento\\IRegistroEventoGuardianStore.cs",
+      "Before": "5C819517A52F421D30F6C0FFE25A386FFD64F1CA6DDC4D4D6180EB4A0216F998",
+      "After": "5C819517A52F421D30F6C0FFE25A386FFD64F1CA6DDC4D4D6180EB4A0216F998",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Contratos\\Recebimento\\RecebimentoMvpPorts.cs",
+      "Before": "3440B8CB33DF973DF361A27F72985CB3A2A14DD9FA19EEF1C0FF30A33084948D",
+      "After": "3440B8CB33DF973DF361A27F72985CB3A2A14DD9FA19EEF1C0FF30A33084948D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Marcadores\\MarcadorAplicacao.cs",
+      "Before": "213F0D171E467D81DEEFDCC94C03FCB03C3941A40247380389A0F187128C929E",
+      "After": "213F0D171E467D81DEEFDCC94C03FCB03C3941A40247380389A0F187128C929E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\ContratosSapToledo\\ContratoSapToledoSnapshot.cs",
+      "Before": "8C644EF5200108306B46657D5490AF9F42697FD4A2FC4A3B7DBF1BAB3DE601F0",
+      "After": "8C644EF5200108306B46657D5490AF9F42697FD4A2FC4A3B7DBF1BAB3DE601F0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Guardian\\ContratoGuardianSet26.cs",
+      "Before": "565A312059AF5278BF3E28F82349AA0E270E0E0AC24E0E0FFC9B5A963D7BFCE7",
+      "After": "565A312059AF5278BF3E28F82349AA0E270E0E0AC24E0E0FFC9B5A963D7BFCE7",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Guardian\\ContratosGuardianSet26.cs",
+      "Before": "D7CD597B3D340EE71E025B9F697AF8C43DA960C6E8341783CB5D9FDDB1A3077A",
+      "After": "D7CD597B3D340EE71E025B9F697AF8C43DA960C6E8341783CB5D9FDDB1A3077A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\MotorIntegracao\\CandidatoIntegracao.cs",
+      "Before": "E35D3588EE1DEECDFC03536DCEDF0C568FCD41E007A6A22D6706B5C9400471AC",
+      "After": "E35D3588EE1DEECDFC03536DCEDF0C568FCD41E007A6A22D6706B5C9400471AC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\MotorIntegracao\\DesfechoTentativaIntegracao.cs",
+      "Before": "0DDF077A1982D3141E59E2ED86A142D8ACD44E7F98E25E3E894092183974C93C",
+      "After": "0DDF077A1982D3141E59E2ED86A142D8ACD44E7F98E25E3E894092183974C93C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\MotorIntegracao\\MotorIntegracaoModelos.cs",
+      "Before": "A377D0AA85FA11C451F38E1F5DC7EE5B5AF8B0ABE6D4442DA6854EABCAC9B085",
+      "After": "A377D0AA85FA11C451F38E1F5DC7EE5B5AF8B0ABE6D4442DA6854EABCAC9B085",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\MotorIntegracao\\ResultadoValidacaoIntegracao.cs",
+      "Before": "94E4ABB9316E4CE6F29434E0308D97EC29A7BCD31186B008FAECF811779DC952",
+      "After": "94E4ABB9316E4CE6F29434E0308D97EC29A7BCD31186B008FAECF811779DC952",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Mvp\\ResultadoFluxoMvp.cs",
+      "Before": "790F8D98CE9B260A7F618975E0C7A82E02011A91122F12A51B47E580B258CB5B",
+      "After": "790F8D98CE9B260A7F618975E0C7A82E02011A91122F12A51B47E580B258CB5B",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Recebimento\\CallbackGuardianMvpFingerprint.cs",
+      "Before": "1FDCBCA867A4022C4F70C346ACF1309B898F687C19D2ACECA37A3316D8A73A98",
+      "After": "1FDCBCA867A4022C4F70C346ACF1309B898F687C19D2ACECA37A3316D8A73A98",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Recebimento\\EventoGuardianRecebimento.cs",
+      "Before": "D6067503F2F1F2F4B88C4E1B8C66E74228F5FD4664FEDC2B29AC85E349E22FE0",
+      "After": "D6067503F2F1F2F4B88C4E1B8C66E74228F5FD4664FEDC2B29AC85E349E22FE0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Recebimento\\FalhaPesagemSapMvpException.cs",
+      "Before": "4D8509AA75790D959C0B03222CDF8AEBE1F75403EA9CD60111C6E8BD420AC7E4",
+      "After": "4D8509AA75790D959C0B03222CDF8AEBE1F75403EA9CD60111C6E8BD420AC7E4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Recebimento\\PesagemSapMvp.cs",
+      "Before": "E544B6F4E7E7B8A57B807EFCDDCBA82263F8152D9DE7BB51BD6296A9CD17A3BD",
+      "After": "E544B6F4E7E7B8A57B807EFCDDCBA82263F8152D9DE7BB51BD6296A9CD17A3BD",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Recebimento\\RecebimentoSapCpiMvp.cs",
+      "Before": "8A5F8265D015D130A8494E3F92BF0F89C8831B785FF2F13679E37635CA662B64",
+      "After": "8A5F8265D015D130A8494E3F92BF0F89C8831B785FF2F13679E37635CA662B64",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\SAP\\DocumentoFiscalNormalizado.cs",
+      "Before": "E261F84F22C23EDC9CC6446BA083338768034EE74C24F6D37C78D7DFCAFC6808",
+      "After": "E261F84F22C23EDC9CC6446BA083338768034EE74C24F6D37C78D7DFCAFC6808",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\SAP\\EnderecoParceiroNegocio.cs",
+      "Before": "9DA3F1B2192528362504CB25A52F9A43E8B153EEB174AA6A8572A7594650E0A9",
+      "After": "9DA3F1B2192528362504CB25A52F9A43E8B153EEB174AA6A8572A7594650E0A9",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\SAP\\MvpSapSnapshots.cs",
+      "Before": "A0F183CA9EBB6E3C9B08072F20C85E63174C8AE3A2063FA436F169C7154EEF26",
+      "After": "A0F183CA9EBB6E3C9B08072F20C85E63174C8AE3A2063FA436F169C7154EEF26",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\SAP\\ParceiroNegocioConsultado.cs",
+      "Before": "348566099ADD9AE1DD1D46EF73524FFC39685D446FE778AF780FE930A4D86556",
+      "After": "348566099ADD9AE1DD1D46EF73524FFC39685D446FE778AF780FE930A4D86556",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\SAP\\TiposParceiroNegocio.cs",
+      "Before": "36231FFC87E43BF6BEA488AF1375BEA9A8300CA4AC8A4635DEEDC8001210C2C5",
+      "After": "36231FFC87E43BF6BEA488AF1375BEA9A8300CA4AC8A4635DEEDC8001210C2C5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Toledo\\ContratoToledo.cs",
+      "Before": "8AE806630872D995467C0CBEFAD1287C08B640962A33BC4B9DD2FA6680927396",
+      "After": "8AE806630872D995467C0CBEFAD1287C08B640962A33BC4B9DD2FA6680927396",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Toledo\\EmissorToledo.cs",
+      "Before": "6B3DF6728C3A9423608D8F58993B460CD799F176A605ED6F0E2DD725EBFD1AF2",
+      "After": "6B3DF6728C3A9423608D8F58993B460CD799F176A605ED6F0E2DD725EBFD1AF2",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Toledo\\PreCadastroToledo.cs",
+      "Before": "C60E4F3C04C4014B5C6732ADC847C9F2D628D49B4B93AA4A73E52D9067DC64C4",
+      "After": "C60E4F3C04C4014B5C6732ADC847C9F2D628D49B4B93AA4A73E52D9067DC64C4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Toledo\\SessaoAutenticacaoToledo.cs",
+      "Before": "DD466BC2820C5ED764EE55DDB938D848BCF6E54AE81408F750418FD3EA23948C",
+      "After": "DD466BC2820C5ED764EE55DDB938D848BCF6E54AE81408F750418FD3EA23948C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Modelos\\Toledo\\TransportadoraToledo.cs",
+      "Before": "3266E119BD29A8267221864592FB18009878D3BC357606ACE17B7EE63B926B90",
+      "After": "3266E119BD29A8267221864592FB18009878D3BC357606ACE17B7EE63B926B90",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Resultados\\SAP\\ResultadoConsultaSap.cs",
+      "Before": "CA963D0D8733B14214031634E650973ABEB9A97750949B0B3C649B4044879C68",
+      "After": "CA963D0D8733B14214031634E650973ABEB9A97750949B0B3C649B4044879C68",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Resultados\\SAP\\ResultadoEscritaSap.cs",
+      "Before": "BDF2263C630F4C6140AD971A28560E53E21AC60B69BF1E2B363538511E6563F4",
+      "After": "BDF2263C630F4C6140AD971A28560E53E21AC60B69BF1E2B363538511E6563F4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Resultados\\Toledo\\ResultadoOperacaoToledo.cs",
+      "Before": "85F3562B1F8122DABEBF7AE7578ADE17F35AD203AF89E15CC37F52ADC1B05082",
+      "After": "85F3562B1F8122DABEBF7AE7578ADE17F35AD203AF89E15CC37F52ADC1B05082",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Resultados\\Toledo\\ResultadoPreCadastroToledo.cs",
+      "Before": "26E6E66F86842C67CC3689DF12E59BFCC582AAEB85BD032ABEEDFAA9C2F432AD",
+      "After": "26E6E66F86842C67CC3689DF12E59BFCC582AAEB85BD032ABEEDFAA9C2F432AD",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\ContratosSapToledo\\AceitarContratoSapToledoDuravelCasoDeUso.cs",
+      "Before": "F888173B2B1907E54CA23BDE5032C40F7E7CE7BD6557EA1500DB3726BD762F39",
+      "After": "F888173B2B1907E54CA23BDE5032C40F7E7CE7BD6557EA1500DB3726BD762F39",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\ContratosSapToledo\\ContratoSapToledoCanonicalizer.cs",
+      "Before": "1F7D9272264BBD309E0888AEAE7E5AF5793CAC9E80202AD89C6286FDD739F5FA",
+      "After": "1F7D9272264BBD309E0888AEAE7E5AF5793CAC9E80202AD89C6286FDD739F5FA",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\ContratosSapToledo\\ProcessadorContratoSapToledo.cs",
+      "Before": "51F5A5DB1EF45209509F0CB45423F3364B39FF48E8D98D2CD6C03E55378B45DD",
+      "After": "51F5A5DB1EF45209509F0CB45423F3364B39FF48E8D98D2CD6C03E55378B45DD",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\ContratosSapToledo\\ProcessarContratoSapToledoIdempotenteCasoDeUso.cs",
+      "Before": "2A4FF4B2E686F735B23984D24B6CD2B5C4AABA873F33CAF4A76C30EABC899100",
+      "After": "2A4FF4B2E686F735B23984D24B6CD2B5C4AABA873F33CAF4A76C30EABC899100",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\MotorIntegracao\\MaquinaEstadoIntegracao.cs",
+      "Before": "5A370AD1ED6A96AF78A373FB1144D2DAE8D62B2F6D339D9BBED4A63EB7EEC7CD",
+      "After": "5A370AD1ED6A96AF78A373FB1144D2DAE8D62B2F6D339D9BBED4A63EB7EEC7CD",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\MotorIntegracao\\MotorIntegracaoServico.cs",
+      "Before": "39B5C696FCFC7CFD0A7705930DFB18B3457DB33D97E11728C8D0D11F9D352F46",
+      "After": "39B5C696FCFC7CFD0A7705930DFB18B3457DB33D97E11728C8D0D11F9D352F46",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\MotorIntegracao\\PrepararPreCadastroGuardian.cs",
+      "Before": "771B93757EFDB9F692EAC33B807C0935F09EFBD8E7119AA260AC93B4AB65DAFB",
+      "After": "771B93757EFDB9F692EAC33B807C0935F09EFBD8E7119AA260AC93B4AB65DAFB",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\MotorIntegracao\\ProcessadorPesagemSapMotor.cs",
+      "Before": "023C23718A3D6B979FEDFD1C04642DBBB81B285C9CE6FBA4AB755DFDD704B5EB",
+      "After": "023C23718A3D6B979FEDFD1C04642DBBB81B285C9CE6FBA4AB755DFDD704B5EB",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\MotorIntegracao\\ProcessadorPreCadastroGuardianMotor.cs",
+      "Before": "67ABEF565CD17E5F2CA56A421373ACBD58AFB46FB824756C0E7FDC47F4CC3C37",
+      "After": "67ABEF565CD17E5F2CA56A421373ACBD58AFB46FB824756C0E7FDC47F4CC3C37",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\MotorIntegracao\\ValidadorGenericoIntegracao.cs",
+      "Before": "56EAB6CD733D1004B1FDCAE6BC004363FE02719EE648263D6ACB338D1A47CD83",
+      "After": "56EAB6CD733D1004B1FDCAE6BC004363FE02719EE648263D6ACB338D1A47CD83",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Mvp\\MapeadorContratoAcmGuardian.cs",
+      "Before": "51DA20ECF01DF367B820C208DCC8E673B5E99B5CB8B01C8462B6F124CA8C4C38",
+      "After": "51DA20ECF01DF367B820C208DCC8E673B5E99B5CB8B01C8462B6F124CA8C4C38",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Mvp\\RegrasFuncionaisMvpConfirmadas.cs",
+      "Before": "888CA282D71CA754875EEE4590E1C5D11FBDFA2582E5E2EDAEAE7C3390EA41CA",
+      "After": "888CA282D71CA754875EEE4590E1C5D11FBDFA2582E5E2EDAEAE7C3390EA41CA",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Mvp\\ResolverTransportadoraAcmPendente.cs",
+      "Before": "D8FBA4954400D8782DFC1ADA942A97192360DB181B80A2DA40607955DCEA2447",
+      "After": "D8FBA4954400D8782DFC1ADA942A97192360DB181B80A2DA40607955DCEA2447",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Mvp\\SincronizarContratoGuardian.cs",
+      "Before": "CE73C9973E1FFA7B5F0D83A805DCC94BBC483394EC78B8F0CAE5014EAD7A9B29",
+      "After": "CE73C9973E1FFA7B5F0D83A805DCC94BBC483394EC78B8F0CAE5014EAD7A9B29",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\SAP\\DecisoesFuncionaisPendentesSap.cs",
+      "Before": "DED771E96F40E1A88E99980D6D6EFE86B48A2A59F9F5E3BB4FC5178618A24CF0",
+      "After": "DED771E96F40E1A88E99980D6D6EFE86B48A2A59F9F5E3BB4FC5178618A24CF0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Sd\\SdDeliveryMvpPlanner.cs",
+      "Before": "498EF7D7A9FC778883847597F8DB59567103D4D6DDB4988205528C09793037BE",
+      "After": "498EF7D7A9FC778883847597F8DB59567103D4D6DDB4988205528C09793037BE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Servicos\\Sd\\SdDeliveryReadOnlyReviewService.cs",
+      "Before": "1E7416B047FBDF8FA75200D098C421A811962EAE50E41A546D8DD0745C3E3447",
+      "After": "1E7416B047FBDF8FA75200D098C421A811962EAE50E41A546D8DD0745C3E3447",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Transportadoras\\CarrierGatewayContracts.cs",
+      "Before": "2573CC80346F3CE0BEF916CF3EDF15B8631258E2EA58EBFC4A1DBEFEB84A3EAD",
+      "After": "2573CC80346F3CE0BEF916CF3EDF15B8631258E2EA58EBFC4A1DBEFEB84A3EAD",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Transportadoras\\CarrierManualReadOnly.cs",
+      "Before": "57E301EAADA087F6BF711E257D07F0DC030BEA58434089A5A7076531661DAD0E",
+      "After": "57E301EAADA087F6BF711E257D07F0DC030BEA58434089A5A7076531661DAD0E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Transportadoras\\CarrierSyncPolicy.cs",
+      "Before": "9B6C1B7D7C28E9E5959124408D2B749B09C5C90780495D5830412C927F691C18",
+      "After": "9B6C1B7D7C28E9E5959124408D2B749B09C5C90780495D5830412C927F691C18",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Transportadoras\\CarrierSyncStoreContracts.cs",
+      "Before": "18D4442140D4043154A7BF6AF16E0B9CDFEEFC997B4F5468DE27F9FF8E14022F",
+      "After": "18D4442140D4043154A7BF6AF16E0B9CDFEEFC997B4F5468DE27F9FF8E14022F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Transportadoras\\SincronizarTransportadoras.cs",
+      "Before": "29D0FD6701CCD7DE0D2DB7E3AE546492E30C073E17AA2A871F5A7F07820A377F",
+      "After": "29D0FD6701CCD7DE0D2DB7E3AE546492E30C073E17AA2A871F5A7F07820A377F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\CallbackHttpOptions.cs",
+      "Before": "0259B84DA1E914A7FCD7E6441754199F0F9B379564859E101BF0D149458CA63A",
+      "After": "0259B84DA1E914A7FCD7E6441754199F0F9B379564859E101BF0D149458CA63A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\FugaTES.Callback.Http.csproj",
+      "Before": "0995F86CE465A45CE018105DD90FCB63F2F376E98A1DCB1D2EB365D7E5A7AF01",
+      "After": "0995F86CE465A45CE018105DD90FCB63F2F376E98A1DCB1D2EB365D7E5A7AF01",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\GuardianCallbackEndpoint.cs",
+      "Before": "25C4B243A31055A00BFA91ACB57E71C50A47AB81E6B5012FEE91034083F0705E",
+      "After": "25C4B243A31055A00BFA91ACB57E71C50A47AB81E6B5012FEE91034083F0705E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\GuardianCallbackHttpComposition.cs",
+      "Before": "7CA518544E601C3FD94CDADC94F45CCB48B29FB4D381D38B2C675C60755F955D",
+      "After": "7CA518544E601C3FD94CDADC94F45CCB48B29FB4D381D38B2C675C60755F955D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\GuardianCallbackHttpDto.cs",
+      "Before": "8DE03DADBFF717CD275FC37BA1F9B53E4E40A8E22D7F1AF67928852EC09869F0",
+      "After": "8DE03DADBFF717CD275FC37BA1F9B53E4E40A8E22D7F1AF67928852EC09869F0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\GuardianEngineStageAComposition.cs",
+      "Before": "16D38BB6FA210A0A40F9ADC9F19A916EC2AC850001D80B3824EA2B3A1F3DBD7B",
+      "After": "16D38BB6FA210A0A40F9ADC9F19A916EC2AC850001D80B3824EA2B3A1F3DBD7B",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\GuardianEventoHttpDto.cs",
+      "Before": "002DD9E788131B84A9EE6A3BEA1595F1799EFAAC863398DE798F89BEFB241FF5",
+      "After": "002DD9E788131B84A9EE6A3BEA1595F1799EFAAC863398DE798F89BEFB241FF5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\HealthEndpoint.cs",
+      "Before": "0028BF78AEB3611284C71874B027D41CC6C93458377E6A7107C3495485466660",
+      "After": "0028BF78AEB3611284C71874B027D41CC6C93458377E6A7107C3495485466660",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\InboundHttpHostComposition.cs",
+      "Before": "0F76CA976DA847ED8E24948D31841EA879CE7C00FE56A67ACDF99A7ED023E3EE",
+      "After": "0F76CA976DA847ED8E24948D31841EA879CE7C00FE56A67ACDF99A7ED023E3EE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\Program.cs",
+      "Before": "DA61930706374F77D1FA73E24BEFF6753980D9F89AD648A4E7ED11E4AF108E3F",
+      "After": "DA61930706374F77D1FA73E24BEFF6753980D9F89AD648A4E7ED11E4AF108E3F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\SapContractInboundEndpoint.cs",
+      "Before": "EFECD4E0B2540E3F409F1080AFFA02DD90347CEF1513E631D733FA42D22151DE",
+      "After": "EFECD4E0B2540E3F409F1080AFFA02DD90347CEF1513E631D733FA42D22151DE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\SapContractInboundHttpDto.cs",
+      "Before": "D396460C5065CE0D7050D2F8B43345BE7FB31532D927C53466E732A697A0AFA2",
+      "After": "D396460C5065CE0D7050D2F8B43345BE7FB31532D927C53466E732A697A0AFA2",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\SapContractInboundMapper.cs",
+      "Before": "68AB9BFD6A3E8B237BC99E3557BB2628B725B9C19152E7385CF0BCF2549105BF",
+      "After": "68AB9BFD6A3E8B237BC99E3557BB2628B725B9C19152E7385CF0BCF2549105BF",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\SapContractInboundOfflineComposition.cs",
+      "Before": "DBB65F78D96AE37541CAFA0499B1643D2EBAEC08371A9F8A3CBC2FC5415CAE89",
+      "After": "DBB65F78D96AE37541CAFA0499B1643D2EBAEC08371A9F8A3CBC2FC5415CAE89",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\SapContractInboundProductiveComposition.cs",
+      "Before": "9816B3EA9B71C0010F9E86E0EDAD1271080D1F158C0C55023411265E7022F5A7",
+      "After": "9816B3EA9B71C0010F9E86E0EDAD1271080D1F158C0C55023411265E7022F5A7",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Callback.Http\\Properties\\launchSettings.json",
+      "Before": "AD6B4C1B5E270FCB947D7060A3BFBDA825D9DFEE9C48FA847A0E00696287BA15",
+      "After": "AD6B4C1B5E270FCB947D7060A3BFBDA825D9DFEE9C48FA847A0E00696287BA15",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Dominio\\FugaTES.Dominio.csproj",
+      "Before": "AD09C0EF12F885EF98F1D873C75C9FC151F0F76D9A10F6E14D0BE6F639C28585",
+      "After": "AD09C0EF12F885EF98F1D873C75C9FC151F0F76D9A10F6E14D0BE6F639C28585",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Dominio\\Marcadores\\MarcadorDominio.cs",
+      "Before": "9D82F046AE9320999816B0A1D500140487AFE8F5C3C750F261E1CBFDB92C8B93",
+      "After": "9D82F046AE9320999816B0A1D500140487AFE8F5C3C750F261E1CBFDB92C8B93",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\appsettings.Development.json",
+      "Before": "AB16B7B75D012475E615A41C21000C9215C6E02CD70B9C2618D25D885AA6FF33",
+      "After": "AB16B7B75D012475E615A41C21000C9215C6E02CD70B9C2618D25D885AA6FF33",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierLinuxHosting.cs",
+      "Before": "B62949009CDEBD55E31E3391545052756F87851A83D10A8C0AE895011A4629CC",
+      "After": "B62949009CDEBD55E31E3391545052756F87851A83D10A8C0AE895011A4629CC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierLinuxRuntimeBootstrap.cs",
+      "Before": "F52E404D326073DBACF4D13EA1B7FD1C1E35D6C861DAA61B77F9190EEBA1C794",
+      "After": "F52E404D326073DBACF4D13EA1B7FD1C1E35D6C861DAA61B77F9190EEBA1C794",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierManualRequestHandler.cs",
+      "Before": "B14EC8097C050CEDDC420D9C4DF6A0B903A517CE460503E2586B834648174AEF",
+      "After": "B14EC8097C050CEDDC420D9C4DF6A0B903A517CE460503E2586B834648174AEF",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierPollLoop.cs",
+      "Before": "A953D2049B9D8B3B6710176775902F98523CDDE8583646A056020FF097F3D194",
+      "After": "A953D2049B9D8B3B6710176775902F98523CDDE8583646A056020FF097F3D194",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierProtocolBinding.cs",
+      "Before": "D99DC4BE26C146295BA403F1CB66CFBB9FE1B62594DC1E39BB11717CCBFE78AF",
+      "After": "D99DC4BE26C146295BA403F1CB66CFBB9FE1B62594DC1E39BB11717CCBFE78AF",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierServiceRuntimeBootstrap.cs",
+      "Before": "C00DA4D7E0C4A52D6AA2EFEBB02CD3E274A9E2C16B820EFA2F410FBD145D259C",
+      "After": "C00DA4D7E0C4A52D6AA2EFEBB02CD3E274A9E2C16B820EFA2F410FBD145D259C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierServiceSecretProviders.cs",
+      "Before": "B08BB6D661349B4A89386839D1B9DAE38DB3A13EBDB3597B770CEB7D55BB3257",
+      "After": "B08BB6D661349B4A89386839D1B9DAE38DB3A13EBDB3597B770CEB7D55BB3257",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierSyncComposition.cs",
+      "Before": "3518EE28767618D8A626D17C1F9C1C6006B73A2C59E3F6D6EF8CDE43A5E71261",
+      "After": "3518EE28767618D8A626D17C1F9C1C6006B73A2C59E3F6D6EF8CDE43A5E71261",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierSyncManualCommandServer.cs",
+      "Before": "9D56CBF30939B76D8862C0C6B6FCF62A6FC604BE5324F5209AFE4564F4A98FDD",
+      "After": "9D56CBF30939B76D8862C0C6B6FCF62A6FC604BE5324F5209AFE4564F4A98FDD",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierSyncWorker.cs",
+      "Before": "344F5E4721CF764E194C32ACFD03AAE12FDD37C4D21AD3AF26684F7ED502AAB6",
+      "After": "344F5E4721CF764E194C32ACFD03AAE12FDD37C4D21AD3AF26684F7ED502AAB6",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierSystemdCredentials.cs",
+      "Before": "1E2D7CB1FEEEAA3F15420E68132F7A098C6F793129CC7A27624EFAC5529BD7F9",
+      "After": "1E2D7CB1FEEEAA3F15420E68132F7A098C6F793129CC7A27624EFAC5529BD7F9",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\FugaTES.HostIntegracao.csproj",
+      "Before": "278604539E2F16052CD83376ABC0BE60FCEE6416ED22135204D5C85AAD3C5215",
+      "After": "278604539E2F16052CD83376ABC0BE60FCEE6416ED22135204D5C85AAD3C5215",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\HospedagemIntegracaoWorker.cs",
+      "Before": "5A323EDA2E76EBED560400AD5757C6777FC283F6C19923F3C688993D621D0120",
+      "After": "5A323EDA2E76EBED560400AD5757C6777FC283F6C19923F3C688993D621D0120",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\HostIntegracaoComposition.cs",
+      "Before": "928F1C5E806396449CA8E270DCA736CA6D5DCE029A6796639B162A4F8625B55A",
+      "After": "928F1C5E806396449CA8E270DCA736CA6D5DCE029A6796639B162A4F8625B55A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\HostIntegracaoOptions.cs",
+      "Before": "0307D92C216B265EE8DF99F970650C8D0BA988FD93B1DE05520A5910C1C20DCE",
+      "After": "0307D92C216B265EE8DF99F970650C8D0BA988FD93B1DE05520A5910C1C20DCE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\HostIntegracaoPersistenceOptions.cs",
+      "Before": "4D1EE5295FE6071F3926D90F45D71D0AC222226CFA0472A51ADAA0564E697976",
+      "After": "4D1EE5295FE6071F3926D90F45D71D0AC222226CFA0472A51ADAA0564E697976",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\MvpOrchestrationComposition.cs",
+      "Before": "A8647B0D8D1A2DAD512B1EE79095A0CC647FB272348E1EDC64283E11557256FE",
+      "After": "A8647B0D8D1A2DAD512B1EE79095A0CC647FB272348E1EDC64283E11557256FE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\PoliticaTimeoutProcessamentoIntegracaoConfigurada.cs",
+      "Before": "F8FD082BF7972BC43A46C6695E8DF18E05F7CE5F1F6D4A54695E2D0CD064E918",
+      "After": "F8FD082BF7972BC43A46C6695E8DF18E05F7CE5F1F6D4A54695E2D0CD064E918",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\ProcessadorExternoIntegracaoRoteado.cs",
+      "Before": "C55062C1DC96C1B94125435E9AFB0C697B70BA5F6580D3EE8924CFC54CED0AF3",
+      "After": "C55062C1DC96C1B94125435E9AFB0C697B70BA5F6580D3EE8924CFC54CED0AF3",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\Program.cs",
+      "Before": "43A147497544D3F326ED31F4827F42B7EE2905855DAC6FECA9EEC68ECC325280",
+      "After": "43A147497544D3F326ED31F4827F42B7EE2905855DAC6FECA9EEC68ECC325280",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\TimeoutProcessamentoIntegracaoOptions.cs",
+      "Before": "FC8CCBEC5300FDB533B2CBE4F94CD15C3C3E5E08B425FD8DC3B4092C80669CF7",
+      "After": "FC8CCBEC5300FDB533B2CBE4F94CD15C3C3E5E08B425FD8DC3B4092C80669CF7",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\FugaTES.Infraestrutura.csproj",
+      "Before": "3AB29E13A11C7564C0D38FD0D20484460E350DD1E5CCDA4C75782EE011706B08",
+      "After": "3AB29E13A11C7564C0D38FD0D20484460E350DD1E5CCDA4C75782EE011706B08",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\ContratosSapToledo\\ContratoSapToledoVersaoStoreFake.cs",
+      "Before": "778C70DF2BB120932D5D250142C51F3E7BC0793B26571A71718F28906551193B",
+      "After": "778C70DF2BB120932D5D250142C51F3E7BC0793B26571A71718F28906551193B",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\Marcadores\\MarcadorInfraestrutura.cs",
+      "Before": "D9985CE3A15D1B9126D3C7AB61BD6F38C3F7BFBE768D9E8DE58AAD98923B0618",
+      "After": "D9985CE3A15D1B9126D3C7AB61BD6F38C3F7BFBE768D9E8DE58AAD98923B0618",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\MotorIntegracao\\DetectorCandidatosIntegracaoFake.cs",
+      "Before": "A44A9FB65EF39D29177654DDBEE64E90C27FADE836D3D344A0193A564FAB0369",
+      "After": "A44A9FB65EF39D29177654DDBEE64E90C27FADE836D3D344A0193A564FAB0369",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\MotorIntegracao\\IdentidadeWorkerRuntimeProvider.cs",
+      "Before": "DF262256C14D10507C9A42CDBAA01FB632223D1391AE68BB356D6813E8A3086D",
+      "After": "DF262256C14D10507C9A42CDBAA01FB632223D1391AE68BB356D6813E8A3086D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\MotorIntegracao\\ProcessadorExternoIntegracaoFake.cs",
+      "Before": "C967297D93A992374D598DF22F629AD0C1FE10F2A8F9211FC38733B37CC79956",
+      "After": "C967297D93A992374D598DF22F629AD0C1FE10F2A8F9211FC38733B37CC79956",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\MotorIntegracao\\RepositorioMotorIntegracaoFake.cs",
+      "Before": "CE267E2DF59E88FEAEFA9C73765807465847BDA9DC9D73E137C7BDE2281C1F36",
+      "After": "CE267E2DF59E88FEAEFA9C73765807465847BDA9DC9D73E137C7BDE2281C1F36",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\Recebimento\\PesagemSapMvpGatewayFake.cs",
+      "Before": "A0AF689A0E192D928BC40EFAFC781EA7A4E3D26C672CBCB7A7A0D1AD0C585F0B",
+      "After": "A0AF689A0E192D928BC40EFAFC781EA7A4E3D26C672CBCB7A7A0D1AD0C585F0B",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\Recebimento\\RegistroCallbackPesagemSapMemoria.cs",
+      "Before": "29D8D7BAC89EB0060074B9B819FBAE508A922F8B0EF7C09D7E695E025E7D891E",
+      "After": "29D8D7BAC89EB0060074B9B819FBAE508A922F8B0EF7C09D7E695E025E7D891E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Infraestrutura\\Recebimento\\RepositorioCorrelacaoRecebimentoMemoria.cs",
+      "Before": "550EE469424A48260037169CD8B01F7704B9D9B35095A5A49256A985C7012BCB",
+      "After": "550EE469424A48260037169CD8B01F7704B9D9B35095A5A49256A985C7012BCB",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\FugaTES.Integracao.Guardian.csproj",
+      "Before": "41F732423A598D3FDFB699B02AEAE57CCC21D318E1AB4290CFF0A88112C9C336",
+      "After": "41F732423A598D3FDFB699B02AEAE57CCC21D318E1AB4290CFF0A88112C9C336",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianCarrierManualReadOnlyAdapter.cs",
+      "Before": "97B81E4FB42B645188144EAC9399C304FFC8813DDE0F2FB5A36E8D48FCBE59A5",
+      "After": "97B81E4FB42B645188144EAC9399C304FFC8813DDE0F2FB5A36E8D48FCBE59A5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianCarrierSyncAdapter.cs",
+      "Before": "8F97B8DE1C3DC95D35349D3A4F47B7AEAC114DB6A39846F4E582A961A5A90449",
+      "After": "8F97B8DE1C3DC95D35349D3A4F47B7AEAC114DB6A39846F4E582A961A5A90449",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianContratoSoapClient.cs",
+      "Before": "177E39545867CA6EBD382D4477792B1DB7AC97DE40D9A81788EB2FEBF65F75D0",
+      "After": "177E39545867CA6EBD382D4477792B1DB7AC97DE40D9A81788EB2FEBF65F75D0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianContratoSoapClient.Sync.cs",
+      "Before": "BC35D89B6E115F0FF1FDE841BA5D857CA35ACB24FC0F88659FDC265854191689",
+      "After": "BC35D89B6E115F0FF1FDE841BA5D857CA35ACB24FC0F88659FDC265854191689",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianHttpOptions.cs",
+      "Before": "68D918A59E6E690E11A7ACF476B5036D2130C037997026EDE99FAA7311CFAD30",
+      "After": "68D918A59E6E690E11A7ACF476B5036D2130C037997026EDE99FAA7311CFAD30",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianPreCadastroRequestDto.cs",
+      "Before": "032D3D53370D34058D342FDB9CE2822A5CFABBB37F2A0749390609655545A09F",
+      "After": "032D3D53370D34058D342FDB9CE2822A5CFABBB37F2A0749390609655545A09F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianPreCadastroResponseDto.cs",
+      "Before": "1C9E9E8A4040CD02E247CEF09390EECB56F367F0B3AE567F5D8A57F4B100C736",
+      "After": "1C9E9E8A4040CD02E247CEF09390EECB56F367F0B3AE567F5D8A57F4B100C736",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianRuntimeComposition.cs",
+      "Before": "397745CF6310C41B39D30F1D5EAC4394FA7FDF03410390A1629666FC4DF26047",
+      "After": "397745CF6310C41B39D30F1D5EAC4394FA7FDF03410390A1629666FC4DF26047",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianRuntimeCredenciaisProvider.cs",
+      "Before": "8335B9169AE910A86F2423D1C92E99DC131DEDCCEF6771CC1B3FA125BD1CD7E5",
+      "After": "8335B9169AE910A86F2423D1C92E99DC131DEDCCEF6771CC1B3FA125BD1CD7E5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianSet26HttpClient.cs",
+      "Before": "D73E25B5AD494F4E6B4AD8A18DEE65CBE7579D2AF2A7DE26FD4C305ED69265B5",
+      "After": "D73E25B5AD494F4E6B4AD8A18DEE65CBE7579D2AF2A7DE26FD4C305ED69265B5",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianTokenClient.cs",
+      "Before": "19E78D779A16F9FAD4B162D19295DFAE60A7C972EE18C16EFFEABE6410398D0C",
+      "After": "19E78D779A16F9FAD4B162D19295DFAE60A7C972EE18C16EFFEABE6410398D0C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\FugaTES.Integracao.SAP.csproj",
+      "Before": "8E57B2D786B8B8367052FEE16C4DBB4F542AD6AD035746591F9717DD14158519",
+      "After": "8E57B2D786B8B8367052FEE16C4DBB4F542AD6AD035746591F9717DD14158519",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Autenticacao\\IAutenticacaoSap.cs",
+      "Before": "5E9DEBABDFE89EE3B19582B24E167BACABB62008A3922ACF249CFBCF890F2806",
+      "After": "5E9DEBABDFE89EE3B19582B24E167BACABB62008A3922ACF249CFBCF890F2806",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessDocuments\\MvpSapConsultaAdapters.cs",
+      "Before": "1AE30A25348DBD534EF416C7F83C191927997123A0B72E366B496B56357CF39F",
+      "After": "1AE30A25348DBD534EF416C7F83C191927997123A0B72E366B496B56357CF39F",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessDocuments\\MvpSapEscritaAdapters.cs",
+      "Before": "4B3E5D5D5A3FD2B9685E601DAD596344D4EFEA429EC9C897CA8611B58636A231",
+      "After": "4B3E5D5D5A3FD2B9685E601DAD596344D4EFEA429EC9C897CA8611B58636A231",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\CarrierManualSapReadOnlyAdapter.cs",
+      "Before": "2F801F369AD1D51C8DDBBE48099C4915A05BF412CAD8663A64346EB04CC20A3C",
+      "After": "2F801F369AD1D51C8DDBBE48099C4915A05BF412CAD8663A64346EB04CC20A3C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\CarrierSapDiscoveryAdapter.cs",
+      "Before": "D7C47B0BFE7512FF20A8893A803E161BBDD96DD74CEEE7665E630D599E99CEAE",
+      "After": "D7C47B0BFE7512FF20A8893A803E161BBDD96DD74CEEE7665E630D599E99CEAE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\ConsultaClienteSapAdapter.cs",
+      "Before": "7D4443420B0F7C17365B844948418396D03B08D068A66948E3DC8F44894F8E8E",
+      "After": "7D4443420B0F7C17365B844948418396D03B08D068A66948E3DC8F44894F8E8E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\ConsultaFornecedorSapAdapter.cs",
+      "Before": "5849955F96496C81F4A2D56EB00A80EAF8F4C9FE1F6ADC8205EBE8B958433AE0",
+      "After": "5849955F96496C81F4A2D56EB00A80EAF8F4C9FE1F6ADC8205EBE8B958433AE0",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\ConsultaParceiroNegocioSapAdapterBase.cs",
+      "Before": "4E96207F86662D7659AF5DACEF18B575E3C753935377A8C79057AC9AE9738896",
+      "After": "4E96207F86662D7659AF5DACEF18B575E3C753935377A8C79057AC9AE9738896",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\ConsultaTransportadoraSapAdapter.cs",
+      "Before": "31D312DD79E14D42586EDA31423251A9CB25CD3DC1B0E6EC7A03FCAF29A9E3B6",
+      "After": "31D312DD79E14D42586EDA31423251A9CB25CD3DC1B0E6EC7A03FCAF29A9E3B6",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Configuracao\\OpcoesSap.cs",
+      "Before": "F2D7968F82E5B73EAF090E6BCE881BE40459A00C0AD5EE641B526CB5C5746CCE",
+      "After": "F2D7968F82E5B73EAF090E6BCE881BE40459A00C0AD5EE641B526CB5C5746CCE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Dtos\\BusinessPartner\\BusinessPartnerSapDto.cs",
+      "Before": "449A4797329199156D369BF556A5EF19ABBE47E9441085D6AED8A5343240F16B",
+      "After": "449A4797329199156D369BF556A5EF19ABBE47E9441085D6AED8A5343240F16B",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Dtos\\BusinessPartner\\ClienteSapDto.cs",
+      "Before": "9A5EB994D0D3B86265A7D5F0FFEC70F816B719ED8E1F12D74566AD0F9BE2B1F4",
+      "After": "9A5EB994D0D3B86265A7D5F0FFEC70F816B719ED8E1F12D74566AD0F9BE2B1F4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Dtos\\BusinessPartner\\FornecedorSapDto.cs",
+      "Before": "EAED122B37CE7986531F356B9A880BE96967C587B00E635166B735D1E566CCF6",
+      "After": "EAED122B37CE7986531F356B9A880BE96967C587B00E635166B735D1E566CCF6",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Dtos\\BusinessPartner\\RespostaODataV2Dto.cs",
+      "Before": "F0B37BFFD834053B07664885B8CA015AC0F67829C3FDC6F487FA3A8FB028F64C",
+      "After": "F0B37BFFD834053B07664885B8CA015AC0F67829C3FDC6F487FA3A8FB028F64C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Dtos\\BusinessPartner\\RoleBusinessPartnerSapDto.cs",
+      "Before": "BDC20E1F037E121435D81D888D0AA8DD18F432AA0BF5FF217CA750DC670D5FE8",
+      "After": "BDC20E1F037E121435D81D888D0AA8DD18F432AA0BF5FF217CA750DC670D5FE8",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Dtos\\Pesagem\\PesagemSapWireDto.cs",
+      "Before": "FF5B69E75427DFAFA47DCA3BD14A43640512AC49F3D8FBB83D0457387DE5D863",
+      "After": "FF5B69E75427DFAFA47DCA3BD14A43640512AC49F3D8FBB83D0457387DE5D863",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Http\\ClienteHttpParceiroNegocioSap.cs",
+      "Before": "62B6C88A49B2B6089E8CB27D2B21C8D57FC332A2AE619AAAE015FEE02823EFFF",
+      "After": "62B6C88A49B2B6089E8CB27D2B21C8D57FC332A2AE619AAAE015FEE02823EFFF",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Http\\PesagemSapHttpGateway.cs",
+      "Before": "D16F3B9ADA255A98FEDB63AE78905B10A9FE4C9A50CE264542A162B5B856A79E",
+      "After": "D16F3B9ADA255A98FEDB63AE78905B10A9FE4C9A50CE264542A162B5B856A79E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Http\\SapConsultaAdapterBase.cs",
+      "Before": "DF6EC0EF13B359CBB266C6E33A79F4FE2252A94FDD6938F4737C516AAC24545C",
+      "After": "DF6EC0EF13B359CBB266C6E33A79F4FE2252A94FDD6938F4737C516AAC24545C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Http\\SapODataHttpExecutor.cs",
+      "Before": "0AE7B974C6A40A359DEFDD10DB19BC2EBEF4A985E86E8565EA5FFD8B84683C5A",
+      "After": "0AE7B974C6A40A359DEFDD10DB19BC2EBEF4A985E86E8565EA5FFD8B84683C5A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Http\\SapPesagemRuntimeComposition.cs",
+      "Before": "A1B3B264C88AD0A31B94BF848A8179E05392881387CA5B30DEBA8762CA995D20",
+      "After": "A1B3B264C88AD0A31B94BF848A8179E05392881387CA5B30DEBA8762CA995D20",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Mapeamentos\\MapeadorDocumentoFiscalSap.cs",
+      "Before": "C6B1AF699C281EF3BADAA66BDB18A62743B308C8960967753E9B284C2FCA67B7",
+      "After": "C6B1AF699C281EF3BADAA66BDB18A62743B308C8960967753E9B284C2FCA67B7",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Mapeamentos\\MapeadorParceiroNegocioSap.cs",
+      "Before": "C96BEB756E4BA2F6701842F06C46D88B5BC53BAEB3975CD9B21766C25F925E80",
+      "After": "C96BEB756E4BA2F6701842F06C46D88B5BC53BAEB3975CD9B21766C25F925E80",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Mapeamentos\\ParserDataODataV2.cs",
+      "Before": "9FF70DB94CF1C5F47CC4A999B2B1CD37BA5B690CDF0034CD8D52CEF845D40340",
+      "After": "9FF70DB94CF1C5F47CC4A999B2B1CD37BA5B690CDF0034CD8D52CEF845D40340",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\Marcadores\\MarcadorIntegracaoSap.cs",
+      "Before": "CE0BDD68EDA0028357392459FCB38FA7148FF8DF001BB502276991997DEE1932",
+      "After": "CE0BDD68EDA0028357392459FCB38FA7148FF8DF001BB502276991997DEE1932",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\FugaTES.Integracao.Toledo.csproj",
+      "Before": "30AF17F8D159B3C77A0ACD6901C6F827D396A8B674BC03FE03D14894B8E14040",
+      "After": "30AF17F8D159B3C77A0ACD6901C6F827D396A8B674BC03FE03D14894B8E14040",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Dtos\\Contrato\\ContratoToledoRequestDto.cs",
+      "Before": "23B5DBF3FE2FE78386ADD670E3874D4AA496A41C2E7167FCCA443E4B2CF295F1",
+      "After": "23B5DBF3FE2FE78386ADD670E3874D4AA496A41C2E7167FCCA443E4B2CF295F1",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Dtos\\Emissor\\EmissorToledoRequestDto.cs",
+      "Before": "9C356991EDB9D3A0B3345CDBC8436832385CF3C208055ACF3287D830E218F0AB",
+      "After": "9C356991EDB9D3A0B3345CDBC8436832385CF3C208055ACF3287D830E218F0AB",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Dtos\\PreCadastro\\PreCadastroToledoRequestDto.cs",
+      "Before": "0DEE40B4CE616B84AD3F0E36439AD0696FEB9C4D1E9AC4E92DB3A2110C00B415",
+      "After": "0DEE40B4CE616B84AD3F0E36439AD0696FEB9C4D1E9AC4E92DB3A2110C00B415",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Dtos\\Transportadora\\TransportadoraToledoRequestDto.cs",
+      "Before": "19014E183660284E3E38C53B14135C353A8557E772CB8BDACD7D0EF9F5236A8E",
+      "After": "19014E183660284E3E38C53B14135C353A8557E772CB8BDACD7D0EF9F5236A8E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Fakes\\AutenticacaoToledoGatewayFake.cs",
+      "Before": "423C7210793DB86E408B83F1DBD077B702C4ACBF7D7F3889C0F029C8B00D4752",
+      "After": "423C7210793DB86E408B83F1DBD077B702C4ACBF7D7F3889C0F029C8B00D4752",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Fakes\\ContratoToledoGatewayFake.cs",
+      "Before": "BE27377C98C1D2A634E751B44B1FF38D76128D5C36E91C66D8B88AD2FAA44D90",
+      "After": "BE27377C98C1D2A634E751B44B1FF38D76128D5C36E91C66D8B88AD2FAA44D90",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Fakes\\EmissorToledoGatewayFake.cs",
+      "Before": "7043081862BA8B5729CAA3B9C60100000423BA40CEECC4BAB7C90E366A05024E",
+      "After": "7043081862BA8B5729CAA3B9C60100000423BA40CEECC4BAB7C90E366A05024E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Fakes\\PreCadastroToledoGatewayFake.cs",
+      "Before": "10604E6AE77C21217537E68C8332D7C9E5B56BE7BB2D5285047EA29796102412",
+      "After": "10604E6AE77C21217537E68C8332D7C9E5B56BE7BB2D5285047EA29796102412",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Fakes\\TransportadoraToledoGatewayFake.cs",
+      "Before": "BB563C93BA916C78404DA96349B3D6EE351666F7B938B7E37A347B4F38141009",
+      "After": "BB563C93BA916C78404DA96349B3D6EE351666F7B938B7E37A347B4F38141009",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Mapeamentos\\MapeadorPreCadastroToledo.cs",
+      "Before": "8B88D9190040224D6AB72D602A5DD4BA29694AD7AC8D2C83B4F79B7A3E55AC29",
+      "After": "8B88D9190040224D6AB72D602A5DD4BA29694AD7AC8D2C83B4F79B7A3E55AC29",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Marcadores\\MarcadorIntegracaoToledo.cs",
+      "Before": "9F53D2282BD26AB73442F5D304C20DA19439F51FE9BD2F306E302CBB68EF91AC",
+      "After": "9F53D2282BD26AB73442F5D304C20DA19439F51FE9BD2F306E302CBB68EF91AC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Set26\\MapeadorGuardianSet26.cs",
+      "Before": "5B0084CB1C922C5BB8A05A3D26499C6C489FD9DCEBBC4677C983E0DD7B9D216E",
+      "After": "5B0084CB1C922C5BB8A05A3D26499C6C489FD9DCEBBC4677C983E0DD7B9D216E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Toledo\\Set26\\PreCadastroGuardianSet26GatewayFake.cs",
+      "Before": "663CF9CE4E5070C3C2DB9B777FC7313226527F32F332492513A941C0E0CB6DAF",
+      "After": "663CF9CE4E5070C3C2DB9B777FC7313226527F32F332492513A941C0E0CB6DAF",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\FugaTES.Persistencia.csproj",
+      "Before": "1FB5F511F03CF877C4D75FF6AED108C600488700DEB74FD64D659AEB24F95154",
+      "After": "1FB5F511F03CF877C4D75FF6AED108C600488700DEB74FD64D659AEB24F95154",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Consultas\\ContratosAcm\\ContratosAcmPostgreSqlReadRepository.cs",
+      "Before": "3CAEEC4124AD7C28B90FCD87C941216312463248CD18975BFB147B87F792DCCC",
+      "After": "3CAEEC4124AD7C28B90FCD87C941216312463248CD18975BFB147B87F792DCCC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Consultas\\Monitor\\MonitorPostgreSqlReadRepository.cs",
+      "Before": "3EA2BD908665C0C5CAF7FBEDBDE640967DB95229DDEAEAC6F6E82C4E2F8A6B5D",
+      "After": "3EA2BD908665C0C5CAF7FBEDBDE640967DB95229DDEAEAC6F6E82C4E2F8A6B5D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\ContratosSapToledo\\AcmGuardianVinculoPostgreSql.cs",
+      "Before": "EFB8F953CE9D97C19987CA142A62C69BCE734E1DED32647D5250AEF9B114844E",
+      "After": "EFB8F953CE9D97C19987CA142A62C69BCE734E1DED32647D5250AEF9B114844E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\ContratosSapToledo\\ContratoSapToledoVersaoStorePostgreSql.cs",
+      "Before": "425C184EA7D5601DED896323D0BA0749FA4C1DC168313A87E51393FA1779606E",
+      "After": "425C184EA7D5601DED896323D0BA0749FA4C1DC168313A87E51393FA1779606E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Marcadores\\MarcadorPersistencia.cs",
+      "Before": "026DBA94076CCF5795E0023669636DD4E481B34F3A977DEE6C30941826F1D5C2",
+      "After": "026DBA94076CCF5795E0023669636DD4E481B34F3A977DEE6C30941826F1D5C2",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\MotorIntegracao\\NpgsqlDataSourceFactory.cs",
+      "Before": "36CE7DC6EC4B612118AF66668216EE302EBA202085B8A81BEDC814D5C6ADB0DA",
+      "After": "36CE7DC6EC4B612118AF66668216EE302EBA202085B8A81BEDC814D5C6ADB0DA",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\MotorIntegracao\\RepositorioMotorIntegracaoPostgreSql.cs",
+      "Before": "F5236A49B68FBC2B9E5012E9C1E8A995D73B8831C7DFCACC113B093AD04759BC",
+      "After": "F5236A49B68FBC2B9E5012E9C1E8A995D73B8831C7DFCACC113B093AD04759BC",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\MotorIntegracao\\ServiceCollectionPersistenciaPostgreSqlExtensions.cs",
+      "Before": "78160697AA177509C865E32E0C5A09B39290E36AAE7EE289B18D5C74829C2626",
+      "After": "78160697AA177509C865E32E0C5A09B39290E36AAE7EE289B18D5C74829C2626",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Mvp\\RepositorioResultadoFluxoMvpPostgreSql.cs",
+      "Before": "B1C8261E3BC57DD569BE773EC6C2F2C036A8CF4916560412070FE71B7CA79C2C",
+      "After": "B1C8261E3BC57DD569BE773EC6C2F2C036A8CF4916560412070FE71B7CA79C2C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Recebimento\\RepositorioCorrelacaoGuardianSapPostgreSql.cs",
+      "Before": "39D75C31E3C171E3117BDA0E8012AA11E1CF5E1713CD810E6189F9E65BFE8C7D",
+      "After": "39D75C31E3C171E3117BDA0E8012AA11E1CF5E1713CD810E6189F9E65BFE8C7D",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Recebimento\\RepositorioEventoGuardianPostgreSql.cs",
+      "Before": "031774C31BFA38DA393EB4FA6927DFDCEE479494388E2B29A3BBC6E05C3BFBD2",
+      "After": "031774C31BFA38DA393EB4FA6927DFDCEE479494388E2B29A3BBC6E05C3BFBD2",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Recebimento\\ServiceCollectionCorrelacaoGuardianSapExtensions.cs",
+      "Before": "11272827AD196B06D07FFB7CCEB92486CFD5B3A4503DDAED14AC6295F987AF6B",
+      "After": "11272827AD196B06D07FFB7CCEB92486CFD5B3A4503DDAED14AC6295F987AF6B",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Transportadoras\\CarrierSyncPostgreSqlStore.cs",
+      "Before": "16BA6E0D22D5336F2BEF2CE8836D4F29BDE5C7B6CF0D18A69F51309A35543969",
+      "After": "16BA6E0D22D5336F2BEF2CE8836D4F29BDE5C7B6CF0D18A69F51309A35543969",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Persistencia\\Transportadoras\\CarrierSyncReadRepository.cs",
+      "Before": "F1DC6CC14F8D767D841917CD2D4A64B21FBBA99BB07B049089DE9A228C5BCD64",
+      "After": "F1DC6CC14F8D767D841917CD2D4A64B21FBBA99BB07B049089DE9A228C5BCD64",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmContratosAcm.cs",
+      "Before": "5C0E1915B1B393886D25235180C02855EDF14E8592131FF89898FA1AB104EA2E",
+      "After": "5C0E1915B1B393886D25235180C02855EDF14E8592131FF89898FA1AB104EA2E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmContratosAcm.Designer.cs",
+      "Before": "6BBDEAAFBF2502ADFC804CDF2809CD1E73EC518A1515CAAABBC7DA30E57B0E6A",
+      "After": "6BBDEAAFBF2502ADFC804CDF2809CD1E73EC518A1515CAAABBC7DA30E57B0E6A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmIntegracoes.cs",
+      "Before": "F09BDC8AA1C92A1E3ADF76CD0C7E3F6F42F46FCC3896938B896763342B2D0FA2",
+      "After": "F09BDC8AA1C92A1E3ADF76CD0C7E3F6F42F46FCC3896938B896763342B2D0FA2",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmIntegracoes.Designer.cs",
+      "Before": "DA23CAFEDDB95C608CE7E61E9E8DF901E64C57845CE48DE435AF98C10F5E86F4",
+      "After": "DA23CAFEDDB95C608CE7E61E9E8DF901E64C57845CE48DE435AF98C10F5E86F4",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmMonitorMvp.cs",
+      "Before": "BDF1D5BCC1E4D3F7E6EE5EC50AFC145BBB936EB163925897B647D55B384680F2",
+      "After": "BDF1D5BCC1E4D3F7E6EE5EC50AFC145BBB936EB163925897B647D55B384680F2",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmMonitorMvp.Designer.cs",
+      "Before": "473F20833E9E81FC77DAC7CE1A2BB1B7209C876162AE7161EDBE79E4213C91C7",
+      "After": "473F20833E9E81FC77DAC7CE1A2BB1B7209C876162AE7161EDBE79E4213C91C7",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmTransportadoras.cs",
+      "Before": "7351B2DC82951589DDFCBA3A08770AFA071F451F0736BAA15D69575031302E14",
+      "After": "7351B2DC82951589DDFCBA3A08770AFA071F451F0736BAA15D69575031302E14",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FrmTransportadoras.Designer.cs",
+      "Before": "3EC578CDDE04DD7A42523B3B5F01664ADCFF3F04BEA9B80AE89472579039981E",
+      "After": "3EC578CDDE04DD7A42523B3B5F01664ADCFF3F04BEA9B80AE89472579039981E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FugaTES.WinForms.csproj",
+      "Before": "ADDBC63D892ACF8B14AF566171E56F549D4D9E50C36B9E96C3FA265D3E57BB54",
+      "After": "ADDBC63D892ACF8B14AF566171E56F549D4D9E50C36B9E96C3FA265D3E57BB54",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\FugaTES.WinForms.csproj.user",
+      "Before": "02248050AC4A230D0F5E090E16B57F45DBEF7AE55C67DDE15489BFB11A51138E",
+      "After": "02248050AC4A230D0F5E090E16B57F45DBEF7AE55C67DDE15489BFB11A51138E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\PainelInicialForm.cs",
+      "Before": "9F9A0DEC98278039C0380E4E7AF4030018D932EBCB1E24AB01BC649C2463A428",
+      "After": "9F9A0DEC98278039C0380E4E7AF4030018D932EBCB1E24AB01BC649C2463A428",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\PainelInicialForm.Designer.cs",
+      "Before": "FDE84E8E955807C667317EC284251E99E738FAD572ED524C94A21F32250A7196",
+      "After": "FDE84E8E955807C667317EC284251E99E738FAD572ED524C94A21F32250A7196",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\PainelInicialForm.resx",
+      "Before": "A707BCEAFF05D5953117440E232EA53AC7BF8CCFE3A2E8D5B34121DDA19E16BE",
+      "After": "A707BCEAFF05D5953117440E232EA53AC7BF8CCFE3A2E8D5B34121DDA19E16BE",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Program.cs",
+      "Before": "891D8EC9DC3C6E1EA817F5B6F5B6BD1E407B1F794ED63A8E1A306F1DEB696368",
+      "After": "891D8EC9DC3C6E1EA817F5B6F5B6BD1E407B1F794ED63A8E1A306F1DEB696368",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Acm\\ContratosAcmComposition.cs",
+      "Before": "A218052C9D86BD4CB5254EC027E3988484245FD124B7E25E9EC6FFB031FF65D9",
+      "After": "A218052C9D86BD4CB5254EC027E3988484245FD124B7E25E9EC6FFB031FF65D9",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Monitor\\MonitorComposition.cs",
+      "Before": "8E5872C4CAB59A3FF0259964751A3A412A37CDF667CA2215A8F4A4E97D5ED230",
+      "After": "8E5872C4CAB59A3FF0259964751A3A412A37CDF667CA2215A8F4A4E97D5ED230",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Monitor\\MonitorPresenter.cs",
+      "Before": "8FA595D6FAA6FEEFBD9E3F73EA53D2A751A921596CE28A3841ED50DEC28DA346",
+      "After": "8FA595D6FAA6FEEFBD9E3F73EA53D2A751A921596CE28A3841ED50DEC28DA346",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Runtime\\DesktopConfiguration.cs",
+      "Before": "87C34A18ED7D303439ED65158061A45DF60F0F8E7021B98CE323EA9AA5752027",
+      "After": "87C34A18ED7D303439ED65158061A45DF60F0F8E7021B98CE323EA9AA5752027",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Runtime\\DesktopRuntime.cs",
+      "Before": "79D61E963D3936137537E2A8D1D16691A4CE71A8C41AF24DE37CD4C2547ECE33",
+      "After": "79D61E963D3936137537E2A8D1D16691A4CE71A8C41AF24DE37CD4C2547ECE33",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Runtime\\DesktopTunnel.cs",
+      "Before": "FB545DBB9AEFEAFF6B274D8A16C8410DFBBB78003FC7C49A1783E4A673C44E04",
+      "After": "FB545DBB9AEFEAFF6B274D8A16C8410DFBBB78003FC7C49A1783E4A673C44E04",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Runtime\\WindowsCredentialProvider.cs",
+      "Before": "26E78EB95C3A4BAA2EDBB35075A4CA1AD1BDEAE4388FB0091AB4E8D3D8F3EF9E",
+      "After": "26E78EB95C3A4BAA2EDBB35075A4CA1AD1BDEAE4388FB0091AB4E8D3D8F3EF9E",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierDesktopComposition.cs",
+      "Before": "40E99B5E3838494A486BCB17546C31F5EE3BE36B060906446D4A1228E04C9640",
+      "After": "40E99B5E3838494A486BCB17546C31F5EE3BE36B060906446D4A1228E04C9640",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierDesktopLifecycle.cs",
+      "Before": "B9B13F9F3509C65C425376FF870E2581934341665618C611FF911490BCB7E83A",
+      "After": "B9B13F9F3509C65C425376FF870E2581934341665618C611FF911490BCB7E83A",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierManualReadOnlyComposition.cs",
+      "Before": "53674B0BB32B8253A5D58552CF240BA73647670B49CD1C15A0995787862449BD",
+      "After": "53674B0BB32B8253A5D58552CF240BA73647670B49CD1C15A0995787862449BD",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierSyncComposition.cs",
+      "Before": "B1D891698D4502F3322D88E7E616964A002F25D59B4CC541AC3A564675C2922C",
+      "After": "B1D891698D4502F3322D88E7E616964A002F25D59B4CC541AC3A564675C2922C",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierSyncManualCommandClient.cs",
+      "Before": "BA0814581AAFC79A539BA07323C68011A69F44900F8F291F9E9C7AE72034F657",
+      "After": "BA0814581AAFC79A539BA07323C68011A69F44900F8F291F9E9C7AE72034F657",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierSyncPresenter.cs",
+      "Before": "A1DB47BED12C59420EB024F83A4FB1EB0244A9E0A51A5497EDEC1B024B116627",
+      "After": "A1DB47BED12C59420EB024F83A4FB1EB0244A9E0A51A5497EDEC1B024B116627",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\MasterdataR3\\FrmCadastrosGuardianR3.cs",
+      "Before": "ED379C3D4E76857840F75D23EABBAC1C5A960276AAAAFF85F41524D90E6850D3",
+      "After": "ED379C3D4E76857840F75D23EABBAC1C5A960276AAAAFF85F41524D90E6850D3",
+      "Match": true
+    },
+    {
+      "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\MasterdataR3\\MasterdataSharedOrchestratorR3.cs",
+      "Before": "809F10A54404C8ED23F0B9C4C826018CAD55CFFADF40A3FF8FEDC9366A7AAFB7",
+      "After": "809F10A54404C8ED23F0B9C4C826018CAD55CFFADF40A3FF8FEDC9366A7AAFB7",
+      "Match": true
+    }
+  ]
+}

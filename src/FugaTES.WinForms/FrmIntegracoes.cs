@@ -2,7 +2,9 @@ namespace FugaTES.WinForms;
 
 public partial class FrmIntegracoes : Form
 {
-    public FrmIntegracoes(Transportadoras.CarrierDesktopLifecycle? lifecycle=null,Transportadoras.SafeDemoReadOnlySessionR50? demo=null,Func<FrmMonitorMvp>? monitorAcm=null)
+    public FrmIntegracoes(Transportadoras.CarrierDesktopLifecycle? lifecycle=null,Transportadoras.SafeDemoReadOnlySessionR50? demo=null,Func<FrmMonitorMvp>? monitorAcm=null,
+        Func<FrmContratosAcm>? contractsRead=null,Func<Transportadoras.MasterdataR3.FrmTransportadoraMasterdata>? carriersRead=null,
+        Func<Guardian.FrmProtocolosPreCadastro>? protocolsRead=null,Func<Toledo.FrmRecebimentosToledo>? toledoRead=null)
     {
         InitializeComponent();
         var r57=File.Exists(Path.Combine(AppContext.BaseDirectory,"Acm.execution.R57.json"));
@@ -14,8 +16,17 @@ public partial class FrmIntegracoes : Form
         // que nao expoe o JSON por contrato + item. Esta entrada adicional abre a tela de
         // contratos propriamente dita, somente leitura, sem tirar o monitor do lugar.
         contratosJson.Visible = monitorAcm is not null;
-        contratosJson.Click += (_, _) => { using var tela = Acm.ContratosAcmComposition.Criar(); tela.ShowDialog(this); };
-        transportadoras.Click += (_, _) => { if(demo is not null){using var telaDemo=new Transportadoras.MasterdataR3.FrmCadastrosGuardianR3(demo:demo);telaDemo.ShowDialog(this);}else{using var tela = new Transportadoras.MasterdataR3.FrmTransportadoraMasterdata(readOnly:monitorAcm is not null); tela.ShowDialog(this);} };
+        if(contractsRead is not null){contratosJson.Text="Contratos / JSON / Reenviar";contratosJson.Width=245;}
+        contratosJson.Click += (_, _) => { using var tela = contractsRead?.Invoke()??Acm.ContratosAcmComposition.Criar(); tela.ShowDialog(this); };
+        toledoRecebimentos.Enabled=toledoRead is not null;
+        toledoRecebimentos.Click+=(_,_)=>{if(toledoRead is null)return;using var tela=toledoRead();tela.ShowDialog(this);};
+        protocolosPreCadastro.Enabled = protocolsRead is not null;
+        protocolosPreCadastro.Click += (_,_) => { if(protocolsRead is null)return;using var tela=protocolsRead();tela.ShowDialog(this); };
+        // No modo demo o SAP e consulta manual por BP; abrir a varredura SD daria a impressao de
+        // uma busca que essa sessao nao faz.
+        ordensVendaSd.Enabled = demo is null;
+        ordensVendaSd.Click += (_, _) => { using var tela = Sd.OrdensVendaSdComposition.Criar(); tela.ShowDialog(this); };
+        transportadoras.Click += (_, _) => { if(demo is not null){using var telaDemo=new Transportadoras.MasterdataR3.FrmCadastrosGuardianR3(demo:demo);telaDemo.ShowDialog(this);}else{using var tela = carriersRead?.Invoke()??new Transportadoras.MasterdataR3.FrmTransportadoraMasterdata(readOnly:monitorAcm is not null); tela.ShowDialog(this);} };
     }
     private sealed class DemoAcmDisconnected:FugaTES.Aplicacao.Consultas.ContratosAcm.IContratosAcmReadRepository
     {

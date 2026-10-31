@@ -1,0 +1,182 @@
+[
+  {
+    "path": "src/FugaTES.Persistencia/Transportadoras/SingleCreateJournalPostgreSqlR31.cs",
+    "R139_sha256": "331BD60371D8DE1E864F22A7BD6B239B5CFB896A21AA4D114C4E364F0C3EAF6A",
+    "R139_bytes": 5599,
+    "R139_entry": "candidate/src/FugaTES.Persistencia/Transportadoras/SingleCreateJournalPostgreSqlR31.cs",
+    "R150C_sha256": "12C507CF266B1977BCA0B9C3B2B9785C54D1A04F57A24B4A0D6C7FE1C094A4EB",
+    "R150C_bytes": 5684,
+    "R150C_entry": "src/FugaTES.Persistencia/Transportadoras/SingleCreateJournalPostgreSqlR31.cs",
+    "comparison": "MODIFIED"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopBindingR41.cs",
+    "R139_sha256": "76F03AED9C3A7D7D3752D9FC63CB7881A3C20588CE653B0B6A16AECC9014A156",
+    "R139_bytes": 6089,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopBindingR41.cs",
+    "R150C_sha256": "D63D91EB83809F2AA60D564CE54D774F28B7F369420CA6A2134E728FDF33739F",
+    "R150C_bytes": 5934,
+    "R150C_entry": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopBindingR41.cs",
+    "comparison": "MODIFIED"
+  },
+  {
+    "path": "src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/SingleCreateJournalPolicyR31.cs",
+    "R139_sha256": "49E9CDB326B2B22F918AE7DCEB44F38F84A88F1697340E065E5EAAAF9E95362E",
+    "R139_bytes": 2934,
+    "R139_entry": "candidate/src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/SingleCreateJournalPolicyR31.cs",
+    "R150C_sha256": "49E9CDB326B2B22F918AE7DCEB44F38F84A88F1697340E065E5EAAAF9E95362E",
+    "R150C_bytes": 2934,
+    "R150C_entry": "src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/SingleCreateJournalPolicyR31.cs",
+    "comparison": "IDENTICAL"
+  },
+  {
+    "path": "src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/GuardianSingleCreateUseCaseR31.cs",
+    "R139_sha256": "1459751F9D716C1AD60E2684EB7A26DB40FB29DAFDE551704494C7D6F83597DD",
+    "R139_bytes": 5944,
+    "R139_entry": "candidate/src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/GuardianSingleCreateUseCaseR31.cs",
+    "R150C_sha256": "1459751F9D716C1AD60E2684EB7A26DB40FB29DAFDE551704494C7D6F83597DD",
+    "R150C_bytes": 5944,
+    "R150C_entry": "src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/GuardianSingleCreateUseCaseR31.cs",
+    "comparison": "IDENTICAL"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Runtime/DesktopRuntime.cs",
+    "R139_sha256": "017D25E76F4D36089FB2DF5600ABC7EDFCA80B76123B327F5C02B77C6AB2E84D",
+    "R139_bytes": 6572,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Runtime/DesktopRuntime.cs",
+    "R150C_sha256": "79D61E963D3936137537E2A8D1D16691A4CE71A8C41AF24DE37CD4C2547ECE33",
+    "R150C_bytes": 6143,
+    "R150C_entry": "src/FugaTES.WinForms/Runtime/DesktopRuntime.cs",
+    "comparison": "MODIFIED"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/FrmCadastrosGuardianR3.cs",
+    "R139_sha256": "62DB3E76DDC0E7AA36C7EB1B798453DBD0E3B316A90566636712DF907CD6D202",
+    "R139_bytes": 17805,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/FrmCadastrosGuardianR3.cs",
+    "R150C_sha256": "E5037E452E8A1185B866BA081BFE7669C873EF7E663C1C6D072B274BFF4CEBD3",
+    "R150C_bytes": 16682,
+    "R150C_entry": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/FrmCadastrosGuardianR3.cs",
+    "comparison": "MODIFIED"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/CarrierDesktopComposition.cs",
+    "R139_sha256": "1515DD36806F13F369180CA434ADD5E37AB80C23ECA6085946D36B19E1FD65B1",
+    "R139_bytes": 11927,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Transportadoras/CarrierDesktopComposition.cs",
+    "R150C_sha256": "350B5E3637DC86FC3CB8290CBAE490F13953A40218B5F1EFB64ECA82917C8E98",
+    "R150C_bytes": 11708,
+    "R150C_entry": "src/FugaTES.WinForms/Transportadoras/CarrierDesktopComposition.cs",
+    "comparison": "MODIFIED"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/CarrierDesktopLifecycle.cs",
+    "R139_sha256": "D98ACDDB07C023A039D2D85EB6C17F573B1A4491466CBCA484DEE6DAA99A3DAA",
+    "R139_bytes": 12314,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Transportadoras/CarrierDesktopLifecycle.cs",
+    "R150C_sha256": "3701EF3599EE06DB29BCF9C086F1BF719AAA96DEC2B9C99FFE20426788614A17",
+    "R150C_bytes": 11761,
+    "R150C_entry": "src/FugaTES.WinForms/Transportadoras/CarrierDesktopLifecycle.cs",
+    "comparison": "MODIFIED"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataSharedOrchestratorR3.cs",
+    "R139_sha256": "29D0DE45D503A57BF11098D73CE102836E6CAA95EB0B711A18CA0A11E1452626",
+    "R139_bytes": 17519,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataSharedOrchestratorR3.cs",
+    "R150C_sha256": "E36C2C7896A29CB1605117091CA9F4144C1634CC83E841EDED8B7EF06D58CB16",
+    "R150C_bytes": 17323,
+    "R150C_entry": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataSharedOrchestratorR3.cs",
+    "comparison": "MODIFIED"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Program.cs",
+    "R139_sha256": "15FD97C55593D3788FC043391419603F571D5AFA25C015937914806F59978C76",
+    "R139_bytes": 1893,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Program.cs",
+    "R150C_sha256": "15FD97C55593D3788FC043391419603F571D5AFA25C015937914806F59978C76",
+    "R150C_bytes": 1893,
+    "R150C_entry": "src/FugaTES.WinForms/Program.cs",
+    "comparison": "IDENTICAL"
+  },
+  {
+    "path": "src/FugaTES.WinForms/FrmIntegracoes.cs",
+    "R139_sha256": "67ED5EBF30C4A4C796D7310E60109C236F7F6C1CA1F30091EBECBC8803C8DC7A",
+    "R139_bytes": 2468,
+    "R139_entry": "candidate/src/FugaTES.WinForms/FrmIntegracoes.cs",
+    "R150C_sha256": "67ED5EBF30C4A4C796D7310E60109C236F7F6C1CA1F30091EBECBC8803C8DC7A",
+    "R150C_bytes": 2468,
+    "R150C_entry": "src/FugaTES.WinForms/FrmIntegracoes.cs",
+    "comparison": "IDENTICAL"
+  },
+  {
+    "path": "src/FugaTES.WinForms/PainelInicialForm.cs",
+    "R139_sha256": "20AE03A3903868178F68B2A2C4757000A9750FE41FF34543CBBB6C32C22A2986",
+    "R139_bytes": 7174,
+    "R139_entry": "candidate/src/FugaTES.WinForms/PainelInicialForm.cs",
+    "R150C_sha256": "20AE03A3903868178F68B2A2C4757000A9750FE41FF34543CBBB6C32C22A2986",
+    "R150C_bytes": 7174,
+    "R150C_entry": "src/FugaTES.WinForms/PainelInicialForm.cs",
+    "comparison": "IDENTICAL"
+  },
+  {
+    "path": "src/FugaTES.WinForms/FugaTES.WinForms.csproj",
+    "R139_sha256": "8B7B20799AA78E9E6BA7248243E498878A9195EB979267E7B74436EE6C113154",
+    "R139_bytes": 813,
+    "R139_entry": "candidate/src/FugaTES.WinForms/FugaTES.WinForms.csproj",
+    "R150C_sha256": "8B7B20799AA78E9E6BA7248243E498878A9195EB979267E7B74436EE6C113154",
+    "R150C_bytes": 813,
+    "R150C_entry": "src/FugaTES.WinForms/FugaTES.WinForms.csproj",
+    "comparison": "IDENTICAL"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Runtime/SingleCreateDatabaseProfileR139.cs",
+    "R139_sha256": "349AD51129A1CDA29935F9AC5B79D2353E60319CDAB1A8E497F91ABCBF22A28A",
+    "R139_bytes": 1940,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Runtime/SingleCreateDatabaseProfileR139.cs",
+    "R150C_sha256": null,
+    "R150C_bytes": null,
+    "R150C_entry": null,
+    "comparison": "ONLY_R139"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopCompositionR139.cs",
+    "R139_sha256": "2B8B24680F50E314326E353F3CF2A3C906E029BBDDF9A6A221DC9D565A724364",
+    "R139_bytes": 12184,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopCompositionR139.cs",
+    "R150C_sha256": null,
+    "R150C_bytes": null,
+    "R150C_entry": null,
+    "comparison": "ONLY_R139"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopControllerR139.cs",
+    "R139_sha256": "43DA4FD6DD841AE060B7B1E073C762C09F90572C60B989640544417D9F7EFDC8",
+    "R139_bytes": 4151,
+    "R139_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopControllerR139.cs",
+    "R150C_sha256": null,
+    "R150C_bytes": null,
+    "R150C_entry": null,
+    "comparison": "ONLY_R139"
+  },
+  {
+    "path": "src/FugaTES.Persistencia/Transportadoras/MasterdataHmlDataSourceR147B.cs",
+    "R139_sha256": null,
+    "R139_bytes": null,
+    "R139_entry": null,
+    "R150C_sha256": "A5C4D400A76C5B61AC6D9D9D138FE36266F2EB7564CF93305635D0E7B51FA3A0",
+    "R150C_bytes": 4172,
+    "R150C_entry": "src/FugaTES.Persistencia/Transportadoras/MasterdataHmlDataSourceR147B.cs",
+    "comparison": "ONLY_R150C"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataHmlSingleCreateCompositionR150C.cs",
+    "R139_sha256": null,
+    "R139_bytes": null,
+    "R139_entry": null,
+    "R150C_sha256": "264C92CE80EF84480CC32827B1D911177D38724327DBD1C9617582D364497F60",
+    "R150C_bytes": 5518,
+    "R150C_entry": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataHmlSingleCreateCompositionR150C.cs",
+    "comparison": "ONLY_R150C"
+  }
+]

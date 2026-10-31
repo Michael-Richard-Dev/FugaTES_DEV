@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <ProjectReference Include="../../src/FugaTES.HostIntegracao/FugaTES.HostIntegracao.csproj" />
+    <ProjectReference Include="../../src/FugaTES.Callback.Http/FugaTES.Callback.Http.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Original1155Snapshot.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Original1144Snapshot.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../deploy/guardian-unified-dev/appsettings.worker.inert.json" Link="configuration/guardian-worker.inert.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../configuration/appsettings.inert.json" Link="configuration/appsettings.inert.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -8,10 +8,11 @@ public sealed class GuardianRuntimeCredenciaisProvider(IConfiguration configurat
     public Task<CredenciaisGuardianSet26> ObterAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var usuario = configuration["Guardian:Username"];
+        var usuario = configuration["Guardian:Email"];
         var senha = configuration["Guardian:Password"];
-        if (string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(senha))
+        var assinatura = configuration["Guardian:Signature"];
+        if (string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(senha) || string.IsNullOrWhiteSpace(assinatura))
             throw new InvalidOperationException("Guardian runtime credentials are absent.");
-        return Task.FromResult(new CredenciaisGuardianSet26(usuario, senha));
+        return Task.FromResult(new CredenciaisGuardianSet26(usuario, senha, assinatura));
     }
 }

@@ -7,5 +7,24 @@
     <ProjectReference Include="..\FugaTES.Infraestrutura\FugaTES.Infraestrutura.csproj" />
     <ProjectReference Include="..\FugaTES.Integracao.Toledo\FugaTES.Integracao.Toledo.csproj" />
     <ProjectReference Include="..\FugaTES.Persistencia\FugaTES.Persistencia.csproj" />
+    <ProjectReference Include="..\FugaTES.HostIntegracao\FugaTES.HostIntegracao.csproj" />
   </ItemGroup>
+
+  <!--
+    R159: FugaTES.HostIntegracao tambem publica appsettings.json e appsettings.Development.json.
+    Como este host o referencia, dois arquivos distintos disputam o mesmo caminho relativo na
+    publicacao e o SDK aborta com NETSDK1152.
+
+    O arquivo valido para este processo e o deste projeto. Removemos da lista de publicacao
+    apenas as copias vindas de FORA deste diretorio, mantendo a verificacao do SDK ativa em vez
+    de desliga-la com ErrorOnDuplicatePublishOutputFiles=false. O projeto HostIntegracao nao e
+    alterado e continua publicando o seu proprio appsettings quando publicado sozinho.
+  -->
+  <Target Name="RemoverAppSettingsDeProjetosReferenciados" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+        Remove="@(ResolvedFileToPublish)"
+        Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('appsettings')) And !$([System.String]::Copy('%(ResolvedFileToPublish.FullPath)').StartsWith('$(MSBuildProjectDirectory)'))" />
+    </ItemGroup>
+  </Target>
 </Project>

@@ -1,0 +1,14 @@
+{
+  "PhysicalReadbackEnabled": false,
+  "PlanFile": "profiles\\R165AL_PILOT_PLAN.json",
+  "IntegrationId": "e502b0a0-57c5-49f3-976c-9e1fe7e355e3",
+  "ReadKeyFile": "C:\\Users\\TI\\AppData\\Local\\FugaTES\\DEV110\\READ_API_KEY",
+  "ApprovalReference": "FUGATES-DEV110-POSTGRESQL-LIVE-CONNECTION",
+  "Tunnel": {
+    "Enabled": false,
+    "Host": "192.168.17.40",
+    "User": "michael",
+    "IdentityFile": "C:\\ProgramData\\FugaTES\\agentic\\ssh\\fugates-agentic-nt-ti-256",
+    "KnownHostsFile": "C:\\Users\\TI\\.ssh\\known_hosts"
+  }
+}

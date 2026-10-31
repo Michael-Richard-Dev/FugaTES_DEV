@@ -6,10 +6,11 @@ namespace FugaTES.Aplicacao.Contratos.Recebimento;
 
 public interface IPreCadastroGuardianSet26Gateway { Task<ProtocoloGuardianSet26> EnviarAsync(PreCadastroRecebimentoGuardianSet26 preCadastro, CancellationToken cancellationToken); }
 public interface IAutenticacaoGuardianSet26 { Task<string> ObterCredencialRuntimeAsync(CancellationToken cancellationToken); }
-public sealed record CredenciaisGuardianSet26(string Usuario, string Senha);
+public sealed record CredenciaisGuardianSet26(string Usuario, string Senha, string? Assinatura = null);
 public interface ICredenciaisGuardianSet26Provider { Task<CredenciaisGuardianSet26> ObterAsync(CancellationToken cancellationToken); }
 public interface IEmissorGuardianSet26Gateway { Task EnviarAsync(EmissorGuardianSet26 emissor, CancellationToken cancellationToken); }
 public interface ITransportadoraGuardianSet26Gateway { Task EnviarAsync(TransportadoraGuardianSet26 transportadora, CancellationToken cancellationToken); }
+public interface IItemGuardianSet26Gateway { Task EnviarAsync(ItemGuardianSet26 item, CancellationToken cancellationToken); }
 public interface IRepositorioCorrelacaoRecebimento
 {
     Task<ResultadoRegistroSnapshotMvp> RegistrarSnapshotAsync(RecebimentoSapCpiMvp entrada, CancellationToken cancellationToken);

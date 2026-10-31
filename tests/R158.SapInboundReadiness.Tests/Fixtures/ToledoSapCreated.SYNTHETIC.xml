@@ -1,0 +1,151 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:entry xmlns:ns0="http://www.w3.org/2005/Atom" xmlns:ns1="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:ns2="http://schemas.microsoft.com/ado/2007/08/dataservices" xml:base="https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/">
+    <ns0:id>https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')</ns0:id>
+    <ns0:title type="text">ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')</ns0:title>
+    <ns0:updated>2026-10-28T22:35:07Z</ns0:updated>
+    <ns0:category term="cds_zui_acm_recpesagem.ReceberPesagemType" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme" />
+    <ns0:link href="ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')" rel="edit" title="ReceberPesagemType" />
+    <ns0:link href="ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')/to_Pesagem" rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/to_Pesagem" type="application/atom+xml;type=feed" title="to_Pesagem">
+        <ns1:inline>
+            <ns0:feed xml:base="https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/">
+                <ns0:id>https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')/to_Pesagem</ns0:id>
+                <ns0:title type="text">Pesagem</ns0:title>
+                <ns0:updated>2026-10-28T22:35:07Z</ns0:updated>
+                <ns0:author>
+                    <ns0:name />
+                </ns0:author>
+                <ns0:link href="ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')/to_Pesagem" rel="self" title="Pesagem" />
+                <ns0:entry>
+                    <ns0:id>https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/Pesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Indice=1)</ns0:id>
+                    <ns0:title type="text">Pesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Indice=1)</ns0:title>
+                    <ns0:updated>2026-10-28T22:35:07Z</ns0:updated>
+                    <ns0:category term="cds_zui_acm_recpesagem.PesagemType" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme" />
+                    <ns0:link href="Pesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Indice=1)" rel="edit" title="PesagemType" />
+                    <ns0:link href="Pesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Indice=1)/to_CabPesagem" rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/to_CabPesagem" type="application/atom+xml;type=entry" title="to_CabPesagem" />
+                    <ns0:content type="application/xml">
+                        <ns1:properties>
+                            <ns2:Delete_mc />
+                            <ns2:Update_mc />
+                            <ns2:IdPesagem>0000900003</ns2:IdPesagem>
+                            <ns2:SistemaBalanca>Toledo</ns2:SistemaBalanca>
+                            <ns2:Centro>3011</ns2:Centro>
+                            <ns2:Indice>1</ns2:Indice>
+                            <ns2:NrIndiceTotal>1</ns2:NrIndiceTotal>
+                            <ns2:IdParceiro>90000003</ns2:IdParceiro>
+                            <ns2:IdParceiroEntrega>90000003</ns2:IdParceiroEntrega>
+                            <ns2:ObservacaoPesagem />
+                            <ns2:ParceiroCpfCnpj />
+                            <ns2:ParceiroNome />
+                            <ns2:ParceiroEntregaNome>SAP SYNTHETIC SUPPLIER</ns2:ParceiroEntregaNome>
+                            <ns2:ContratoACM>0099999903</ns2:ContratoACM>
+                            <ns2:OrdemVendas />
+                            <ns2:Remessa />
+                            <ns2:PedidoCompras />
+                            <ns2:TipoDocumento />
+                            <ns2:PesoAntesDesconto>20000.000</ns2:PesoAntesDesconto>
+                            <ns2:PesoAposDesconto>20000.000</ns2:PesoAposDesconto>
+                            <ns2:PercentualDesdobro>100.000</ns2:PercentualDesdobro>
+                            <ns2:ChaveAcessoNFe />
+                            <ns2:NumeroNF />
+                            <ns2:SerieNF />
+                            <ns2:DataNf />
+                            <ns2:VlrUnitarioNF />
+                            <ns2:VlrTotalNF />
+                            <ns2:QuantidadeNF />
+                            <ns2:CPFCNPJTerceiro />
+                            <ns2:NomeTerceiro />
+                            <ns2:NrProtocolo />
+                            <ns2:DtProtocolo />
+                            <ns2:HrProtocolo />
+                        </ns1:properties>
+                    </ns0:content>
+                </ns0:entry>
+            </ns0:feed>
+        </ns1:inline>
+    </ns0:link>
+    <ns0:link href="ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')/to_QualidPes" rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/to_QualidPes" type="application/atom+xml;type=feed" title="to_QualidPes">
+        <ns1:inline>
+            <ns0:feed xml:base="https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/">
+                <ns0:id>https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')/to_QualidPes</ns0:id>
+                <ns0:title type="text">Qualidade</ns0:title>
+                <ns0:updated>2026-10-28T22:35:07Z</ns0:updated>
+                <ns0:author>
+                    <ns0:name />
+                </ns0:author>
+                <ns0:link href="ReceberPesagem(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011')/to_QualidPes" rel="self" title="Qualidade" />
+                <ns0:entry>
+                    <ns0:id>https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='IMPUREZA')</ns0:id>
+                    <ns0:title type="text">Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='IMPUREZA')</ns0:title>
+                    <ns0:updated>2026-10-28T22:35:07Z</ns0:updated>
+                    <ns0:category term="cds_zui_acm_recpesagem.QualidadeType" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme" />
+                    <ns0:link href="Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='IMPUREZA')" rel="edit" title="QualidadeType" />
+                    <ns0:link href="Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='IMPUREZA')/to_CabPesagem" rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/to_CabPesagem" type="application/atom+xml;type=entry" title="to_CabPesagem" />
+                    <ns0:content type="application/xml">
+                        <ns1:properties>
+                            <ns2:Delete_mc />
+                            <ns2:Update_mc />
+                            <ns2:IdPesagem>0000900003</ns2:IdPesagem>
+                            <ns2:SistemaBalanca>Toledo</ns2:SistemaBalanca>
+                            <ns2:Centro>3011</ns2:Centro>
+                            <ns2:Tipo>IMPUREZA</ns2:Tipo>
+                            <ns2:Grupo />
+                            <ns2:ValorAferido>1.1</ns2:ValorAferido>
+                        </ns1:properties>
+                    </ns0:content>
+                </ns0:entry>
+                <ns0:entry>
+                    <ns0:id>https://sap.invalid/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='UMIDADE')</ns0:id>
+                    <ns0:title type="text">Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='UMIDADE')</ns0:title>
+                    <ns0:updated>2026-10-28T22:35:07Z</ns0:updated>
+                    <ns0:category term="cds_zui_acm_recpesagem.QualidadeType" scheme="http://schemas.microsoft.com/ado/2007/08/dataservices/scheme" />
+                    <ns0:link href="Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='UMIDADE')" rel="edit" title="QualidadeType" />
+                    <ns0:link href="Qualidade(IdPesagem='0000900003',SistemaBalanca='Toledo',Centro='3011',Tipo='UMIDADE')/to_CabPesagem" rel="http://schemas.microsoft.com/ado/2007/08/dataservices/related/to_CabPesagem" type="application/atom+xml;type=entry" title="to_CabPesagem" />
+                    <ns0:content type="application/xml">
+                        <ns1:properties>
+                            <ns2:Delete_mc />
+                            <ns2:Update_mc />
+                            <ns2:IdPesagem>0000900003</ns2:IdPesagem>
+                            <ns2:SistemaBalanca>Toledo</ns2:SistemaBalanca>
+                            <ns2:Centro>3011</ns2:Centro>
+                            <ns2:Tipo>UMIDADE</ns2:Tipo>
+                            <ns2:Grupo />
+                            <ns2:ValorAferido>2.2</ns2:ValorAferido>
+                        </ns1:properties>
+                    </ns0:content>
+                </ns0:entry>
+            </ns0:feed>
+        </ns1:inline>
+    </ns0:link>
+    <ns0:content type="application/xml">
+        <ns1:properties>
+            <ns2:Delete_mc />
+            <ns2:Update_mc />
+            <ns2:to_Pesagem_oc />
+            <ns2:to_QualidPes_oc />
+            <ns2:IdPesagem>0000900003</ns2:IdPesagem>
+            <ns2:SistemaBalanca>Toledo</ns2:SistemaBalanca>
+            <ns2:Centro>3011</ns2:Centro>
+            <ns2:TipoPesagem>S</ns2:TipoPesagem>
+            <ns2:DataPesagem>2026-01-01T00:00:00Z</ns2:DataPesagem>
+            <ns2:UsuarioPesagem />
+            <ns2:UsuarioClassificacao />
+            <ns2:IdPlanejamento />
+            <ns2:IdAgendamento />
+            <ns2:IdTransportadora />
+            <ns2:FreteTonelada />
+            <ns2:PesoBruto>40000.000</ns2:PesoBruto>
+            <ns2:PesoTara>20000.000</ns2:PesoTara>
+            <ns2:PesoAntesDesconto>20000.000</ns2:PesoAntesDesconto>
+            <ns2:PesoAposDesconto>20000.000</ns2:PesoAposDesconto>
+            <ns2:NomeMotorista />
+            <ns2:CpfMotorista />
+            <ns2:Placa />
+            <ns2:TipoOperacao />
+            <ns2:Observacao />
+            <ns2:Material>9000000</ns2:Material>
+            <ns2:TabelaQualidadeId />
+            <ns2:TabelaQualidadeVersao />
+            <ns2:TabQualVersValidade />
+        </ns1:properties>
+    </ns0:content>
+</ns0:entry>

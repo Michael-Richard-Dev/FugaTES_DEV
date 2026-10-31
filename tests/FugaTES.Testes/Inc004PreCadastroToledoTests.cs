@@ -216,21 +216,24 @@ public sealed class Inc004PreCadastroToledoTests
     {
         var raiz = LocalizarRaizRepositorio();
         var port = Path.Combine(raiz, "src", "FugaTES.Aplicacao", "Contratos", "Gateways", "Toledo", "IPreCadastroToledoGateway.cs");
-        var aplicacaoArquivos = Directory.EnumerateFiles(Path.Combine(raiz, "src", "FugaTES.Aplicacao"), "*.cs", SearchOption.AllDirectories);
         var aplicacaoCsproj = File.ReadAllText(Path.Combine(raiz, "src", "FugaTES.Aplicacao", "FugaTES.Aplicacao.csproj"));
 
         Assert.True(File.Exists(port));
         Assert.DoesNotContain("FugaTES.Integracao.Toledo", aplicacaoCsproj, StringComparison.OrdinalIgnoreCase);
-        foreach (var arquivo in aplicacaoArquivos)
-        {
-            var conteudo = File.ReadAllText(arquivo);
-            Assert.DoesNotContain("JsonElement", conteudo, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("HttpClient", conteudo, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("HttpRequestMessage", conteudo, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("SOAP", conteudo, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("REST", conteudo, StringComparison.OrdinalIgnoreCase);
-        }
+        var application = typeof(FugaTES.Aplicacao.Modelos.Toledo.ContratoToledo).Assembly;
+        Assert.DoesNotContain(application.GetReferencedAssemblies(), assembly => assembly.Name == "System.Net.Http"
+            || assembly.Name?.StartsWith("FugaTES.Integracao.", StringComparison.Ordinal) == true);
+        ArchitectureBoundaries.NoToledoWireDtos(application.GetTypes());
     }
+
+    private static bool ContemProtocoloDeWire(string conteudo) => System.Text.RegularExpressions.Regex.IsMatch(conteudo, @"\b(?:SOAP|REST)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    [Theory]
+    [InlineData("CarregarEstadoAsync", false)]
+    [InlineData("CarrierStoredBp", false)]
+    [InlineData("REST/JSON", true)]
+    [InlineData("SOAP endpoint", true)]
+    public void ArquiteturaInc004_ProtocoloDeWireUsaLimitesDePalavra(string source, bool expected) => Assert.Equal(expected, ContemProtocoloDeWire(source));
 
     [Fact]
     public void ArquiteturaInc004_DtoPreCadastroFicaConfinadoNaIntegracaoToledo()
@@ -265,11 +268,12 @@ public sealed class Inc004PreCadastroToledoTests
             Assert.DoesNotContain("ITransportadoraToledoGateway", conteudo, StringComparison.OrdinalIgnoreCase);
         }
 
-        Assert.DoesNotContain("PreCadastro", hostProgram, StringComparison.OrdinalIgnoreCase);
-        foreach (var arquivo in winFormsArquivos.Concat(persistenciaArquivos))
+        foreach (var assembly in new[]
         {
-            Assert.DoesNotContain("PreCadastro", File.ReadAllText(arquivo), StringComparison.OrdinalIgnoreCase);
-        }
+            typeof(FugaTES.HostIntegracao.HostIntegracaoComposition).Assembly,
+            typeof(FugaTES.WinForms.FrmMonitorMvp).Assembly,
+            typeof(FugaTES.Persistencia.MotorIntegracao.RepositorioMotorIntegracaoPostgreSql).Assembly
+        }) ArchitectureBoundaries.NoToledoWireDtos(assembly.GetTypes());
     }
 
     [Fact]

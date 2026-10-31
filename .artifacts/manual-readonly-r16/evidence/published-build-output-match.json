@@ -1,0 +1,47 @@
+[
+  {
+    "Assembly": "FugaTES.Aplicacao.dll",
+    "SHA256": "16269870B327F7AB1306E8A813834D4467ACBF1C6172C3EB9F32B1B6B593FF4C",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.Dominio.dll",
+    "SHA256": "C01ECC4C828869DDEBDEC4970B231AB1BB6DEB303E5E1F5C05E2ABF66486DFD9",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.HostIntegracao.dll",
+    "SHA256": "F5DCFABF8755915B393B1C5B9517263FB5F54F49E1F3B9D5D7D99C2FF3333064",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.Infraestrutura.dll",
+    "SHA256": "42C6BF60A58ABEF632FEE19F17A75EB04DC1CA861C578C6B6C7577F46DB0272D",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.Integracao.Guardian.dll",
+    "SHA256": "E04AD3C31CD9A348B14E0A8A212E8DE79B7B8416DFB23092A7D76BA85B63F396",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.Integracao.SAP.dll",
+    "SHA256": "AB0458BF952FEE60D6A61D7EDFA564C816F7580E77C6C0F82577FE9468DBF2EA",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.Integracao.Toledo.dll",
+    "SHA256": "7A8D6A8A148DFA9F21F19AA85C281581025E3FF97DF20A3C78C4D9A81300E9D9",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.Persistencia.dll",
+    "SHA256": "D074AD3FC52C1202320A856E9F51E120B97FC2C03B47418931E3A70A70AD816C",
+    "BuildOutputMatches": true
+  },
+  {
+    "Assembly": "FugaTES.WinForms.dll",
+    "SHA256": "46333888838533496F7750F453A2AB41BE6C69A0645C9E8FFEAD2F8200053674",
+    "BuildOutputMatches": true
+  }
+]

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0"/><PackageReference Include="xunit" Version="2.9.3"/><PackageReference Include="xunit.runner.visualstudio" Version="3.1.5"/>
+    <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    <ProjectReference Include="../../src/FugaTES.HostIntegracao/FugaTES.HostIntegracao.csproj"/>
+    <ProjectReference Include="../../src/FugaTES.Callback.Http/FugaTES.Callback.Http.csproj"/>
+    <!-- Provenance inputs are retained as evidence, never compiled instead of the real HTTP module. -->
+    <Compile Remove="ContractInputs/**/*.cs"/>
+    <Using Include="Microsoft.AspNetCore.Http"/><Using Include="Microsoft.AspNetCore.Builder"/><Using Include="Microsoft.AspNetCore.Routing"/><Using Include="Microsoft.Extensions.DependencyInjection"/>
+  </ItemGroup>
+</Project>

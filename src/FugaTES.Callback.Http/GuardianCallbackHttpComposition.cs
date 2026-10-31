@@ -20,6 +20,7 @@ public static class GuardianCallbackHttpComposition
             ConfigurarCorrelacaoPostgreSql(services, configuration);
         else
             throw new InvalidOperationException("Correlation:Provider must be InMemory or PostgreSql.");
+        ToledoCallbackComposition.Configure(services, configuration, options.CorrelationProvider);
         return options;
     }
 
@@ -46,6 +47,8 @@ public static class GuardianCallbackHttpComposition
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("Required configuration ConnectionStrings:FugaTES is absent.");
         services.AddCorrelacaoGuardianSapPostgreSql(connectionString);
+        services.AddScoped<IRegistroEventoGuardianStore, RepositorioEventoGuardianPostgreSql>();
+        services.AddScoped<ProcessarEventoGuardianCasoDeUso>();
     }
 
     public static IServiceCollection ConfigurarFluxoLocal(

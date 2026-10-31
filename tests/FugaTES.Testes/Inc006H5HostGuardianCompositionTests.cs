@@ -38,7 +38,7 @@ public sealed class Inc006H5HostGuardianCompositionTests
     }
 
     [Theory]
-    [InlineData("Guardian:Username")]
+    [InlineData("Guardian:Email")]
     [InlineData("Guardian:Password")]
     public void GuardianMode_MissingRuntimeCredentialFailsBeforeHostBuild(string missingKey)
     {
@@ -101,9 +101,11 @@ public sealed class Inc006H5HostGuardianCompositionTests
         HostIntegracaoComposition.ConfigurarServicos(builder.Services, builder.Configuration);
         var motorRepository = new RepositorioMotorIntegracaoFake();
         var correlations = new RepositorioCorrelacaoRecebimentoMemoria();
+        var ticketEvidence = new UnexpectedAcmTicketEvidenceStore();
         var handler = new GuardianHandler(motorRepository);
         builder.Services.AddSingleton<IMotorIntegracaoRepository>(motorRepository);
         builder.Services.AddScoped<IRepositorioCorrelacaoRecebimento>(_ => correlations);
+        builder.Services.AddSingleton<IAcmSapTicketEvidenceStore>(ticketEvidence);
         builder.Services.AddSingleton(new HttpClient(handler));
         using var host = builder.Build();
         using var scope = host.Services.CreateScope();
@@ -122,6 +124,7 @@ public sealed class Inc006H5HostGuardianCompositionTests
         Assert.Equal(EstadoIntegracao.Concluida, Assert.Single(motorRepository.Integracoes).Estado);
         Assert.Equal(1, handler.PreCadastroCalls);
         Assert.Equal("12345", (await correlations.ObterPorDocumentoAsync("DOC-001", CancellationToken.None))!.ProtocoloGuardian);
+        Assert.Equal(0, ticketEvidence.Calls);
     }
 
     private static ClaimIntegracaoMotor GuardianClaim() => new(Guid.NewGuid(), Guid.NewGuid(),
@@ -131,6 +134,7 @@ public sealed class Inc006H5HostGuardianCompositionTests
     private static HostApplicationBuilder Builder(Dictionary<string, string?> config)
     {
         var builder = Host.CreateApplicationBuilder([]);
+        builder.Configuration.Sources.Clear();
         builder.Configuration.AddInMemoryCollection(config);
         return builder;
     }
@@ -152,7 +156,8 @@ public sealed class Inc006H5HostGuardianCompositionTests
         var config = BaseConfiguration();
         config["HostIntegracao:ExternalMode"] = "Guardian";
         config["HostIntegracao:PersistenceMode"] = "PostgreSql";
-        config["ConnectionStrings:FugaTES"] = "Host=example.invalid;Database=fugates;Username=fugates";
+        config["ConnectionStrings:FugaTES"] = "Host=127.0.0.1;Port=5433;Database=fugates_dev;Username=fugates_acm_hml_app;Search Path=fugates;Passfile=/synthetic/not-used/pgpass";
+        config["AcmR57:Enabled"] = "true";
         return config;
     }
 
@@ -160,12 +165,21 @@ public sealed class Inc006H5HostGuardianCompositionTests
     {
         config["Guardian:BaseUrl"] = "https://guardian.invalid";
         config["Guardian:Timeout"] = "00:00:10";
-        config["Guardian:PreCadastroEndpoint"] = "/api/set26/pre-cadastro";
-        config["Guardian:TokenUserField"] = "login";
-        config["Guardian:TokenPasswordField"] = "secret";
-        config["Guardian:TokenResponseField"] = "access_token";
-        config["Guardian:Username"] = "test-user";
+        config["Guardian:PreCadastroEndpoint"] = "/api/v1/Guardian/ProtocoloPreCadastro";
+        config["Guardian:Email"] = "test-user";
         config["Guardian:Password"] = "test-credential";
+        config["Guardian:Signature"] = "test-signature";
+    }
+
+    private sealed class UnexpectedAcmTicketEvidenceStore : IAcmSapTicketEvidenceStore
+    {
+        public int Calls { get; private set; }
+
+        public Task PreservarAsync(CorrelacaoRecebimentoMvp correlacao, PesagemSapMvp pesagem, CancellationToken ct)
+        {
+            Calls++;
+            throw new InvalidOperationException("Pre-cadastro must not persist ACM SAP ticket evidence.");
+        }
     }
 
     private sealed class GuardianHandler(RepositorioMotorIntegracaoFake motor) : HttpMessageHandler
@@ -175,9 +189,9 @@ public sealed class Inc006H5HostGuardianCompositionTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/CreateToken/", StringComparison.Ordinal))
-                return Task.FromResult(Json("{\"access_token\":\"test-token\"}"));
-            if (path.EndsWith("/pre-cadastro", StringComparison.Ordinal))
+            if (path.EndsWith("/CreateToken", StringComparison.Ordinal))
+                return Task.FromResult(Json("{\"token\":\"test-token\"}"));
+            if (path.EndsWith("/ProtocoloPreCadastro", StringComparison.Ordinal))
             {
                 Assert.Contains(motor.Auditorias, audit => audit.Evento == "envio_iniciado");
                 PreCadastroCalls++;

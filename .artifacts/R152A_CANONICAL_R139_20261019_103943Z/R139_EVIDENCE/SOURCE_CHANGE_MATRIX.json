@@ -1,0 +1,107 @@
+[
+  {
+    "path": "src/FugaTES.HostIntegracao/CarrierSyncComposition.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "ConfigurarServicos: reject alternate generic worker in unitary mode",
+    "before_SHA256": "3518EE28767618D8A626D17C1F9C1C6006B73A2C59E3F6D6EF8CDE43A5E71261",
+    "after_SHA256": "87CD0006353C509F434466A59EDC595C086DA4C78E47D5449BB3BB5FABD07E02"
+  },
+  {
+    "path": "src/FugaTES.Persistencia/Transportadoras/SingleCreateJournalPostgreSqlR31.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "TryPrepareAsync: own ReadCommitted transaction and awaited commit; ADO parameter helper",
+    "before_SHA256": "7B67EAE673E55B5EF64696B018964B51205121A5CB41F553F70F068E50D910A3",
+    "after_SHA256": "331BD60371D8DE1E864F22A7BD6B239B5CFB896A21AA4D114C4E364F0C3EAF6A"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Runtime/DesktopRuntime.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "CreateSingleCreateSource: owned dedicated non-enlisted pool; no general pool mutation",
+    "before_SHA256": "79D61E963D3936137537E2A8D1D16691A4CE71A8C41AF24DE37CD4C2547ECE33",
+    "after_SHA256": "017D25E76F4D36089FB2DF5600ABC7EDFCA80B76123B327F5C02B77C6AB2E84D"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Runtime/SingleCreateDatabaseProfileR139.cs",
+    "change": "NEW",
+    "method_and_delta": "Load/Options: explicit HML identity, exact runtime match, Enlist=false, no redirection",
+    "before_SHA256": null,
+    "after_SHA256": "349AD51129A1CDA29935F9AC5B79D2353E60319CDAB1A8E497F91ABCBF22A28A"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/CarrierDesktopComposition.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "Create/StartSessionAsync: wire controller and deny alternate generic route in unitary mode",
+    "before_SHA256": "350B5E3637DC86FC3CB8290CBAE490F13953A40218B5F1EFB64ECA82917C8E98",
+    "after_SHA256": "1515DD36806F13F369180CA434ADD5E37AB80C23ECA6085946D36B19E1FD65B1"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/CarrierDesktopLifecycle.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "constructor/Start/StopAsync/ProntidaoSingleCreate: unitary ownership and shutdown",
+    "before_SHA256": "3701EF3599EE06DB29BCF9C086F1BF719AAA96DEC2B9C99FFE20426788614A17",
+    "after_SHA256": "D98ACDDB07C023A039D2D85EB6C17F573B1A4491466CBCA484DEE6DAA99A3DAA"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/FrmCadastrosGuardianR3.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "manual preflight control/CREATE handler/AtualizarVisual: route and persistent sanitized outcome",
+    "before_SHA256": "E5037E452E8A1185B866BA081BFE7669C873EF7E663C1C6D072B274BFF4CEBD3",
+    "after_SHA256": "62DB3E76DDC0E7AA36C7EB1B798453DBD0E3B316A90566636712DF907CD6D202"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataSharedOrchestratorR3.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "constructor/ExecutarCriacaoUnitariaAsync: separate unitary authorization, same existing semaphore",
+    "before_SHA256": "E36C2C7896A29CB1605117091CA9F4144C1634CC83E841EDED8B7EF06D58CB16",
+    "after_SHA256": "29D0DE45D503A57BF11098D73CE102836E6CAA95EB0B711A18CA0A11E1452626"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopBindingR41.cs",
+    "change": "MODIFIED",
+    "method_and_delta": "BindAsync: reject source with ambient enlistment enabled",
+    "before_SHA256": "D63D91EB83809F2AA60D564CE54D774F28B7F369420CA6A2134E728FDF33739F",
+    "after_SHA256": "76F03AED9C3A7D7D3752D9FC63CB7881A3C20588CE653B0B6A16AECC9014A156"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopCompositionR139.cs",
+    "change": "NEW",
+    "method_and_delta": "Prerequisites/Prepare/Session/lease/HTTP guard; reuse R31/R41 and secure providers",
+    "before_SHA256": null,
+    "after_SHA256": "2B8B24680F50E314326E353F3CF2A3C906E029BBDDF9A6A221DC9D565A724364"
+  },
+  {
+    "path": "src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopControllerR139.cs",
+    "change": "NEW",
+    "method_and_delta": "explicit preflight/Execute/Dispose; UI status retention and sanitization",
+    "before_SHA256": null,
+    "after_SHA256": "43DA4FD6DD841AE060B7B1E073C762C09F90572C60B989640544417D9F7EFDC8"
+  },
+  {
+    "path": "tests/FugaTES.SingleCreate.R139.Tests/DesktopSafetyTests.cs",
+    "change": "NEW",
+    "method_and_delta": "Focal offline tests/build-only configuration",
+    "before_SHA256": null,
+    "after_SHA256": "E37E67BE5FC0F81848739E6B519D091CBF22AAA6BBE8D09C1234DF8EE3689000"
+  },
+  {
+    "path": "tests/FugaTES.SingleCreate.R139.Tests/FugaTES.SingleCreate.R139.Tests.csproj",
+    "change": "NEW",
+    "method_and_delta": "Focal offline tests/build-only configuration",
+    "before_SHA256": null,
+    "after_SHA256": "02B1478A70CDAA518FC80909DC4937AB13FA1C1E0B71C7D124125722E843972D"
+  },
+  {
+    "path": "tests/FugaTES.SingleCreate.R139.Tests/TransactionBarrierTests.cs",
+    "change": "NEW",
+    "method_and_delta": "Focal offline tests/build-only configuration",
+    "before_SHA256": null,
+    "after_SHA256": "272FFF6CA88E4DB3D8415A20372F5D5B0CF8F6C238998AB5DAF9EE909564363B"
+  },
+  {
+    "path": "NuGet.Offline.Config",
+    "change": "NEW",
+    "method_and_delta": "Focal offline tests/build-only configuration",
+    "before_SHA256": null,
+    "after_SHA256": "1D639ABD9DFE58D12EC4A53FD7FCD02787A7DCF303A406FEDF1CF905ED90C10C"
+  }
+]

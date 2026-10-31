@@ -12,7 +12,11 @@ public static class SapContractInboundMapper
         item.StatusContrato, item.QuantidadeContrato, item.QuantidadeSaldoDevolucao, item.IdParceiro, item.Material,
         item.TipoPesagem, item.TabelaQualidadeID, item.TabelaQualidadeVersao, item.TabelaQualidadeVersaoValidade,
         item.Observacao, item.ValorUnitario, item.Centro, item.OperacaoContrato,
-        item.CentroOpcional?.Select(x => x.Centro).ToArray() ?? []);
+        item.CentroOpcional?.Select(x => x.Centro).ToArray() ?? [])
+    {
+        Item = item.Item,
+        UnidCont = item.UnidCont
+    };
     public static IReadOnlyList<ContratoToledo> Mapear(SapContractInboundHttpDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);

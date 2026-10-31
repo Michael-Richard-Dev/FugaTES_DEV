@@ -541,6 +541,7 @@ public sealed class Inc005Rev2S5HostCompositionTests
     private static HostApplicationBuilder CriarBuilder(Dictionary<string, string?> config)
     {
         var builder = Host.CreateApplicationBuilder([]);
+        builder.Configuration.Sources.Clear();
         builder.Configuration.AddInMemoryCollection(config);
         return builder;
     }
@@ -549,6 +550,7 @@ public sealed class Inc005Rev2S5HostCompositionTests
     {
         return new Dictionary<string, string?>
         {
+            ["FUGATES_INTEGRATION_WORKER_ENABLED"] = "true",
             ["HostIntegracao:PollInterval"] = "00:00:01",
             ["HostIntegracao:ShutdownGracePeriod"] = "00:00:05",
             ["HostIntegracao:ExternalMode"] = "Fake",

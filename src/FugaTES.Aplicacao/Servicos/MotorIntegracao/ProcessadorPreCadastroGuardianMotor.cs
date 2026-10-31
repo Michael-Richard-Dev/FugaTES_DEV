@@ -1,7 +1,6 @@
 using FugaTES.Aplicacao.CasosDeUso.Recebimento;
 using FugaTES.Aplicacao.Contratos.MotorIntegracao;
 using FugaTES.Aplicacao.Contratos.Recebimento;
-using FugaTES.Aplicacao.Modelos.Guardian;
 using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 
@@ -11,6 +10,8 @@ public sealed class ProcessadorPreCadastroGuardianMotor(
     IRepositorioCorrelacaoRecebimento correlacoes,
     IPreCadastroGuardianSet26Gateway guardian) : IProcessadorExternoIntegracao
 {
+    private readonly PrepararPreCadastroGuardian preparar = new(correlacoes, guardian);
+
     public async Task<ResultadoProcessamentoExterno> ProcessarAsync(ClaimIntegracaoMotor claim, CancellationToken cancellationToken)
     {
         if (claim.Operacao != GuardianPreCadastroMotorWork.Operacao || claim.Origem != "SAP" ||
@@ -41,19 +42,10 @@ public sealed class ProcessadorPreCadastroGuardianMotor(
                 entrada.OperacaoContrato, entrada.UrlParaRetorno }.Any(string.IsNullOrWhiteSpace))
             return new(ClassificacaoFalhaIntegracao.FalhaDefinitiva);
 
-        var preCadastro = new PreCadastroRecebimentoGuardianSet26(0, "FLX_RECEBIMENTO",
-            entrada.Material, entrada.BusinessPartnerEmissor, entrada.BusinessPartnerTransportadora,
-            entrada.Contrato, 1, entrada.DocumentoLogisticoReferencia, entrada.UrlParaRetorno!,
-            [new(1000, entrada.TipoContrato), new(1002, entrada.Centro), new(1003, entrada.OperacaoContrato)]);
-
         try
         {
-            var protocolo = await guardian.EnviarAsync(preCadastro, cancellationToken);
-            if (string.IsNullOrWhiteSpace(protocolo.Valor) || protocolo.DataCadastro is null)
-                return new(ClassificacaoFalhaIntegracao.ResultadoIndeterminado);
-            var associado = await correlacoes.AssociarProtocoloAsync(
-                claim.ChaveNegocio, protocolo.Valor, cancellationToken, protocolo.DataCadastro.Value);
-            return associado.Status is StatusAssociacaoProtocoloMvp.Associado or StatusAssociacaoProtocoloMvp.Idempotente
+            var status = await preparar.ExecutarAsync(correlacao, cancellationToken);
+            return status is StatusAssociacaoProtocoloMvp.Associado or StatusAssociacaoProtocoloMvp.Idempotente
                 ? ResultadoProcessamentoExterno.Sucesso
                 : new(ClassificacaoFalhaIntegracao.ResultadoIndeterminado);
         }

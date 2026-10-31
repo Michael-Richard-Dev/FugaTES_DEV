@@ -1,0 +1,10 @@
+<Project>
+  <!-- Opt-in test-only closure: never used by normal builds or runtime publishing. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'R165U.Automatic.Tests'">
+    <ProjectReference Remove="@(ProjectReference)" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\src\FugaTES.Integracao.Guardian\FugaTES.Integracao.Guardian.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\src\FugaTES.Infraestrutura\FugaTES.Infraestrutura.csproj" />
+    <Compile Remove="@(Compile)" />
+    <Compile Include="$(MSBuildThisFileDirectory)AutomaticFixture.cs;$(MSBuildThisFileDirectory)AutomaticFlowTests.cs;$(MSBuildThisFileDirectory)GuardianRestEndpointTests.cs;$(MSBuildThisFileDirectory)SoapAbsenceClassifierTests.cs;$(MSBuildThisFileDirectory)ApprovedPartnerMappingTests.cs;$(MSBuildThisFileDirectory)PilotRestR57Tests.cs" />
+  </ItemGroup>
+</Project>

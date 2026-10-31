@@ -30,7 +30,16 @@ public sealed record SapContractInboundItemHttpDto(
     [property: JsonPropertyName("Centro")] string? Centro,
     [property: JsonPropertyName("OperacaoContrato")] string? OperacaoContrato,
     [property: JsonPropertyName("CentroOpcional")]
-    IReadOnlyCollection<SapContractInboundCentroOpcionalHttpDto>? CentroOpcional);
+    IReadOnlyCollection<SapContractInboundCentroOpcionalHttpDto>? CentroOpcional)
+{
+    [JsonPropertyName("Item")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Item { get; init; }
+
+    [JsonPropertyName("UnidCont")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UnidCont { get; init; }
+}
 
 public sealed record SapContractInboundCentroOpcionalHttpDto(
     [property: JsonPropertyName("Centro")] string? Centro);

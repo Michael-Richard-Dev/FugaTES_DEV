@@ -1,0 +1,15 @@
+{
+  "package_hashes": "PASS",
+  "crc": "PASS",
+  "focal_sources_byte_exact": "PASS",
+  "source_policy_and_usecase_identical": true,
+  "comparison_paths": 18,
+  "R139_only_files": 3,
+  "R150C_only_helpers": 2,
+  "six_R150C_files_equal_prepatch_R139": true,
+  "secret_scan": "PASS_FOCAL",
+  "database_connections": 0,
+  "tests_reexecuted": 0,
+  "build_executed": 0,
+  "source_changes": 0
+}

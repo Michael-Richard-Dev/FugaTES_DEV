@@ -1,0 +1,24 @@
+{
+  "Environment": "HML",
+  "HostVm": "192.168.17.40",
+  "ServiceAccount": "fugates-carrier",
+  "IntegrationWorkerEnabled": false,
+  "ReadinessSeconds": 15,
+  "Database": {
+    "Host": "127.0.0.1",
+    "Port": 5432,
+    "Database": "fugates_dev",
+    "Username": "fugates_dev_app",
+    "Schema": "fugates"
+  },
+  "Guardian": {
+    "Environment": "HML",
+    "BaseUrl": "",
+    "ApprovalReference": ""
+  },
+  "Sap": {
+    "Environment": "HML",
+    "BaseUrl": "",
+    "ApprovalReference": ""
+  }
+}

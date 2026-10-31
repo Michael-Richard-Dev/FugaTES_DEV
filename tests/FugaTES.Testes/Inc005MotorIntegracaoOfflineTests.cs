@@ -377,7 +377,21 @@ public sealed class Inc005MotorIntegracaoOfflineTests
         var arquivos = Directory.EnumerateFiles(Path.Combine(raiz, "src"), "*.cs", SearchOption.AllDirectories)
             .Where(arquivo => arquivo.Contains("MotorIntegracao", StringComparison.OrdinalIgnoreCase)
                 || arquivo.Contains("HostIntegracao", StringComparison.OrdinalIgnoreCase))
-            .Where(arquivo => !arquivo.Contains(Path.Combine("FugaTES.Persistencia", "MotorIntegracao"), StringComparison.OrdinalIgnoreCase));
+            .Where(arquivo => !arquivo.Contains(Path.Combine("FugaTES.Persistencia", "MotorIntegracao"), StringComparison.OrdinalIgnoreCase))
+            .Where(arquivo => !FontesCarrierR3Autorizadas.Contains(Path.GetRelativePath(raiz, arquivo)));
+        // These operational entrypoints predate this reconciliation. Pin the approved source,
+        // rather than allowing arbitrary future transport/credential code by filename.
+        var operacionais = new Dictionary<string, string>
+        {
+            ["Program.cs"] = "3443070990249C77C02440A0C4B158142E7C8FF4BB7C433CBD5BF3B078818A81",
+            ["GuardianProtocolCommandService.cs"] = "634601F929822B34EECA720D8B7DEB444FE08DE39BD3DB43851416E7080787B2",
+            ["CarrierSystemdCredentials.cs"] = "1E2D7CB1FEEEAA3F15420E68132F7A098C6F793129CC7A27624EFAC5529BD7F9",
+            ["CarrierLinuxRuntimeBootstrap.cs"] = "F52E404D326073DBACF4D13EA1B7FD1C1E35D6C861DAA61B77F9190EEBA1C794",
+            ["AcmR104OneShotEntrypoint.cs"] = "612425BD3DB1BCE6F924FD7DC70AC6B12E963535C1AE99080F5DF20455EDA1A7",
+            ["AcmProviderReadOnlyEntrypoint.cs"] = "8417019F29D1BC9F55CBC329281C5AF19352496F04B10F3F68C6BAEF2C88D56E"
+        }.ToDictionary(pair => Path.Combine(raiz,"src","FugaTES.HostIntegracao",pair.Key), pair => pair.Value);
+        foreach (var (arquivo, hash) in operacionais)
+            Assert.Equal(hash, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(arquivo))));
         var proibidos = new[]
         {
             "HttpClient",
@@ -398,12 +412,42 @@ public sealed class Inc005MotorIntegracaoOfflineTests
 
         foreach (var arquivo in arquivos)
         {
+            if (operacionais.ContainsKey(arquivo)) continue;
             var conteudo = File.ReadAllText(arquivo);
             foreach (var proibido in proibidos)
             {
                 Assert.DoesNotContain(proibido, conteudo, StringComparison.OrdinalIgnoreCase);
             }
         }
+        var empty = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+        Assert.Equal("R165R_CREDENTIAL_SECURITY_APPROVAL_REQUIRED", FugaTES.HostIntegracao.AcmProviderReadOnlyEntrypoint.ConfigurationBlock(empty));
+        Assert.NotNull(FugaTES.HostIntegracao.AcmR104OneShotEntrypoint.ConfigurationBlock(empty, new()));
+        ArchitectureBoundaries.NoHttpTransport(typeof(FugaTES.HostIntegracao.HospedagemIntegracaoWorker));
+    }
+
+    // Apenas os oito arquivos novos do worker exclusivo R3. Host/Motor legados continuam protegidos.
+    private static readonly HashSet<string> FontesCarrierR3Autorizadas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierManualRequestHandler.cs"),
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierPollLoop.cs"),
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierProtocolBinding.cs"),
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierServiceRuntimeBootstrap.cs"),
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierServiceSecretProviders.cs"),
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierSyncComposition.cs"),
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierSyncManualCommandServer.cs"),
+        Path.Combine("src", "FugaTES.HostIntegracao", "CarrierSyncWorker.cs")
+    };
+
+    [Fact]
+    public void SegurancaInc005_ExcecaoCarrierNaoExcluiHostLegadoOuArquivoNovoArbitrario()
+    {
+        var raiz = LocalizarRaizRepositorio();
+        Assert.Equal(8, FontesCarrierR3Autorizadas.Count);
+        foreach (var arquivo in FontesCarrierR3Autorizadas) Assert.True(File.Exists(Path.Combine(raiz, arquivo)));
+        Assert.DoesNotContain(Path.Combine("src", "FugaTES.HostIntegracao", "HostIntegracaoComposition.cs"), FontesCarrierR3Autorizadas);
+        Assert.DoesNotContain(Path.Combine("src", "FugaTES.HostIntegracao", "HospedagemIntegracaoWorker.cs"), FontesCarrierR3Autorizadas);
+        Assert.DoesNotContain(Path.Combine("src", "FugaTES.HostIntegracao", "CarrierNovoNaoRevisado.cs"), FontesCarrierR3Autorizadas);
+        Assert.DoesNotContain(Path.Combine("src", "FugaTES.Aplicacao", "MotorIntegracao", "CarrierProtocolBinding.cs"), FontesCarrierR3Autorizadas);
     }
 
     private static MotorIntegracaoServico Motor(RepositorioMotorIntegracaoFake repo, ProcessadorExternoIntegracaoFake processador)

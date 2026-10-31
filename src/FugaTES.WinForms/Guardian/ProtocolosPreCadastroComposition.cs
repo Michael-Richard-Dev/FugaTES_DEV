@@ -12,7 +12,7 @@ internal static class ProtocolosPreCadastroComposition
     {
         NpgsqlDataSource? source = null;
         IProtocolosPreCadastroReadRepository repository = new Desconectado();
-        if (Runtime.DesktopRuntime.Current is { } runtime)
+        if (Runtime.UnifiedProfileGuard.RuntimeLegadoPermitido() is { } runtime)
         {
             source = runtime.CreateReadSource();
             repository = new ProtocolosPreCadastroPostgreSqlReadRepository(new MonitorPostgreSqlReadRepository(source));

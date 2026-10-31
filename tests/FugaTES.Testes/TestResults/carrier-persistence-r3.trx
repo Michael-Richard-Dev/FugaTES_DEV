@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="f46c665b-eb4f-4819-b872-4f6b4dfff117" name="TI@NT-TI-256 2026-10-07 20:17:05" runUser="NT-TI-256\TI" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-07T20:17:05.5291363-03:00" queuing="2026-10-07T20:17:05.5291368-03:00" start="2026-10-07T20:16:50.8960667-03:00" finish="2026-10-07T20:17:07.4005622-03:00" />
+  <TestSettings name="default" id="267fd0e2-5e49-4f3b-b17c-cd4e6d97436a">
+    <Deployment runDeploymentRoot="TI_NT-TI-256_2026-10-07_20_17_05" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="24f0a66a-3c4f-4033-9184-4efc4d82cb5c" testId="562bf6ea-6ff1-a3a9-37ea-6bd049ae4771" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Reject_sensitive_or_unstructured_log_code(code: &quot;http://unsafe&quot;)" computerName="NT-TI-256" duration="00:00:00.0068418" startTime="2026-10-07T20:17:04.6604415-03:00" endTime="2026-10-07T20:17:04.6613316-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="24f0a66a-3c4f-4033-9184-4efc4d82cb5c" />
+    <UnitTestResult executionId="d8172f45-33d3-465e-a1ca-fec8d216a5ca" testId="c23a0ce5-f67d-cbb6-c521-e0a48a9281cd" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Expired_or_future_heartbeat_is_not_active" computerName="NT-TI-256" duration="00:00:00.0036050" startTime="2026-10-07T20:17:04.6691022-03:00" endTime="2026-10-07T20:17:04.6704196-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d8172f45-33d3-465e-a1ca-fec8d216a5ca" />
+    <UnitTestResult executionId="2556289e-2ea9-4792-8fd9-9c48f5fe2bab" testId="74a88a28-22d4-4c83-e00c-d92375066248" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Known_step_and_technical_code_are_accepted" computerName="NT-TI-256" duration="00:00:00.0003019" startTime="2026-10-07T20:17:05.5140570-03:00" endTime="2026-10-07T20:17:05.5141821-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2556289e-2ea9-4792-8fd9-9c48f5fe2bab" />
+    <UnitTestResult executionId="888a5801-6bb0-4cdb-b5b0-8095500764f8" testId="0817ae8f-a883-b81b-99d8-e11b24f9513e" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Database_failure_never_grants_lease" computerName="NT-TI-256" duration="00:00:01.5659691" startTime="2026-10-07T20:17:05.5146174-03:00" endTime="2026-10-07T20:17:07.0930128-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="888a5801-6bb0-4cdb-b5b0-8095500764f8" />
+    <UnitTestResult executionId="9d315443-2a06-4f7b-bc50-68ca785ab18e" testId="90325300-5199-246f-1291-12a757983452" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Sql_reservation_blocks_pending_and_indeterminate_attempt" computerName="NT-TI-256" duration="00:00:00.0201806" startTime="2026-10-07T20:17:07.1032026-03:00" endTime="2026-10-07T20:17:07.1210448-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9d315443-2a06-4f7b-bc50-68ca785ab18e" />
+    <UnitTestResult executionId="3e672c99-b5db-4ad1-a7d0-573e135daefc" testId="9307d62f-008d-b31a-d2d8-57271cfd6982" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Unknown_step_is_rejected" computerName="NT-TI-256" duration="00:00:00.0010135" startTime="2026-10-07T20:17:04.6712118-03:00" endTime="2026-10-07T20:17:04.6714252-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3e672c99-b5db-4ad1-a7d0-573e135daefc" />
+    <UnitTestResult executionId="2d8469d8-f2bd-4b12-aa7e-f0cfcb635bac" testId="404fe363-2a59-a09f-f4af-bb758f148325" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Reject_sensitive_or_unstructured_log_code(code: &quot;token=secret&quot;)" computerName="NT-TI-256" duration="00:00:00.0002124" startTime="2026-10-07T20:17:04.6662946-03:00" endTime="2026-10-07T20:17:04.6664562-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2d8469d8-f2bd-4b12-aa7e-f0cfcb635bac" />
+    <UnitTestResult executionId="a9c74457-c6b2-41c7-94b8-bc5adeb6cc85" testId="046b626d-35a3-1987-c290-a55cf4db2e16" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Durable_visited_pages_preserve_restart_loop_detection" computerName="NT-TI-256" duration="00:00:01.0728270" startTime="2026-10-07T20:17:03.9379496-03:00" endTime="2026-10-07T20:17:04.6065971-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a9c74457-c6b2-41c7-94b8-bc5adeb6cc85" />
+    <UnitTestResult executionId="f5367e59-4ea6-4897-a140-d67dee8ed108" testId="3161d5cd-9730-2a37-7b06-5b88ea1ed2e3" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Filters_are_bounded" computerName="NT-TI-256" duration="00:00:00.0089315" startTime="2026-10-07T20:17:04.6669654-03:00" endTime="2026-10-07T20:17:04.6671251-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f5367e59-4ea6-4897-a140-d67dee8ed108" />
+    <UnitTestResult executionId="a0cea651-f610-4b73-bd1e-af9f9a2a4c29" testId="2c7e7b0b-a2a5-7b9c-cd99-774deb43cad8" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Dedicated_connection_preserves_fake_authentication_configuration" computerName="NT-TI-256" duration="00:00:00.0032497" startTime="2026-10-07T20:17:07.0973154-03:00" endTime="2026-10-07T20:17:07.1026982-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a0cea651-f610-4b73-bd1e-af9f9a2a4c29" />
+    <UnitTestResult executionId="94d7316b-2189-4573-a419-992033c6cda4" testId="ba1fe81d-c45c-553a-15f1-224787d80b99" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Explicit_unpooled_lock_connection" computerName="NT-TI-256" duration="00:00:00.8789896" startTime="2026-10-07T20:17:04.6720726-03:00" endTime="2026-10-07T20:17:05.5134312-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="94d7316b-2189-4573-a419-992033c6cda4" />
+    <UnitTestResult executionId="5ebe847a-132b-421a-a946-bc0429143beb" testId="c0e5160e-a065-ea43-770f-3c290408408e" testName="FugaTES.Testes.CarrierSyncPersistenceTests.Reject_sensitive_or_unstructured_log_code(code: &quot;raw payload&quot;)" computerName="NT-TI-256" duration="00:00:00.0031491" startTime="2026-10-07T20:17:04.6657105-03:00" endTime="2026-10-07T20:17:04.6659077-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5ebe847a-132b-421a-a946-bc0429143beb" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Durable_visited_pages_preserve_restart_loop_detection" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="046b626d-35a3-1987-c290-a55cf4db2e16">
+      <Execution id="a9c74457-c6b2-41c7-94b8-bc5adeb6cc85" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Durable_visited_pages_preserve_restart_loop_detection" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Filters_are_bounded" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="3161d5cd-9730-2a37-7b06-5b88ea1ed2e3">
+      <Execution id="f5367e59-4ea6-4897-a140-d67dee8ed108" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Filters_are_bounded" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Known_step_and_technical_code_are_accepted" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="74a88a28-22d4-4c83-e00c-d92375066248">
+      <Execution id="2556289e-2ea9-4792-8fd9-9c48f5fe2bab" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Known_step_and_technical_code_are_accepted" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Reject_sensitive_or_unstructured_log_code(code: &quot;raw payload&quot;)" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="c0e5160e-a065-ea43-770f-3c290408408e">
+      <Execution id="5ebe847a-132b-421a-a946-bc0429143beb" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Reject_sensitive_or_unstructured_log_code" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Explicit_unpooled_lock_connection" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="ba1fe81d-c45c-553a-15f1-224787d80b99">
+      <Execution id="94d7316b-2189-4573-a419-992033c6cda4" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Explicit_unpooled_lock_connection" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Expired_or_future_heartbeat_is_not_active" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="c23a0ce5-f67d-cbb6-c521-e0a48a9281cd">
+      <Execution id="d8172f45-33d3-465e-a1ca-fec8d216a5ca" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Expired_or_future_heartbeat_is_not_active" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Reject_sensitive_or_unstructured_log_code(code: &quot;token=secret&quot;)" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="404fe363-2a59-a09f-f4af-bb758f148325">
+      <Execution id="2d8469d8-f2bd-4b12-aa7e-f0cfcb635bac" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Reject_sensitive_or_unstructured_log_code" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Sql_reservation_blocks_pending_and_indeterminate_attempt" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="90325300-5199-246f-1291-12a757983452">
+      <Execution id="9d315443-2a06-4f7b-bc50-68ca785ab18e" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Sql_reservation_blocks_pending_and_indeterminate_attempt" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Database_failure_never_grants_lease" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="0817ae8f-a883-b81b-99d8-e11b24f9513e">
+      <Execution id="888a5801-6bb0-4cdb-b5b0-8095500764f8" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Database_failure_never_grants_lease" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Unknown_step_is_rejected" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="9307d62f-008d-b31a-d2d8-57271cfd6982">
+      <Execution id="3e672c99-b5db-4ad1-a7d0-573e135daefc" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Unknown_step_is_rejected" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Reject_sensitive_or_unstructured_log_code(code: &quot;http://unsafe&quot;)" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="562bf6ea-6ff1-a3a9-37ea-6bd049ae4771">
+      <Execution id="24f0a66a-3c4f-4033-9184-4efc4d82cb5c" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Reject_sensitive_or_unstructured_log_code" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierSyncPersistenceTests.Dedicated_connection_preserves_fake_authentication_configuration" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-persistence\bin\fugates.testes\debug\fugates.testes.dll" id="2c7e7b0b-a2a5-7b9c-cd99-774deb43cad8">
+      <Execution id="a0cea651-f610-4b73-bd1e-af9f9a2a4c29" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-persistence\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierSyncPersistenceTests" name="Dedicated_connection_preserves_fake_authentication_configuration" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="562bf6ea-6ff1-a3a9-37ea-6bd049ae4771" executionId="24f0a66a-3c4f-4033-9184-4efc4d82cb5c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c23a0ce5-f67d-cbb6-c521-e0a48a9281cd" executionId="d8172f45-33d3-465e-a1ca-fec8d216a5ca" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="74a88a28-22d4-4c83-e00c-d92375066248" executionId="2556289e-2ea9-4792-8fd9-9c48f5fe2bab" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0817ae8f-a883-b81b-99d8-e11b24f9513e" executionId="888a5801-6bb0-4cdb-b5b0-8095500764f8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="90325300-5199-246f-1291-12a757983452" executionId="9d315443-2a06-4f7b-bc50-68ca785ab18e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9307d62f-008d-b31a-d2d8-57271cfd6982" executionId="3e672c99-b5db-4ad1-a7d0-573e135daefc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="404fe363-2a59-a09f-f4af-bb758f148325" executionId="2d8469d8-f2bd-4b12-aa7e-f0cfcb635bac" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="046b626d-35a3-1987-c290-a55cf4db2e16" executionId="a9c74457-c6b2-41c7-94b8-bc5adeb6cc85" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3161d5cd-9730-2a37-7b06-5b88ea1ed2e3" executionId="f5367e59-4ea6-4897-a140-d67dee8ed108" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2c7e7b0b-a2a5-7b9c-cd99-774deb43cad8" executionId="a0cea651-f610-4b73-bd1e-af9f9a2a4c29" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ba1fe81d-c45c-553a-15f1-224787d80b99" executionId="94d7316b-2189-4573-a419-992033c6cda4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c0e5160e-a065-ea43-770f-3c290408408e" executionId="5ebe847a-132b-421a-a946-bc0429143beb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados que não estão em uma lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos os resultados carregados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="12" executed="12" passed="12" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.11)&#xD;
+[xUnit.net 00:00:06.67]   Discovering: FugaTES.Testes&#xD;
+[xUnit.net 00:00:09.36]   Discovered:  FugaTES.Testes&#xD;
+[xUnit.net 00:00:09.70]   Starting:    FugaTES.Testes&#xD;
+[xUnit.net 00:00:14.09]   Finished:    FugaTES.Testes&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

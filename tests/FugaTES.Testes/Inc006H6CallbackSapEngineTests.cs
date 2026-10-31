@@ -174,25 +174,25 @@ public sealed class Inc006H6CallbackSapEngineTests
     public async Task Host_guardian_roteia_operacao_sap_sem_abrir_datasource()
     {
         var builder = Host.CreateApplicationBuilder([]);
+        builder.Configuration.Sources.Clear();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["HostIntegracao:PollInterval"] = "00:00:01",
             ["HostIntegracao:ShutdownGracePeriod"] = "00:00:05",
             ["HostIntegracao:ExternalMode"] = "Guardian",
             ["HostIntegracao:PersistenceMode"] = "PostgreSql",
-            ["ConnectionStrings:FugaTES"] = "Host=example.invalid;Database=fugates;Username=fugates",
+            ["ConnectionStrings:FugaTES"] = "Host=127.0.0.1;Port=5433;Database=fugates_dev;Username=fugates_acm_hml_app;Search Path=fugates;Passfile=/synthetic/not-used/pgpass",
+            ["AcmR57:Enabled"] = "true",
             ["MotorIntegracao:LeaseDuration"] = "00:01:00",
             ["MotorIntegracao:LeaseRenewInterval"] = "00:00:20",
             ["MotorIntegracao:RetryBackoff"] = "00:05:00",
             ["TimeoutProcessamentoIntegracao:Timeout"] = "00:00:45",
             ["Guardian:BaseUrl"] = "https://guardian.invalid",
             ["Guardian:Timeout"] = "00:00:10",
-            ["Guardian:PreCadastroEndpoint"] = "/api/set26/pre-cadastro",
-            ["Guardian:TokenUserField"] = "login",
-            ["Guardian:TokenPasswordField"] = "secret",
-            ["Guardian:TokenResponseField"] = "access_token",
-            ["Guardian:Username"] = "test-user",
-            ["Guardian:Password"] = "test-credential"
+            ["Guardian:PreCadastroEndpoint"] = "/api/v1/Guardian/ProtocoloPreCadastro",
+            ["Guardian:Email"] = "test-user",
+            ["Guardian:Password"] = "test-credential",
+            ["Guardian:Signature"] = "test-signature"
         });
         HostIntegracaoComposition.ConfigurarServicos(builder.Services, builder.Configuration);
         var correlations = new RepositorioCorrelacaoRecebimentoMemoria();
@@ -201,7 +201,9 @@ public sealed class Inc006H6CallbackSapEngineTests
         await correlations.AssociarProtocoloAsync("DOC-H6", "PROTO-H6", CancellationToken.None, DateTimeOffset.UnixEpoch);
         await correlations.RegistrarCallbackAsync(Callback(), CancellationToken.None);
         var sap = new PesagemSapMvpGatewayFake();
+        var ticketEvidence = new UnexpectedAcmTicketEvidenceStore();
         builder.Services.AddScoped<IRepositorioCorrelacaoRecebimento>(_ => correlations);
+        builder.Services.AddSingleton<IAcmSapTicketEvidenceStore>(ticketEvidence);
         builder.Services.AddScoped<IPesagemSapMvpGateway>(_ => sap);
         using var host = builder.Build();
         using var scope = host.Services.CreateScope();
@@ -215,6 +217,7 @@ public sealed class Inc006H6CallbackSapEngineTests
             .ProcessarAsync(claim, CancellationToken.None);
         Assert.Null(result.Falha);
         Assert.Single(sap.Recebidas);
+        Assert.Equal(0, ticketEvidence.Calls);
     }
 
     private static async Task<(ServiceProvider, RepositorioCorrelacaoRecebimentoMemoria,
@@ -258,6 +261,17 @@ public sealed class Inc006H6CallbackSapEngineTests
             Calls++;
             throw new FalhaPesagemSapMvpException("Synthetic uncertain POST",
                 ClassificacaoFalhaIntegracao.ResultadoIndeterminado);
+        }
+    }
+
+    private sealed class UnexpectedAcmTicketEvidenceStore : IAcmSapTicketEvidenceStore
+    {
+        public int Calls { get; private set; }
+
+        public Task PreservarAsync(CorrelacaoRecebimentoMvp correlacao, PesagemSapMvp pesagem, CancellationToken ct)
+        {
+            Calls++;
+            throw new InvalidOperationException("The non-ACM H6 fixture must not persist ACM SAP ticket evidence.");
         }
     }
 

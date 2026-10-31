@@ -16,7 +16,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task CsrfGetUsaHeaderFetch()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture());
         Assert.Equal("Fetch", handler.Requests[0].Header("X-CSRF-Token"));
     }
 
@@ -24,7 +24,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task TokenRetornadoEhUsadoNoPost()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture());
         Assert.Equal("csrf-001", handler.Requests[1].Header("X-CSRF-Token"));
     }
 
@@ -32,7 +32,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task CookieDoGetEhUsadoNoPost()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture());
         Assert.Contains("SAP_SESSION=abc123", handler.Requests[1].Header("Cookie"), StringComparison.Ordinal);
     }
 
@@ -40,7 +40,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task PostEhExecutadoNoMaximoUmaVez()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture());
         Assert.Single(handler.Requests, request => request.Method == HttpMethod.Post);
     }
 
@@ -56,7 +56,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task TipoOperacaoEhPreservadoNoWire()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(tipoOperacao: 50), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture(tipoOperacao: 50));
         Assert.Equal(50, PostJson(handler)["TipoOperacao"]!.GetValue<int>());
     }
 
@@ -64,7 +64,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task PedidoComprasNuloPermaneceOpcional()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(pedidoCompras: null), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture(pedidoCompras: null));
         Assert.Null(PostJson(handler)["to_Pesagem"]![0]!["PedidoCompras"]);
     }
 
@@ -72,7 +72,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task ContratoAcmUsaSomenteValorExplicitoDoMvp()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(contratoAcm: "ACM-WIRE"), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture(contratoAcm: "ACM-WIRE"));
         Assert.Equal("ACM-WIRE", PostJson(handler)["to_Pesagem"]![0]!["ContratoACM"]!.GetValue<string>());
     }
 
@@ -80,25 +80,34 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task OperacaoContratoNaoParticipaDoTipoOperacao()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(tipoOperacao: 10), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture(tipoOperacao: 10));
         Assert.Equal(10, PostJson(handler)["TipoOperacao"]!.GetValue<int>());
     }
 
     [Fact]
-    public async Task NrProtocoloSemValorExplicitoPermaneceNulo()
+    public async Task NrProtocoloAusenteBloqueiaAntesDoHttp()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
-        Assert.Null(PostJson(handler)["to_Pesagem"]![0]!["NrProtocolo"]);
+        var failure = await Assert.ThrowsAsync<FalhaPesagemSapMvpException>(() =>
+            Gateway(handler).EnviarAsync(Fixture() with { NumeroProtocolo = null }, CancellationToken.None));
+        Assert.Equal("R161B_TICKET_IDENTITY_OR_WEIGHTS_UNVERIFIED", failure.Message);
+        Assert.Equal(ClassificacaoFalhaIntegracao.FalhaDefinitiva, failure.Classificacao);
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
-    public async Task NrProtocoloUsaIdentificadorGuardianPersistido()
+    public async Task NrProtocoloEhOmitidoNoWireAcmSemPerderCorrelacaoGuardian()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture() with { NumeroProtocolo = "12345", ProtocoloCriadoEm = new DateTimeOffset(2026, 9, 24, 11, 38, 28, TimeSpan.FromHours(-3)) }, CancellationToken.None);
-        var item = PostJson(handler)["to_Pesagem"]![0]!;
-        Assert.Equal("12345", item["NrProtocolo"]!.GetValue<string>());
+        var pesagem = Fixture(numeroProtocolo: "12345") with { ProtocoloCriadoEm = new DateTimeOffset(2026, 9, 24, 11, 38, 28, TimeSpan.FromHours(-3)) };
+        await EnviarSerializadoAsync(handler, pesagem);
+        // R164B, spreadsheet row 55: omit ACM wire field, retain the Guardian link internally.
+        var item = PostJson(handler)["to_Pesagem"]![0]!.AsObject();
+        Assert.False(item.ContainsKey("NrProtocolo"));
+        Assert.Equal("12345", pesagem.NumeroProtocolo);
+        var evidencia = Assert.IsType<AcmSapTicketEvidence>(pesagem.EvidenciaTicket);
+        Assert.Equal(pesagem.NumeroProtocolo, evidencia.ProtocoloGuardian);
+        Assert.Equal(pesagem.ContratoACM, evidencia.ContratoACM);
         Assert.Null(item["DtProtocolo"]);
         Assert.Null(item["HrProtocolo"]);
     }
@@ -113,7 +122,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task SeisFixturesSerializam(string id, short tipoOperacao, string tipoDocumento)
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(id, tipoOperacao, tipoDocumento, null, $"ACM-{id}"), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture(id, tipoOperacao, tipoDocumento, null, $"ACM-{id}"));
         var json = PostJson(handler);
         Assert.Equal(tipoOperacao, json["TipoOperacao"]!.GetValue<int>());
         Assert.Equal(tipoDocumento, json["to_Pesagem"]![0]!["TipoDocumento"]!.GetValue<string>());
@@ -124,7 +133,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task JsonWireUsaNomesExatos()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture());
         var json = PostJson(handler);
         Assert.NotNull(json["SistemaBalanca"]);
         Assert.NotNull(json["to_QualidPes"]);
@@ -163,7 +172,7 @@ public sealed class Inc006G2SapPesagemOutboundTests
     public async Task PostHttpSuccessEhCapturado()
     {
         var handler = SuccessHandler();
-        await Gateway(handler).EnviarAsync(Fixture(), CancellationToken.None);
+        await EnviarSerializadoAsync(handler, Fixture());
         Assert.Equal(HttpStatusCode.Created, handler.Responses.Last().StatusCode);
     }
 
@@ -212,6 +221,22 @@ public sealed class Inc006G2SapPesagemOutboundTests
     private static PesagemSapHttpGateway Gateway(RecordingHandler handler) =>
         new(new HttpClient(handler), new OpcoesSap { BaseUrl = new("https://sap.invalid/"), SapClient = "110", Timeout = TimeSpan.FromSeconds(5) }, new NoAuth(), new CookieContainer());
 
+    private static async Task EnviarSerializadoAsync(RecordingHandler handler, PesagemSapMvp pesagem)
+    {
+        if (pesagem.Centro == "3011" && pesagem.TipoDocumento == "AC3P")
+        {
+            // R164B does not equate transport success with SAP business confirmation.
+            var failure = await Assert.ThrowsAsync<FalhaPesagemSapMvpException>(() =>
+                Gateway(handler).EnviarAsync(pesagem, CancellationToken.None));
+            Assert.Equal("R164B_SAP_BUSINESS_CONFIRMATION_NOT_PROVEN", failure.Message);
+            Assert.Equal(ClassificacaoFalhaIntegracao.ResultadoIndeterminado, failure.Classificacao);
+        }
+        else
+            await Gateway(handler).EnviarAsync(pesagem, CancellationToken.None);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Single(handler.Requests, request => request.Method == HttpMethod.Post);
+    }
+
     private static RecordingHandler SuccessHandler() => HandlerWithPost(new(HttpStatusCode.Created));
 
     private static RecordingHandler HandlerWithPost(HttpResponseMessage post) =>
@@ -236,8 +261,29 @@ public sealed class Inc006G2SapPesagemOutboundTests
         short tipoOperacao = 1,
         string tipoDocumento = "AC3P",
         string? pedidoCompras = null,
-        string contratoAcm = "ACM-001") =>
-        new("Toledo", "3011", "E", id, 123, "TRANSP-1", "MAT-1", "PARCEIRO-1", 1200m, 200m, 1000m, tipoDocumento, pedidoCompras, "DOC-1", tipoOperacao, contratoAcm);
+        string contratoAcm = "ACM-001",
+        string numeroProtocolo = "9471")
+    {
+        var pesagem = new PesagemSapMvp("Toledo", "3011", "E", id, 123, "TRANSP-1", "7000000", "PARCEIRO-1",
+            1200m, 200m, 1000m, tipoDocumento, pedidoCompras, "DOC-1", tipoOperacao, contratoAcm);
+        if (tipoDocumento != "AC3P") return pesagem;
+
+        // R164E synthetic evidence shape; no provider attestation or operational authorization.
+        var callback = new CallbackGuardianMvp(numeroProtocolo, id, 1200m, 200m, 1000m, "5");
+        var pessoaFisica = id == "COMPRA_PF";
+        return pesagem with
+        {
+            NumeroProtocolo = numeroProtocolo,
+            EvidenciaTicket = new AcmSapTicketEvidence("SYNTHETIC-G2-TICKET", numeroProtocolo, id,
+                CallbackGuardianMvpFingerprint.Calcular(callback),
+                contratoAcm, pesagem.Centro, pesagem.Material, pesagem.IdParceiro,
+                pessoaFisica ? "PF" : "PJ", pessoaFisica ? "PROP-1" : null, pesagem.TipoPesagem,
+                new DateTimeOffset(2026, 10, 21, 16, 30, 0, TimeSpan.FromHours(-3)),
+                [new("SYNTHETIC_QUALITY", null, 1.2m)], ChaveAcessoNFe: new string('1', 44),
+                TipoOperacaoSap: tipoOperacao, TipoOperacaoSapProveniencia: "SYNTHETIC_OPERATION_RULE",
+                TipoOperacaoSapEvidenceReference: "SYNTHETIC-G2-OPERATION")
+        };
+    }
 
     private sealed class NoAuth : IAutenticacaoSap
     {

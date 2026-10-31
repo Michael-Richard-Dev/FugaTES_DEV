@@ -1,4 +1,4 @@
-﻿using FugaTES.Aplicacao.Modelos.SAP;
+using FugaTES.Aplicacao.Modelos.SAP;
 using FugaTES.Aplicacao.Resultados.SAP;
 using FugaTES.Integracao.SAP.Dtos.BusinessPartner;
 using FugaTES.Integracao.SAP.Http;
@@ -31,7 +31,7 @@ public abstract class ConsultaParceiroNegocioSapAdapterBase
     {
         try
         {
-            var resposta = await clienteHttp.ObterAsync(businessPartner, cancellationToken).ConfigureAwait(false);
+            var resposta = await clienteHttp.ObterAsync(businessPartner, cancellationToken, solicitarJson: categoria == CategoriaParceiroNegocio.Transportadora).ConfigureAwait(false);
             if (resposta.FalhaConfiguracao is not null)
             {
                 return ResultadoConsultaSap<ParceiroNegocioConsultado>.Falha(resposta.FalhaConfiguracao.Value);
@@ -71,6 +71,17 @@ public abstract class ConsultaParceiroNegocioSapAdapterBase
         if (string.IsNullOrWhiteSpace(conteudo))
         {
             return ResultadoConsultaSap<ParceiroNegocioConsultado>.Falha(StatusConsultaSap.FalhaContrato);
+        }
+
+        // Preserve the legacy model; SAP's real carrier response represents this flag as Boolean.
+        if (categoria == CategoriaParceiroNegocio.Transportadora &&
+            System.Text.Json.Nodes.JsonNode.Parse(conteudo) is System.Text.Json.Nodes.JsonObject root &&
+            root["d"] is System.Text.Json.Nodes.JsonObject partner &&
+            partner["BusinessPartnerIsBlocked"] is System.Text.Json.Nodes.JsonValue flag &&
+            flag.TryGetValue<bool>(out var blocked))
+        {
+            partner["BusinessPartnerIsBlocked"] = blocked ? "true" : "false";
+            conteudo = root.ToJsonString();
         }
 
         var dto = JsonSerializer.Deserialize<RespostaODataV2Dto>(conteudo, JsonOptions);

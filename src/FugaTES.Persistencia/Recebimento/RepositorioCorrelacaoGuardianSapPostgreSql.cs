@@ -7,7 +7,7 @@ using Npgsql;
 
 namespace FugaTES.Persistencia.Recebimento;
 
-public sealed class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource dataSource) : IRepositorioCorrelacaoRecebimento, IRegistroCallbackPesagemSapStore
+public sealed partial class RepositorioCorrelacaoGuardianSapPostgreSql(NpgsqlDataSource dataSource) : IRepositorioCorrelacaoRecebimento, IRegistroCallbackPesagemSapStore, IAcmSapTicketEvidenceStore
 {
     private const string InsertSnapshotSql = """
         insert into fugates.correlacao_guardian_sap

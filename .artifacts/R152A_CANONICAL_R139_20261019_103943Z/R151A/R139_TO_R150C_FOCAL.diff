@@ -1,0 +1,797 @@
+--- R139/src/FugaTES.Persistencia/Transportadoras/SingleCreateJournalPostgreSqlR31.cs
++++ R150C/src/FugaTES.Persistencia/Transportadoras/SingleCreateJournalPostgreSqlR31.cs
+@@ -1,7 +1,5 @@
+ using FugaTES.Aplicacao.Transportadoras.SingleCreateR31;
+ using Npgsql;
+-using System.Data;
+-using System.Data.Common;
+ namespace FugaTES.Persistencia.Transportadoras;
+ 
+ // Journal durable do CREATE unitario de transportadora (R31).
+@@ -9,7 +7,7 @@
+ // mesmo bp/codigo, e confirmar de forma durable um CREATE ja aceito pelo Guardian.
+ // Append/confirm apenas: nenhuma sentenca DELETE ou TRUNCATE, coerente com o modelo de
+ // privilegios do papel de aplicacao (SELECT/INSERT/UPDATE, sem DELETE/TRUNCATE).
+-public sealed class SingleCreateJournalPostgreSqlR31(DbDataSource source, TimeProvider? clock = null) : ISingleCreateJournalR31
++public sealed class SingleCreateJournalPostgreSqlR31(NpgsqlDataSource source, TimeProvider? clock = null) : ISingleCreateJournalR31
+ {
+     public const string Table = "fugates.carrier_single_create_journal";
+ 
+@@ -31,45 +29,53 @@
+ 
+     public const string ObserveSql = "select status from fugates.carrier_single_create_journal where attempt_id=@attempt";
+ 
++    // R150C (especificacao R135D §4.3): a reserva passa a ter TRANSACAO EXPLICITA e so devolve true
++    // depois que o COMMIT conclui. Assim o POST Guardian nunca ocorre antes da reserva estar
++    // duravelmente confirmada. SQL, politica de classificacao e estados permanecem os mesmos.
+     public async Task<bool> TryPrepareAsync(Guid attemptId, string bp, string code, string payloadHash, CancellationToken ct)
+     {
+         SingleCreateJournalPolicyR31.ValidateEntry(attemptId, bp, code, payloadHash);
+         var at = (clock ?? TimeProvider.System).GetUtcNow().ToUniversalTime();
++        await using var connection = await source.OpenConnectionAsync(ct).ConfigureAwait(false);
++        await using var transaction = await connection
++            .BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct).ConfigureAwait(false);
++        int affected;
+         try
+         {
+-            // A dedicated non-enlisted Npgsql source is supplied by the R139 desktop binding.
+-            // DbDataSource is the standard ADO.NET seam for offline failure/ordering tests.
+-            await using var connection = await source.OpenConnectionAsync(ct).ConfigureAwait(false);
+-            await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct).ConfigureAwait(false);
+-            await using var command = connection.CreateCommand();
+-            command.Transaction = transaction;
+-            command.CommandText = PrepareSql;
+-            Add(command,"attempt", attemptId);
+-            Add(command,"bp", bp);
+-            Add(command,"code", code);
+-            Add(command,"hash", payloadHash);
+-            Add(command,"at", at);
+-            var affected = await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+-            var outcome = SingleCreateJournalPolicyR31.ClassifyInsert(affected);
+-            if (outcome != SingleCreatePrepareOutcomeR31.Reserved)
+-            {
+-                await transaction.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+-                if (outcome == SingleCreatePrepareOutcomeR31.Rejected) return false;
+-                throw new InvalidOperationException("SINGLE_CREATE_PREPARE_ROWS_UNKNOWN");
+-            }
+-            // No successful return until this commit acknowledgement. A commit exception
+-            // propagates to CREATE_PREPARE_OUTCOME_UNKNOWN, never to a Guardian dispatch.
+-            await transaction.CommitAsync(ct).ConfigureAwait(false);
+-            return true;
++            await using var command = new NpgsqlCommand(PrepareSql, connection, transaction);
++            command.Parameters.AddWithValue("attempt", attemptId);
++            command.Parameters.AddWithValue("bp", bp);
++            command.Parameters.AddWithValue("code", code);
++            command.Parameters.AddWithValue("hash", payloadHash);
++            command.Parameters.AddWithValue("at", at);
++            affected = await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+         }
+         catch (PostgresException failure)
+             when (SingleCreateJournalPolicyR31.ClassifyFailure(failure.SqlState) == SingleCreatePrepareOutcomeR31.Rejected)
+         {
+             // Reserva perdida para outra tentativa. Nada foi enviado por esta: rejeicao definida,
+             // nunca indeterminado, para que o caso de uso bloqueie em vez de reenviar.
++            await RollbackSilenciosoAsync(transaction).ConfigureAwait(false);
+             return false;
+         }
+-        // Qualquer outra falha propaga e o caso de uso a trata como resultado indeterminado.
++        // Qualquer outra falha de execucao propaga: o caso de uso a trata como indeterminado.
++
++        if (SingleCreateJournalPolicyR31.ClassifyInsert(affected) != SingleCreatePrepareOutcomeR31.Reserved)
++        {
++            await RollbackSilenciosoAsync(transaction).ConfigureAwait(false);
++            return false;
++        }
++
++        // COMMIT antes do retorno. Excecao aqui NUNCA vira sucesso: propaga, e o caso de uso devolve
++        // CREATE_PREPARE_OUTCOME_UNKNOWN, sem despacho e sem retry cego.
++        await transaction.CommitAsync(ct).ConfigureAwait(false);
++        return true;
++    }
++
++    // O rollback de uma reserva nao obtida nao pode mascarar o resultado ja decidido.
++    private static async Task RollbackSilenciosoAsync(NpgsqlTransaction transaction)
++    {
++        try { await transaction.RollbackAsync(CancellationToken.None).ConfigureAwait(false); } catch { }
+     }
+ 
+     public async Task ConfirmAsync(Guid attemptId, CancellationToken ct)
+@@ -77,22 +83,15 @@
+         if (attemptId == Guid.Empty) throw new ArgumentException("SINGLE_CREATE_JOURNAL_ATTEMPT_INVALID");
+         var at = (clock ?? TimeProvider.System).GetUtcNow().ToUniversalTime();
+         await using var command = source.CreateCommand(ConfirmSql);
+-        Add(command,"attempt", attemptId);
+-        Add(command,"at", at);
++        command.Parameters.AddWithValue("attempt", attemptId);
++        command.Parameters.AddWithValue("at", at);
+         var affected = await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+         if (affected == 1) return;
+         // Zero linha pode ser reconfirmacao idempotente do mesmo attempt; so o estado observado decide.
+         await using var observe = source.CreateCommand(ObserveSql);
+-        Add(observe,"attempt", attemptId);
++        observe.Parameters.AddWithValue("attempt", attemptId);
+         var status = await observe.ExecuteScalarAsync(ct).ConfigureAwait(false) as string;
+         if (!SingleCreateJournalPolicyR31.ConfirmSatisfied(affected, status))
+             throw new InvalidOperationException("SINGLE_CREATE_JOURNAL_CONFIRM_NOT_PERSISTED");
+     }
+-    private static void Add(DbCommand command, string name, object value)
+-    {
+-        var parameter = command.CreateParameter();
+-        parameter.ParameterName = name;
+-        parameter.Value = value;
+-        command.Parameters.Add(parameter);
+-    }
+ }
+--- R139/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopBindingR41.cs
++++ R150C/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopBindingR41.cs
+@@ -81,8 +81,6 @@
+             return new(null, "CARRIER_DESKTOP_GUARDIAN_HML_NOT_PROVEN");
+         if (!prepared.Ready) return new(null, prepared.Code);
+         if (gatewayFactory is null) return new(null, "SINGLE_CREATE_GATEWAY_FACTORY_ABSENT");
+-        if(new NpgsqlConnectionStringBuilder(source.ConnectionString).Enlist)
+-            return new(null,"SINGLE_CREATE_DATASOURCE_ENLISTMENT_FORBIDDEN");
+         try
+         {
+             if (!await JournalReadyAsync(source, ct).ConfigureAwait(false))
+--- R139/src/FugaTES.WinForms/Runtime/DesktopRuntime.cs
++++ R150C/src/FugaTES.WinForms/Runtime/DesktopRuntime.cs
+@@ -23,13 +23,6 @@
+         var carrierConnection=options.ConnectionString;
+         ownedSource=NpgsqlDataSource.Create(carrierConnection);
+         return new(ownedSource,carrierConnection);
+-    }
+-
+-    // Session-owned pool: does not alter/readjust the general Carrier connection or credentials.
+-    public NpgsqlDataSource CreateSingleCreateSource(SingleCreateDatabaseProfileR139 profile)
+-    {
+-        if(connectionString is null)throw new DesktopStartupException("SINGLE_CREATE_DESKTOP_DATABASE_NOT_READY");
+-        return NpgsqlDataSource.Create(profile.Options(connectionString).ConnectionString);
+     }
+ 
+     public static void Initialize()
+--- R139/src/FugaTES.WinForms/Transportadoras/MasterdataR3/FrmCadastrosGuardianR3.cs
++++ R150C/src/FugaTES.WinForms/Transportadoras/MasterdataR3/FrmCadastrosGuardianR3.cs
+@@ -28,8 +28,6 @@
+     // R122: CREATE unitario. Nasce DESABILITADO e so e habilitado quando a prontidao nao tem bloqueio.
+     private readonly Button _create=new(){Text="CRIAR NO GUARDIAN (UNITARIO)",Width=245,Height=30,Enabled=false};
+     private bool _createRunning;
+-    private readonly SingleCreateUiStatusR139 _singleCreateStatus=new();
+-    private readonly Button _validateCreate=new(){Text="VALIDAR CREATE (SEM POST)",Width=230,Height=30,Enabled=false};
+     // R123C: dependencias de pre-dispatch. Permanecem NULAS ate a composicao autorizada.
+     private PreDispatchDependenciasR123C? _dispatchR123C;
+ 
+@@ -68,14 +66,6 @@
+         barra.Controls.Add(_readOnly);
+         _create.Click+=async(_,_)=>await AcionarSingleCreateAsync();
+         barra.Controls.Add(_create);
+-        _validateCreate.Click+=async(_,_)=>
+-        {
+-            if(_lifecycle?.SingleCreate is not {} single||_createRunning)return;
+-            _createRunning=true;AtualizarVisual();
+-            try{var code=await single.ValidateAsync(_bp.Text.Trim(),_viewCancellation.Token);if(!_fechando)_singleCreateStatus.Preflight(code);}
+-            finally{_createRunning=false;if(!_fechando)AtualizarVisual();}
+-        };
+-        barra.Controls.Add(_validateCreate);
+         _reconcile.Click+=async(_,_)=>
+         {
+             if(_lifecycle is null||_reconciliationRunning)return;
+@@ -219,7 +209,6 @@
+         _readOnly.Enabled=!_readOnlyRunning&&_lifecycle?.ManualReadOnlyAvailable(_bp.Text.Trim())==true;
+         var prontidao=_lifecycle?.ProntidaoSingleCreate(_bp.Text.Trim());
+         _create.Enabled=!_createRunning&&!_readOnlyRunning&&prontidao?.Pronto==true;
+-        _validateCreate.Enabled=!_createRunning&&!_readOnlyRunning&&_lifecycle?.SingleCreate?.CanValidate(_bp.Text.Trim())==true;
+         var estados = _orquestrador.Estados();
+         foreach (var e in estados)
+         {
+@@ -243,11 +232,10 @@
+         _resumo.Text = "Última execução: " + (ultima == default ? "NÃO EXECUTADA" : ultima.ToString("u")) +
+             "    | Próxima consulta: " + (_lifecycle?.Snapshot.NextQueryUtc?.ToString("u")??"INATIVA") +
+             "    | Intervalo: 30 s | Eventos UI locais; logs operacionais no PostgreSQL" + (_lifecycle?.Snapshot.Active==true?"":" | HML BLOQUEADO");
+-        _resumo.Text=_singleCreateStatus.Display(_resumo.Text);
+-    }
+-
+-    // R139: the composed controller runs R31 under the real shared lock. Without it,
+-    // the old R123C path remains diagnostics only; no direct-POST fallback exists.
++    }
++
++    // R122: acionamento manual de UM unico CREATE. O despacho real nao esta composto:
++    // enquanto a Gaia nao comprovar o journal fisico e a Hera nao autorizar o dispatch,
+     // este caminho apenas reexibe os bloqueios. Nenhum POST sai daqui.
+     private async Task AcionarSingleCreateAsync()
+     {
+@@ -255,12 +243,6 @@
+         _createRunning=true;_create.Enabled=false;
+         try
+         {
+-            if(_lifecycle.SingleCreate is {} single)
+-            {
+-                var result=await single.ExecuteAsync(_bp.Text.Trim(),_viewCancellation.Token);
+-                if(!_fechando)_singleCreateStatus.Record(result);
+-                return;
+-            }
+             var prontidao=_lifecycle.ProntidaoSingleCreate(_bp.Text.Trim());
+             // R123C: a decisao passa pelo contrato unico de pre-dispatch. As dependencias
+             // (journal fisico, ausencia de CREATE pendente, consulta escopada e autorizacao de
+--- R139/src/FugaTES.WinForms/Transportadoras/CarrierDesktopComposition.cs
++++ R150C/src/FugaTES.WinForms/Transportadoras/CarrierDesktopComposition.cs
+@@ -56,7 +56,7 @@
+ public static class CarrierDesktopComposition
+ {
+     public static CarrierDesktopLifecycle? Current{get;private set;}
+-    public static CarrierDesktopLifecycle Create()=>Current=new(StartSessionAsync,TimeProvider.System,reconciliationFactory:shared=>MasterdataDesktopReconciliationR28.Blocked(shared,TimeProvider.System),singleCreateFactory:SingleCreateDesktopCompositionR139.Create);
++    public static CarrierDesktopLifecycle Create()=>Current=new(StartSessionAsync,TimeProvider.System,reconciliationFactory:shared=>MasterdataDesktopReconciliationR28.Blocked(shared,TimeProvider.System));
+     public static async Task<CarrierDesktopSession> StartSessionAsync(CancellationToken ct)
+     {
+         NpgsqlDataSource? source=null;ServiceProvider? services=null;
+@@ -64,7 +64,6 @@
+         {
+             ct.ThrowIfCancellationRequested();
+             var config=CarrierDesktopProfile.Load(Path.Combine(AppContext.BaseDirectory,"FugaTES.carrier.json"));CarrierDesktopProfile.Validate(config);
+-            if(SingleCreateDesktopCompositionR139.UnitaryMode(config))throw new DesktopStartupException("SINGLE_CREATE_ALTERNATE_CARRIER_ROUTE_FORBIDDEN");
+             var runtime=DesktopRuntime.Current??throw new DesktopStartupException("CARRIER_DESKTOP_DATABASE_NOT_READY");
+             var store=runtime.CreateCarrierStore(out source);
+             await ValidateDatabaseAsync(source,ct).ConfigureAwait(false);
+--- R139/src/FugaTES.WinForms/Transportadoras/CarrierDesktopLifecycle.cs
++++ R150C/src/FugaTES.WinForms/Transportadoras/CarrierDesktopLifecycle.cs
+@@ -25,10 +25,9 @@
+     // chamada e qualquer bloqueio mantem o botao desligado. Nao dispara nada por si.
+     public ProntidaoSingleCreateR122 ProntidaoSingleCreate(string bp,bool? journalFisicoComprovado=null)
+     {
+-        try{return SingleCreate?.Readiness(bp)??SingleCreateDesktopGateR122.Avaliar(bp,clock.GetUtcNow(),journalFisicoComprovado:journalFisicoComprovado);}
++        try{return SingleCreateDesktopGateR122.Avaliar(bp,clock.GetUtcNow(),journalFisicoComprovado:journalFisicoComprovado);}
+         catch{return new(false,["SINGLE_CREATE_READINESS_FAILED"]);}
+     }
+-    public SingleCreateDesktopControllerR139? SingleCreate {get;}
+     public bool SingleCreateAvailable(string bp)=>ProntidaoSingleCreate(bp).Pronto;
+     public OrquestradorCompartilhadoMasterdataR3 Masterdata {get;}
+     public MasterdataDesktopReconciliationR28? Reconciliation {get;}
+@@ -53,12 +52,10 @@
+         LastReconciliation=result;ReconciliationUpdated?.Invoke();return result;
+     }
+     public CarrierDesktopLifecycle(Func<CancellationToken,Task<CarrierDesktopSession>> factory,TimeProvider clock,Func<string,CancellationToken,Task<ResultadoCarrierManual>>? manualReadOnly=null,
+-        Func<OrquestradorCompartilhadoMasterdataR3,MasterdataDesktopReconciliationR28>? reconciliationFactory=null,
+-        Func<OrquestradorCompartilhadoMasterdataR3,SingleCreateDesktopControllerR139>? singleCreateFactory=null)
++        Func<OrquestradorCompartilhadoMasterdataR3,MasterdataDesktopReconciliationR28>? reconciliationFactory=null)
+     {
+         this.factory=factory;this.clock=clock;this.manualReadOnly=manualReadOnly??CarrierManualReadOnlyComposition.ConsultarAsync;
+-        Masterdata=new([new AcaoCategoriaDelegadaMasterdataR3(CategoriaMasterdataR3.Transportadoras,true,true,RunCarrierAsync)],tempo:clock,runtimeAutorizado:()=>Snapshot.Active,singleCreateAutorizado:()=>SingleCreate?.Ready??Snapshot.Active);
+-        SingleCreate=singleCreateFactory?.Invoke(Masterdata);
++        Masterdata=new([new AcaoCategoriaDelegadaMasterdataR3(CategoriaMasterdataR3.Transportadoras,true,true,RunCarrierAsync)],tempo:clock,runtimeAutorizado:()=>Snapshot.Active);
+         Reconciliation=reconciliationFactory?.Invoke(Masterdata);
+     }
+     private async Task<ResultadoCategoriaMasterdataR3> RunCarrierAsync(CancellationToken ct)
+@@ -84,7 +81,6 @@
+         lock(gate)
+         {
+             if(running is not null||stopped)return;
+-            if(SingleCreate?.UnitaryOnly==true){state=state with{Code="SINGLE_CREATE_MANUAL_ONLY_NO_POLL_LOOP"};return;}
+             state=state with {Code="CARRIER_DESKTOP_VALIDATING"};
+             running=Task.Run(RunAsync);
+         }
+@@ -147,7 +143,6 @@
+         cancellation.Cancel();Masterdata.Encerrar();
+         await task.ConfigureAwait(false);
+         await Masterdata.EncerrarAsync().ConfigureAwait(false);
+-        if(SingleCreate is not null)await SingleCreate.DisposeAsync().ConfigureAwait(false);
+         try{await Task.WhenAll(pendingReads).ConfigureAwait(false);}catch(OperationCanceledException) when(cancellation.IsCancellationRequested){}
+     }
+     public Task<CarrierManualResult> RequestMasterdataAsync(Guid id,string bp,CancellationToken ct)
+--- R139/src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataSharedOrchestratorR3.cs
++++ R150C/src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataSharedOrchestratorR3.cs
+@@ -71,18 +71,16 @@
+     private readonly HashSet<CategoriaMasterdataR3> _indeterminadas = new();
+     private bool _encerrado;
+     private readonly Func<bool>? _runtimeAutorizado;
+-    private readonly Func<bool>? _singleCreateAutorizado;
+ 
+     // FALSE por padrao: nenhum acionamento de um Carrier real antes de homologacao.
+     // Testes controlados podem injetar TRUE com runners exclusivamente em memoria.
+     public OrquestradorCompartilhadoMasterdataR3(
+         IEnumerable<IAcaoCategoriaMasterdataR3>? acoes = null,
+         bool execucaoDeNegocioExplicitamenteAutorizada = false,
+-        TimeProvider? tempo = null, Func<bool>? runtimeAutorizado = null, Func<bool>? singleCreateAutorizado = null)
++        TimeProvider? tempo = null, Func<bool>? runtimeAutorizado = null)
+     {
+         _tempo = tempo ?? TimeProvider.System;
+         _runtimeAutorizado = runtimeAutorizado;
+-        _singleCreateAutorizado = singleCreateAutorizado;
+         _execucaoDeNegocioExplicitamenteAutorizada = execucaoDeNegocioExplicitamenteAutorizada;
+         var lista = (acoes ?? Array.Empty<IAcaoCategoriaMasterdataR3>()).ToList();
+         if (lista.Any(a => a is null) || lista.Select(a => a.Categoria).Distinct().Count() != lista.Count)
+@@ -284,7 +282,7 @@
+         if(!acquired)return Block("SHARED_LOCK_BUSY");
+         try
+         {
+-            if(!(_singleCreateAutorizado?.Invoke()??_runtimeAutorizado?.Invoke()??_execucaoDeNegocioExplicitamenteAutorizada))return Block("SINGLE_CREATE_RUNTIME_NOT_APPROVED");
++            if(!(_runtimeAutorizado?.Invoke()??_execucaoDeNegocioExplicitamenteAutorizada))return Block("SINGLE_CREATE_RUNTIME_NOT_APPROVED");
+             // Preserve the use-case INDETERMINATE result after dispatch, even during shutdown.
+             return await execute(linked.Token).ConfigureAwait(false);
+         }
+--- R139/src/FugaTES.WinForms/Runtime/SingleCreateDatabaseProfileR139.cs
++++ /dev/null
+@@ -1,34 +0,0 @@
+-using Microsoft.Extensions.Configuration;
+-using Npgsql;
+-
+-namespace FugaTES.WinForms.Runtime;
+-
+-// Explicit, non-secret identity contract. No default database, port, role or approval.
+-public sealed record SingleCreateDatabaseProfileR139(string Environment, bool Approved, string EvidenceReference,
+-    string Host, int Port, string Database, string Role, string Schema)
+-{
+-    public static SingleCreateDatabaseProfileR139 Load(IConfiguration config)
+-    {
+-        const string p="Carrier:SingleCreate:PostgreSql:";
+-        return new(config[p+"Environment"]??"",bool.TryParse(config[p+"Approved"],out var ok)&&ok,
+-            config[p+"EvidenceReference"]??"",config[p+"Host"]??"",int.TryParse(config[p+"Port"],out var port)?port:0,
+-            config[p+"Database"]??"",config[p+"Role"]??"",config[p+"Schema"]??"");
+-    }
+-
+-    public NpgsqlConnectionStringBuilder Options(string validatedDesktopConnection)
+-    {
+-        if(Environment!="HML"||!Approved||string.IsNullOrWhiteSpace(EvidenceReference)||Host!="127.0.0.1"||
+-            Port is <1 or >65535||Port is 5432 or 5433||Schema!="fugates"||
+-            string.IsNullOrWhiteSpace(Database)||string.IsNullOrWhiteSpace(Role)||
+-            Database=="fugates_dev"||Role=="fugates_dev_app")
+-            throw new DesktopStartupException("SINGLE_CREATE_SEGREGATED_HML_PROFILE_NOT_PROVEN");
+-        var options=new NpgsqlConnectionStringBuilder(validatedDesktopConnection);
+-        // Never redirect a desktop profile to a new server/role or reuse another credential target.
+-        if(options.Host!=Host||options.Port!=Port||options.Database!=Database||options.Username!=Role)
+-            throw new DesktopStartupException("SINGLE_CREATE_DESKTOP_PROFILE_IDENTITY_MISMATCH");
+-        options.Enlist=false;
+-        options.Options="-c default_transaction_read_only=off -c search_path=fugates";
+-        options.ApplicationName="FugaTES.Desktop.SingleCreate.HML";
+-        return options;
+-    }
+-}
+--- R139/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopCompositionR139.cs
++++ /dev/null
+@@ -1,168 +0,0 @@
+-using System.Globalization;
+-using System.Security.Principal;
+-using FugaTES.Aplicacao.Transportadoras;
+-using FugaTES.Aplicacao.Transportadoras.SingleCreateR31;
+-using FugaTES.HostIntegracao;
+-using FugaTES.Integracao.Guardian;
+-using FugaTES.Integracao.SAP.BusinessPartner;
+-using FugaTES.Integracao.SAP.Configuracao;
+-using FugaTES.Integracao.SAP.Http;
+-using FugaTES.WinForms.Runtime;
+-using Microsoft.Extensions.Configuration;
+-using Npgsql;
+-
+-namespace FugaTES.WinForms.Transportadoras.MasterdataR3;
+-
+-public static class SingleCreateDesktopCompositionR139
+-{
+-    public const string BusinessPartner="20000014";
+-    static IConfiguration Load()=>CarrierDesktopProfile.Load(Path.Combine(AppContext.BaseDirectory,"FugaTES.carrier.json"));
+-    public static bool UnitaryMode(IConfiguration config)=>CarrierDesktopProfile.True(config,"Carrier:SingleCreate:Enabled");
+-    static string Sid()=>WindowsIdentity.GetCurrent().User?.Value??"";
+-
+-    // No I/O. Removing the journal blocker here permits only an explicit read-only preflight,
+-    // never CREATE. The physical preflight supplies attestation only after real successful checks.
+-    public static ProntidaoSingleCreateR122 Prerequisites(IConfiguration config,string bp,string sid,DateTimeOffset now)
+-    {
+-        var blocks=SingleCreateDesktopGateR122.Avaliar(bp,now,sid,config).Bloqueios
+-            .Where(b=>b!="SINGLE_CREATE_JOURNAL_RUNTIME_NOT_ATTESTED").ToList();
+-        if(bp!=BusinessPartner||CarrierManualReadOnlyProfile.Identity(config,bp)?.Codigo!=BusinessPartner)blocks.Add("R41_FUNCTIONAL_SCOPE_INVALID");
+-        if(!CarrierDesktopProfile.True(config,"Carrier:SingleCreate:SpecificCreateAuthorized")||
+-            string.IsNullOrWhiteSpace(config["Carrier:SingleCreate:ExecutionApprovalReference"]))
+-            blocks.Add("SINGLE_CREATE_EXECUTION_NOT_AUTHORIZED");
+-        try{CarrierManualReadOnlyProfile.Validate(config,bp,sid,now);}catch{blocks.Add("SINGLE_CREATE_MANUAL_PROFILE_NOT_PROVEN");}
+-        foreach(var key in new[]{"FUGATES_CARRIER_SYNC_ENABLED","FUGATES_CARRIER_WORKER_ENABLED"})
+-            if(!bool.TryParse(config[key],out var enabled)||enabled||bool.TryParse(Environment.GetEnvironmentVariable(key),out var env)&&env)
+-                blocks.Add("SINGLE_CREATE_AUTOMATIC_ROUTE_NOT_DISABLED");
+-        return new(blocks.Count==0,blocks.Distinct().ToArray());
+-    }
+-
+-    public static SingleCreateDesktopControllerR139 Create(OrquestradorCompartilhadoMasterdataR3 shared)
+-        =>new(shared,()=>UnitaryMode(Load()),bp=>Prerequisites(Load(),bp,Sid(),DateTimeOffset.UtcNow),PrepareAsync);
+-
+-    static async Task<ISingleCreateDesktopSessionR139> PrepareAsync(string bp,CancellationToken ct)
+-    {
+-        var config=Load();var sid=Sid();
+-        if(!Prerequisites(config,bp,sid,DateTimeOffset.UtcNow).Pronto)
+-            throw new DesktopStartupException("SINGLE_CREATE_PREREQUISITES_BLOCKED");
+-        var profile=SingleCreateDatabaseProfileR139.Load(config);
+-        var runtime=DesktopRuntime.Current??throw new DesktopStartupException("SINGLE_CREATE_DESKTOP_DATABASE_NOT_READY");
+-        var source=runtime.CreateSingleCreateSource(profile);
+-        try
+-        {
+-            await VerifyPhysicalIdentityAsync(source,profile,ct).ConfigureAwait(false);
+-            if(!await SingleCreateDesktopBindingR41.JournalReadyAsync(source,ct).ConfigureAwait(false))
+-                throw new DesktopStartupException("SINGLE_CREATE_JOURNAL_NOT_READY");
+-            return new Session(source,config,sid);
+-        }
+-        catch{await source.DisposeAsync().ConfigureAwait(false);throw;}
+-    }
+-
+-    // SELECT-only preflight; no carrier_sync_* dependency. Actual execution is not part of R139 QA.
+-    public const string PhysicalIdentitySql="""
+-        select current_database()=@database and current_user=@role and current_schema()='fugates'
+-          and not has_schema_privilege(current_user,'fugates','CREATE')
+-          and not (select rolsuper or rolcreatedb or rolcreaterole from pg_roles where rolname=current_user)
+-          and to_regclass('fugates.carrier_single_create_journal') is not null
+-          and not exists (
+-            select 1 from unnest(array['attempt_id','bp','guardian_code']) required(name)
+-            where not exists (
+-              select 1 from pg_index i join pg_attribute a on a.attrelid=i.indrelid and a.attnum=i.indkey[0]
+-              where i.indrelid=to_regclass('fugates.carrier_single_create_journal')
+-                and i.indisunique and i.indisvalid and i.indisready and i.indnkeyatts=1
+-                and i.indpred is null and i.indexprs is null and a.attname=required.name))
+-          and (select count(*) from pg_constraint where conrelid=to_regclass('fugates.carrier_single_create_journal')
+-               and contype='c' and convalidated)>=4
+-        """;
+-    static async Task VerifyPhysicalIdentityAsync(NpgsqlDataSource source,SingleCreateDatabaseProfileR139 profile,CancellationToken ct)
+-    {
+-        await using var connection=await source.OpenConnectionAsync(ct).ConfigureAwait(false);
+-        await using var tx=await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
+-        await using(var ro=new NpgsqlCommand("set transaction read only",connection,tx))await ro.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+-        await using var cmd=new NpgsqlCommand(PhysicalIdentitySql,connection,tx);
+-        cmd.Parameters.AddWithValue("database",profile.Database);cmd.Parameters.AddWithValue("role",profile.Role);
+-        if(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false) is not true)
+-            throw new DesktopStartupException("SINGLE_CREATE_PHYSICAL_IDENTITY_OR_JOURNAL_INVALID");
+-        await tx.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+-    }
+-
+-    sealed class Session(NpgsqlDataSource source,IConfiguration config,string sid):ISingleCreateDesktopSessionR139
+-    {
+-        int used;bool disposed;
+-        readonly SingleCreateProfileLeaseR139 profileLease=new(config,Load,
+-            current=>Prerequisites(current,BusinessPartner,sid,DateTimeOffset.UtcNow).Pronto);
+-        bool Gate()=>!disposed&&profileLease.IsValid;
+-        public ProntidaoSingleCreateR122 Readiness(string bp)
+-        {
+-            if(bp!=BusinessPartner||disposed||Volatile.Read(ref used)!=0)return new(false,["SINGLE_CREATE_PREFLIGHT_REQUIRED"]);
+-            if(!Gate())return new(false,["SINGLE_CREATE_PROFILE_CHANGED_OR_REVOKED"]);
+-            return SingleCreateDesktopGateR122.Avaliar(bp,DateTimeOffset.UtcNow,sid,config,journalFisicoComprovado:true);
+-        }
+-        public async Task<SingleCreateResultR31> ExecuteAsync(Guid attemptId,CancellationToken ct)
+-        {
+-            SingleCreateResultR31 Block(string code)=>new(attemptId,SingleCreateStateR31.BLOCKED,code);
+-            if(!Gate()||Interlocked.CompareExchange(ref used,1,0)!=0)return Block("SINGLE_CREATE_NOT_AUTHORIZED_OR_ALREADY_ATTEMPTED");
+-            var identity=CarrierManualReadOnlyProfile.Identity(config,BusinessPartner);
+-            var manualContract=CarrierProtocolBinding.BuildGuardianManualContract(config);
+-            if(identity is null||manualContract is null)return Block("SINGLE_CREATE_IDENTITY_NOT_PROVEN");
+-            var sapUri=new Uri(config["Sap:BaseUrl"]!);var guardianUri=new Uri(config["Guardian:BaseUrl"]!);
+-            using var http=new HttpClient(new SingleCreateHttpGuardR139(sapUri,guardianUri,Gate,new HttpClientHandler{AllowAutoRedirect=false}));
+-            var timeout=TimeSpan.FromSeconds(int.Parse(config["Carrier:ManualReadOnly:TimeoutSeconds"]!,CultureInfo.InvariantCulture));
+-            var client=new ClienteHttpParceiroNegocioSap(http,new OpcoesSap{BaseUrl=sapUri,SapClient="110",Timeout=timeout},new CarrierServiceSapAuthentication(config));
+-            var sap=new SapBpReadAdapterR20B(client);
+-            using var prepared=await new GuardianSingleCreatePreparationR41(sap).PrepareAsync(
+-                SingleCarrierDecisionR41.Approved20000014(config[SingleCreateDesktopGateR122.ChaveCallback]!,
+-                    CarrierDesktopProfile.True(config,SingleCreateDesktopGateR122.ChaveCallbackAprovado)),ct).ConfigureAwait(false);
+-            if(!prepared.Ready)return Block(prepared.Code);
+-            var options=new GuardianHttpOptions{BaseUrl=guardianUri,Timeout=timeout};
+-            var tokens=new GuardianTokenClient(http,options,new CarrierServiceGuardianCredentials(config));
+-            var reader=new GuardianCarrierManualReadOnlyAdapter(http,options,tokens,manualContract);
+-            // Actual call missing in R135B: same dedicated source, no fallback to general Carrier pool.
+-            var binding=await SingleCreateDesktopBindingR41.BindAsync(config,prepared,reader,
+-                SingleCreateGatewayCompositionR42.Criar(http,options,tokens),source,Gate,ct:ct).ConfigureAwait(false);
+-            if(!binding.Ready)return Block(binding.Code);
+-            var until=DateTimeOffset.Parse(config["Carrier:Authorization:UntilUtc"]!,CultureInfo.InvariantCulture);
+-            var approval=new SingleCreateApprovalR31(BusinessPartner,identity.Codigo,identity.IdAssinatura,
+-                config["Carrier:SingleCreate:ExecutionApprovalReference"]!,until,
+-                BpConfirmed:true,CodeApproved:true,HmlSignatureBound:manualContract.SignatureVerified,
+-                PayloadContractComplete:prepared.Ready,ScopedAbsenceApproved:manualContract.Scoped404Proven,
+-                PostgreSqlBootstrapAttested:true,SpecificCreateAuthorized:Gate());
+-            return await binding.UseCase!.ExecuteAsync(prepared.CreateRequest(attemptId,identity,approval),ct).ConfigureAwait(false);
+-        }
+-        public async ValueTask DisposeAsync(){disposed=true;await source.DisposeAsync().ConfigureAwait(false);}
+-    }
+-}
+-
+-// An attestation belongs to one exact profile snapshot. Reload before every gate and HTTP send.
+-// File removal, parse failure, identity change or revocation invalidates it; no silent rebind.
+-public sealed class SingleCreateProfileLeaseR139
+-{
+-    readonly KeyValuePair<string,string?>[] approved;
+-    readonly Func<IConfiguration> reload;
+-    readonly Func<IConfiguration,bool> authorize;
+-    static KeyValuePair<string,string?>[] Values(IConfiguration c)=>c.AsEnumerable().OrderBy(p=>p.Key,StringComparer.Ordinal).ToArray();
+-    public SingleCreateProfileLeaseR139(IConfiguration approvedProfile,Func<IConfiguration> reload,Func<IConfiguration,bool> authorize)
+-    {approved=Values(approvedProfile);this.reload=reload;this.authorize=authorize;}
+-    public bool IsValid
+-    {
+-        get{try{var current=reload();return approved.SequenceEqual(Values(current))&&authorize(current);}catch{return false;}}
+-    }
+-}
+-
+-// Exact unitary scope, session-owned client. No PUT, no unscoped SAP/Guardian query.
+-public sealed class SingleCreateHttpGuardR139(Uri sap,Uri guardian,Func<bool> writeGate,HttpMessageHandler inner):DelegatingHandler(inner)
+-{
+-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)
+-    {
+-        var u=request.RequestUri??throw new CarrierGatewayException("SINGLE_CREATE_HTTP_URI_INVALID");
+-        bool safe=u.Scheme=="https"&&u.UserInfo.Length==0&&u.Fragment.Length==0;
+-        bool sapRead=u.GetLeftPart(UriPartial.Authority)==sap.GetLeftPart(UriPartial.Authority)&&request.Method==HttpMethod.Get&&
+-            u.AbsolutePath=="/sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner('20000014')";
+-        bool guardianOrigin=u.GetLeftPart(UriPartial.Authority)==guardian.GetLeftPart(UriPartial.Authority);
+-        bool read=guardianOrigin&&request.Method==HttpMethod.Get&&u.AbsolutePath=="/api/v0/Guardian/Transportadora/20000014";
+-        bool auth=guardianOrigin&&request.Method==HttpMethod.Post&&u.AbsolutePath=="/api/v2/CreateToken";
+-        bool write=guardianOrigin&&request.Method==HttpMethod.Post&&u.AbsolutePath=="/api/v0/Guardian/Transportadora"&&writeGate();
+-        if(!safe||!sapRead&&!read&&!auth&&!write)throw new CarrierGatewayException("SINGLE_CREATE_HTTP_ROUTE_OR_WRITE_FORBIDDEN");
+-        return base.SendAsync(request,ct);
+-    }
+-}
+--- R139/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopControllerR139.cs
++++ /dev/null
+@@ -1,91 +0,0 @@
+-using FugaTES.Aplicacao.Transportadoras.SingleCreateR31;
+-
+-namespace FugaTES.WinForms.Transportadoras.MasterdataR3;
+-
+-public interface ISingleCreateDesktopSessionR139 : IAsyncDisposable
+-{
+-    ProntidaoSingleCreateR122 Readiness(string bp);
+-    Task<SingleCreateResultR31> ExecuteAsync(Guid attemptId,CancellationToken ct);
+-}
+-
+-// No timer/worker. Both preflight and execution use the application's existing shared lock.
+-public sealed class SingleCreateDesktopControllerR139(OrquestradorCompartilhadoMasterdataR3 shared,
+-    Func<bool> unitaryMode,Func<string,ProntidaoSingleCreateR122> prerequisites,
+-    Func<string,CancellationToken,Task<ISingleCreateDesktopSessionR139>> prepare) : IAsyncDisposable
+-{
+-    ISingleCreateDesktopSessionR139? session;
+-    bool disposed;
+-    public bool UnitaryOnly { get {try{return unitaryMode();}catch{return true;}} }
+-    public bool Ready=>!disposed&&Readiness("20000014").Pronto;
+-    public bool CanValidate(string bp)
+-    {
+-        try{return !disposed&&UnitaryOnly&&prerequisites(bp).Pronto;}
+-        catch{return false;}
+-    }
+-    public ProntidaoSingleCreateR122 Readiness(string bp)
+-    {
+-        try
+-        {
+-            if(disposed)return new(false,["APP_CLOSED_OR_CANCELLED"]);
+-            if(!UnitaryOnly||!prerequisites(bp).Pronto)return new(false,["SINGLE_CREATE_APPROVAL_REVOKED_OR_INVALID"]);
+-            return session?.Readiness(bp)??new(false,["SINGLE_CREATE_EXPLICIT_PREFLIGHT_REQUIRED"]);
+-        }
+-        catch{return new(false,["SINGLE_CREATE_READINESS_FAILED"]);}
+-    }
+-    public async Task<string> ValidateAsync(string bp,CancellationToken ct=default)
+-    {
+-        if(!CanValidate(bp))return "SINGLE_CREATE_PREREQUISITES_BLOCKED";
+-        try
+-        {
+-            var result=await shared.ExecutarConsultaProtegidaAsync(async token=>
+-            {
+-                if(session is not null){await session.DisposeAsync();session=null;}
+-                session=await prepare(bp,token).ConfigureAwait(false);
+-                return session.Readiness(bp).Resumo;
+-            },ct).ConfigureAwait(false);
+-            return result.Resultado??"SINGLE_CREATE_PREFLIGHT_BUSY_OR_CANCELLED";
+-        }
+-        catch{return "SINGLE_CREATE_PREFLIGHT_FAILED";}
+-    }
+-    public Task<SingleCreateResultR31> ExecuteAsync(string bp,CancellationToken ct=default)
+-    {
+-        var id=Guid.NewGuid();
+-        return ExecuteProtectedAsync();
+-        async Task<SingleCreateResultR31> ExecuteProtectedAsync()
+-        {
+-            try{return await shared.ExecutarCriacaoUnitariaAsync(id,async token=>
+-            {
+-                if(!Readiness(bp).Pronto||session is null)return new(id,SingleCreateStateR31.BLOCKED,"SINGLE_CREATE_PREFLIGHT_REQUIRED");
+-                return await session.ExecuteAsync(id,token).ConfigureAwait(false);
+-            },ct).ConfigureAwait(false);}
+-            catch{return new(id,SingleCreateStateR31.INDETERMINATE,"SINGLE_CREATE_EXECUTION_UNKNOWN_NO_RETRY");}
+-        }
+-    }
+-    public async ValueTask DisposeAsync()
+-    {
+-        disposed=true;
+-        await shared.AguardarOciosidadeAsync().ConfigureAwait(false);
+-        if(session is not null){await session.DisposeAsync();session=null;}
+-    }
+-}
+-
+-// Keeps the last unitary outcome visible across generic UI refreshes; identifiers/codes only.
+-public sealed class SingleCreateUiStatusR139
+-{
+-    public string Text {get;private set;}="";
+-    public void Preflight(string code)
+-    {
+-        try{FugaTES.Aplicacao.Transportadoras.CarrierPersistencePolicy.ValidateCode(code);}
+-        catch{code="SINGLE_CREATE_PREFLIGHT_BLOCKED";}
+-        Text="PREFLIGHT CREATE: "+code;
+-    }
+-    public void Record(SingleCreateResultR31 result)
+-    {
+-        var code=result.Code;
+-        try{FugaTES.Aplicacao.Transportadoras.CarrierPersistencePolicy.ValidateCode(code);}
+-        catch{code="SINGLE_CREATE_OUTCOME_REQUIRES_REVIEW";}
+-        Text=$"CREATE UNITARIO: {result.State} | {code} | AttemptId={result.AttemptId}";
+-        if(result.State==SingleCreateStateR31.INDETERMINATE)Text+=" | RECONCILIACAO OBRIGATORIA; SEM RETRY AUTOMATICO";
+-    }
+-    public string Display(string genericStatus)=>string.IsNullOrEmpty(Text)?genericStatus:Text;
+-}
+--- /dev/null
++++ R150C/src/FugaTES.Persistencia/Transportadoras/MasterdataHmlDataSourceR147B.cs
+@@ -0,0 +1,75 @@
++using Npgsql;
++namespace FugaTES.Persistencia.Transportadoras;
++
++// R147B: datasource PROPRIO do MasterData HML, segregado do cluster compartilhado com ACM/Callback.
++// Nao altera DesktopRuntime.CreateReadSource (datasource ACM) nem CreateCarrierStore (CarrierSync R3).
++//
++// Contrato fisico proposto em R146A (GAIA): cluster 18/fugatesmdhml, listener 5434 na VM,
++// tunel Windows 127.0.0.1:15434 -> VM 127.0.0.1:5434, database fugates_masterdata_hml,
++// schema fugates, app role fugates_masterdata_hml_app.
++//
++// Esta classe NAO cria, migra nem escreve nada: apenas valida identidade e compoe a conexao.
++public sealed record MasterdataHmlTargetR147B(string Host, int Port, string Database, string Schema, string AppRole)
++{
++    // Valores propostos no R146A. Continuam sujeitos a atestacao fisica por Atlas.
++    public static MasterdataHmlTargetR147B Proposto { get; } =
++        new("127.0.0.1", 15434, "fugates_masterdata_hml", "fugates", "fugates_masterdata_hml_app");
++}
++
++public static class MasterdataHmlDataSourceR147B
++{
++    // Portas que NUNCA podem receber a conexao MasterData:
++    // 5432/15432 = cluster original compartilhado com ACM/Callback; 5433/15433 = ACM DEV segregado.
++    public static readonly int[] PortasProibidas = [5432, 5433, 15432, 15433];
++
++    public static string? Validar(string? connectionString, MasterdataHmlTargetR147B? alvo = null)
++    {
++        alvo ??= MasterdataHmlTargetR147B.Proposto;
++        if (string.IsNullOrWhiteSpace(connectionString)) return "MASTERDATA_HML_CONNECTION_ABSENT";
++        NpgsqlConnectionStringBuilder b;
++        try { b = new NpgsqlConnectionStringBuilder(connectionString); }
++        catch { return "MASTERDATA_HML_CONNECTION_INVALID"; }
++
++        // 4) rejeitar conexao acidental aos clusters ACM, antes de qualquer outra coisa.
++        if (PortasProibidas.Contains(b.Port)) return "MASTERDATA_HML_FORBIDDEN_ACM_PORT";
++        if (b.Port != alvo.Port) return "MASTERDATA_HML_PORT_MISMATCH";
++
++        // 2) identidade propria do MasterData, no lugar de fugates_dev / fugates_dev_app.
++        if (!string.Equals(b.Database, alvo.Database, StringComparison.Ordinal)) return "MASTERDATA_HML_DATABASE_MISMATCH";
++        if (!string.Equals(b.Username, alvo.AppRole, StringComparison.Ordinal)) return "MASTERDATA_HML_APP_ROLE_MISMATCH";
++        if (!string.Equals(b.Host, alvo.Host, StringComparison.Ordinal)) return "MASTERDATA_HML_HOST_MISMATCH";
++
++        // A identidade antiga nao pode reaparecer por nenhum caminho.
++        if (string.Equals(b.Database, "fugates_dev", StringComparison.Ordinal) ||
++            string.Equals(b.Username, "fugates_dev_app", StringComparison.Ordinal))
++            return "MASTERDATA_HML_LEGACY_IDENTITY_FORBIDDEN";
++
++        // 5) barreira transacional: o escopo ambiente nunca pode envolver esta conexao.
++        if (b.Enlist) return "MASTERDATA_HML_ENLIST_MUST_BE_FALSE";
++        return null;
++    }
++
++    // Compoe o datasource do MasterData. Enlist=false e fixado aqui para que a transacao local
++    // explicita do SingleCreate nunca seja promovida a distribuida.
++    public static NpgsqlDataSource Criar(string connectionString, MasterdataHmlTargetR147B? alvo = null)
++    {
++        alvo ??= MasterdataHmlTargetR147B.Proposto;
++        var normalizada = Normalizar(connectionString, alvo);
++        if (Validar(normalizada, alvo) is { } codigo) throw new InvalidOperationException(codigo);
++        return NpgsqlDataSource.Create(normalizada);
++    }
++
++    // Aplica apenas o que e composicao: Enlist=false, search_path do schema aprovado e um
++    // ApplicationName rastreavel. Nao altera host, porta, database nem usuario informados.
++    public static string Normalizar(string connectionString, MasterdataHmlTargetR147B? alvo = null)
++    {
++        alvo ??= MasterdataHmlTargetR147B.Proposto;
++        var b = new NpgsqlConnectionStringBuilder(connectionString)
++        {
++            Enlist = false,
++            ApplicationName = "FugaTES.Desktop.MasterdataHml.SingleCreate"
++        };
++        if (string.IsNullOrWhiteSpace(b.SearchPath)) b.SearchPath = alvo.Schema;
++        return b.ConnectionString;
++    }
++}
+--- /dev/null
++++ R150C/src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataHmlSingleCreateCompositionR150C.cs
+@@ -0,0 +1,105 @@
++using FugaTES.Persistencia.Transportadoras;
++using Microsoft.Extensions.Configuration;
++using Npgsql;
++namespace FugaTES.WinForms.Transportadoras.MasterdataR3;
++
++// R150C: composicao REAL do SingleCreate com o datasource MasterData HML dedicado.
++// Especificacao R135D §4.1/§4.2: o journal recebe um NpgsqlDataSource PROPRIO, nao enlistado,
++// criado e possuido aqui. Nunca reutiliza o datasource ACM legado (DesktopRuntime.CreateReadSource
++// / CreateCarrierStore), e nao ha fallback para o pool compartilhado se o dedicado falhar.
++//
++// Nao habilita escrita: SingleCreateDesktopBindingR41 continua exigindo Carrier:SingleCreate:Enabled,
++// perfil HML, identidade, assinatura e journal fisico.
++public sealed record MasterdataHmlCompositionResultR150C(
++    SingleCreateBindingR41? Binding, NpgsqlDataSource? Source, string Code) : IAsyncDisposable
++{
++    public bool Ready => Binding is { Ready: true } && Source is not null;
++    public async ValueTask DisposeAsync() { if (Source is not null) await Source.DisposeAsync(); }
++    public override string ToString() => Code;
++}
++
++public static class MasterdataHmlSingleCreateCompositionR150C
++{
++    public const string ChaveConexao = "Carrier:MasterdataHml:ConnectionString";
++
++    // Guarda de identidade FISICA, executada depois de abrir a conexao (item 4 do gate).
++    // Nao basta a connection string prometer 5434: o servidor precisa confirmar quem e.
++    public const string IdentidadeSql = """
++        select current_database()
++             , coalesce(current_setting('cluster_name',true),'')
++             , current_setting('port')::int
++             , current_user
++             , current_setting('server_version_num')::int
++             , pg_is_in_recovery()
++        """;
++
++    public static async Task<string?> VerificarIdentidadeFisicaAsync(
++        NpgsqlDataSource source, MasterdataHmlTargetR147B alvo, CancellationToken ct)
++    {
++        try
++        {
++            await using var command = source.CreateCommand(IdentidadeSql);
++            await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
++            if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return "MASTERDATA_HML_IDENTITY_UNREADABLE";
++            var database = reader.GetString(0);
++            var cluster = reader.GetString(1);
++            var porta = reader.GetInt32(2);
++            var usuario = reader.GetString(3);
++            var versao = reader.GetInt32(4);
++            var recovery = reader.GetBoolean(5);
++
++            if (!string.Equals(database, alvo.Database, StringComparison.Ordinal)) return "MASTERDATA_HML_PHYSICAL_DATABASE_MISMATCH";
++            if (cluster != "18/fugatesmdhml") return "MASTERDATA_HML_PHYSICAL_CLUSTER_MISMATCH";
++            // Porta REAL do servidor (5434), nao a do tunel local (15434).
++            if (porta != 5434) return "MASTERDATA_HML_PHYSICAL_PORT_MISMATCH";
++            if (!string.Equals(usuario, alvo.AppRole, StringComparison.Ordinal)) return "MASTERDATA_HML_PHYSICAL_ROLE_MISMATCH";
++            if (versao is < 180000 or > 189999) return "MASTERDATA_HML_PHYSICAL_VERSION_MISMATCH";
++            if (recovery) return "MASTERDATA_HML_SERVER_IN_RECOVERY";
++            return null;
++        }
++        catch (OperationCanceledException) when (ct.IsCancellationRequested) { return "MASTERDATA_HML_CANCELLED"; }
++        catch { return "MASTERDATA_HML_IDENTITY_PROBE_FAILED"; }
++    }
++
++    // Caminho real: perfil -> datasource dedicado (Enlist=false) -> identidade fisica -> BindAsync.
++    public static async Task<MasterdataHmlCompositionResultR150C> ComporAsync(
++        IConfiguration config, PreparedSingleCreateR41 prepared,
++        FugaTES.Aplicacao.Transportadoras.IGuardianCarrierManualReadOnly reader,
++        FugaTES.HostIntegracao.SingleCreateGatewayFactoryR42 gatewayFactory,
++        Func<bool>? gate = null, TimeProvider? clock = null,
++        MasterdataHmlTargetR147B? alvo = null, CancellationToken ct = default)
++    {
++        ArgumentNullException.ThrowIfNull(config);
++        alvo ??= MasterdataHmlTargetR147B.Proposto;
++
++        var conexao = config[ChaveConexao];
++        if (string.IsNullOrWhiteSpace(conexao))
++            return new(null, null, "MASTERDATA_HML_CONNECTION_NOT_CONFIGURED");
++
++        // Rejeita 5432/5433 e identidade legada ANTES de abrir qualquer conexao.
++        NpgsqlDataSource source;
++        try { source = MasterdataHmlDataSourceR147B.Criar(conexao, alvo); }
++        catch (InvalidOperationException erro) { return new(null, null, erro.Message); }
++        catch { return new(null, null, "MASTERDATA_HML_DATASOURCE_FAILED"); }
++
++        try
++        {
++            if (await VerificarIdentidadeFisicaAsync(source, alvo, ct).ConfigureAwait(false) is { } divergencia)
++            {
++                await source.DisposeAsync();
++                return new(null, null, divergencia);
++            }
++
++            // Sem fallback: o binding recebe exclusivamente o datasource dedicado.
++            var binding = await SingleCreateDesktopBindingR41.BindAsync(
++                config, prepared, reader, gatewayFactory, source, gate, clock, ct).ConfigureAwait(false);
++            if (!binding.Ready) { await source.DisposeAsync(); return new(null, null, binding.Code); }
++            return new(binding, source, binding.Code);
++        }
++        catch
++        {
++            await source.DisposeAsync();
++            return new(null, null, "MASTERDATA_HML_COMPOSITION_FAILED");
++        }
++    }
++}

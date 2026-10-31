@@ -1,0 +1,147 @@
+ M src/FugaTES.Aplicacao/Contratos/Recebimento/RecebimentoMvpPorts.cs
+ M src/FugaTES.Aplicacao/Modelos/Guardian/ContratosGuardianSet26.cs
+ M src/FugaTES.Aplicacao/Servicos/MotorIntegracao/ProcessadorPreCadastroGuardianMotor.cs
+ M src/FugaTES.Callback.Http/GuardianCallbackEndpoint.cs
+ M src/FugaTES.Callback.Http/GuardianCallbackHttpComposition.cs
+ M src/FugaTES.Callback.Http/Program.cs
+ M src/FugaTES.HostIntegracao/FugaTES.HostIntegracao.csproj
+ M src/FugaTES.HostIntegracao/HostIntegracaoComposition.cs
+ M src/FugaTES.HostIntegracao/ProcessadorExternoIntegracaoRoteado.cs
+ M src/FugaTES.HostIntegracao/Program.cs
+ M src/FugaTES.Integracao.Guardian/GuardianHttpOptions.cs
+ M src/FugaTES.Integracao.Guardian/GuardianPreCadastroResponseDto.cs
+ M src/FugaTES.Integracao.Guardian/GuardianRuntimeComposition.cs
+ M src/FugaTES.Integracao.Guardian/GuardianRuntimeCredenciaisProvider.cs
+ M src/FugaTES.Integracao.Guardian/GuardianSet26HttpClient.cs
+ M src/FugaTES.Integracao.Guardian/GuardianTokenClient.cs
+ M src/FugaTES.Integracao.SAP/BusinessPartner/ConsultaParceiroNegocioSapAdapterBase.cs
+ M src/FugaTES.Integracao.SAP/Http/ClienteHttpParceiroNegocioSap.cs
+ M src/FugaTES.WinForms/FugaTES.WinForms.csproj
+ M src/FugaTES.WinForms/PainelInicialForm.cs
+ M src/FugaTES.WinForms/Program.cs
+ M tests/FugaTES.Testes/ArquiteturaTests.cs
+ M tests/FugaTES.Testes/FugaTES.Testes.csproj
+ M tests/FugaTES.Testes/Inc004PreCadastroToledoTests.cs
+ M tests/FugaTES.Testes/Inc005MotorIntegracaoOfflineTests.cs
+ M tests/FugaTES.Testes/Inc005Rev2S5HostCompositionTests.cs
+ M tests/FugaTES.Testes/Inc006GuardianHttpSet26Tests.cs
+ M tests/FugaTES.Testes/Inc006H5HostGuardianCompositionTests.cs
+ M tests/FugaTES.Testes/Inc006H6CallbackSapEngineTests.cs
+ M tests/FugaTES.Testes/SapBusinessPartnerReadOnlyTests.cs
+?? .artifacts/
+?? deploy/
+?? docs/Incrementos/006/MANIFEST_006H7_R3.txt
+?? docs/Incrementos/006/MIGRATION_006H4_GUARDIAN_DURABLE_CORRELATION_R1.sql
+?? docs/Incrementos/006/MIGRATION_006H7_GUARDIAN_EVENT_PERSISTENCE.sql
+?? docs/Incrementos/006/ROLLBACK_006H7_GUARDIAN_EVENT_PERSISTENCE.sql
+?? docs/Incrementos/006/VALIDATION_006H4_GUARDIAN_DURABLE_CORRELATION_R1.sql
+?? docs/Incrementos/006/VALIDATION_006H7_GUARDIAN_EVENT_PERSISTENCE.sql
+?? docs/Incrementos/007/
+?? src/FugaTES.Aplicacao/CasosDeUso/Mvp/
+?? src/FugaTES.Aplicacao/CasosDeUso/Recebimento/ProcessarEventoGuardianCasoDeUso.cs
+?? src/FugaTES.Aplicacao/Consultas/
+?? src/FugaTES.Aplicacao/Contratos/ContratosSapToledo/IAcmGuardianVinculoStore.cs
+?? src/FugaTES.Aplicacao/Contratos/ContratosSapToledo/IContratoGuardianRespostaComprovada.cs
+?? src/FugaTES.Aplicacao/Contratos/Gateways/SAP/MvpSapCapabilityPorts.cs
+?? src/FugaTES.Aplicacao/Contratos/Guardian/
+?? src/FugaTES.Aplicacao/Contratos/Mvp/
+?? src/FugaTES.Aplicacao/Contratos/Recebimento/IRegistroEventoGuardianStore.cs
+?? src/FugaTES.Aplicacao/Modelos/Guardian/ContratoGuardianSet26.cs
+?? src/FugaTES.Aplicacao/Modelos/Mvp/
+?? src/FugaTES.Aplicacao/Modelos/Recebimento/EventoGuardianRecebimento.cs
+?? src/FugaTES.Aplicacao/Modelos/SAP/MvpSapSnapshots.cs
+?? src/FugaTES.Aplicacao/Resultados/SAP/ResultadoEscritaSap.cs
+?? src/FugaTES.Aplicacao/Servicos/MotorIntegracao/PrepararPreCadastroGuardian.cs
+?? src/FugaTES.Aplicacao/Servicos/Mvp/
+?? src/FugaTES.Aplicacao/Servicos/SAP/
+?? src/FugaTES.Aplicacao/Servicos/Sd/
+?? src/FugaTES.Aplicacao/Transportadoras/
+?? src/FugaTES.Callback.Http/GuardianEventoHttpDto.cs
+?? src/FugaTES.HostIntegracao/CarrierLinuxHosting.cs
+?? src/FugaTES.HostIntegracao/CarrierLinuxRuntimeBootstrap.cs
+?? src/FugaTES.HostIntegracao/CarrierManualRequestHandler.cs
+?? src/FugaTES.HostIntegracao/CarrierPollLoop.cs
+?? src/FugaTES.HostIntegracao/CarrierProtocolBinding.cs
+?? src/FugaTES.HostIntegracao/CarrierServiceRuntimeBootstrap.cs
+?? src/FugaTES.HostIntegracao/CarrierServiceSecretProviders.cs
+?? src/FugaTES.HostIntegracao/CarrierSyncComposition.cs
+?? src/FugaTES.HostIntegracao/CarrierSyncManualCommandServer.cs
+?? src/FugaTES.HostIntegracao/CarrierSyncWorker.cs
+?? src/FugaTES.HostIntegracao/CarrierSystemdCredentials.cs
+?? src/FugaTES.HostIntegracao/MvpOrchestrationComposition.cs
+?? src/FugaTES.Integracao.Guardian/GuardianCarrierManualReadOnlyAdapter.cs
+?? src/FugaTES.Integracao.Guardian/GuardianCarrierSyncAdapter.cs
+?? src/FugaTES.Integracao.Guardian/GuardianContratoSoapClient.Sync.cs
+?? src/FugaTES.Integracao.Guardian/GuardianContratoSoapClient.cs
+?? src/FugaTES.Integracao.Guardian/GuardianPreCadastroRequestDto.cs
+?? src/FugaTES.Integracao.SAP/BusinessDocuments/
+?? src/FugaTES.Integracao.SAP/BusinessPartner/CarrierManualSapReadOnlyAdapter.cs
+?? src/FugaTES.Integracao.SAP/BusinessPartner/CarrierSapDiscoveryAdapter.cs
+?? src/FugaTES.Integracao.SAP/Http/SapConsultaAdapterBase.cs
+?? src/FugaTES.Integracao.SAP/Http/SapODataHttpExecutor.cs
+?? src/FugaTES.Persistencia/Consultas/
+?? src/FugaTES.Persistencia/ContratosSapToledo/AcmGuardianVinculoPostgreSql.cs
+?? src/FugaTES.Persistencia/Mvp/
+?? src/FugaTES.Persistencia/Recebimento/RepositorioEventoGuardianPostgreSql.cs
+?? src/FugaTES.Persistencia/Transportadoras/
+?? src/FugaTES.WinForms/Acm/
+?? src/FugaTES.WinForms/FrmContratosAcm.Designer.cs
+?? src/FugaTES.WinForms/FrmContratosAcm.cs
+?? src/FugaTES.WinForms/FrmIntegracoes.Designer.cs
+?? src/FugaTES.WinForms/FrmIntegracoes.cs
+?? src/FugaTES.WinForms/FrmMonitorMvp.Designer.cs
+?? src/FugaTES.WinForms/FrmMonitorMvp.cs
+?? src/FugaTES.WinForms/FrmTransportadoras.Designer.cs
+?? src/FugaTES.WinForms/FrmTransportadoras.cs
+?? src/FugaTES.WinForms/Monitor/
+?? src/FugaTES.WinForms/Runtime/
+?? src/FugaTES.WinForms/Transportadoras/
+?? tests/FugaTES.HmlFixture/
+?? tests/FugaTES.MvpPostgreSqlE2E/
+?? tests/FugaTES.Testes/AcmCarrierResolutionGuardTests.cs
+?? tests/FugaTES.Testes/AcmGenericSourceR3AcceptanceTests.cs
+?? tests/FugaTES.Testes/AcmGenericSourceR3Tests.cs
+?? tests/FugaTES.Testes/AcmGuardianH4DurableOfflineTests.cs
+?? tests/FugaTES.Testes/AcmGuardianH4SoapIdentityOfflineTests.cs
+?? tests/FugaTES.Testes/AcmGuardianReferenceMapperTests.cs
+?? tests/FugaTES.Testes/AcmH4DispatchWiringTests.cs
+?? tests/FugaTES.Testes/AcmProximityTemporaryR6Tests.cs
+?? tests/FugaTES.Testes/CarrierAutoSyncTests.cs
+?? tests/FugaTES.Testes/CarrierDesktopLifecycleTests.cs
+?? tests/FugaTES.Testes/CarrierDesktopPendingWriteTests.cs
+?? tests/FugaTES.Testes/CarrierDesktopProfileTests.cs
+?? tests/FugaTES.Testes/CarrierDesktopUiLifecycleTests.cs
+?? tests/FugaTES.Testes/CarrierGuardianAdapterTests.cs
+?? tests/FugaTES.Testes/CarrierLinuxBootstrapTests.cs
+?? tests/FugaTES.Testes/CarrierManualReadOnlyHttpR15Tests.cs
+?? tests/FugaTES.Testes/CarrierManualReadOnlyProfileR15Tests.cs
+?? tests/FugaTES.Testes/CarrierManualReadOnlyR15Tests.cs
+?? tests/FugaTES.Testes/CarrierMasterSapJsonNegotiationTests.cs
+?? tests/FugaTES.Testes/CarrierMigrationHotfixTests.cs
+?? tests/FugaTES.Testes/CarrierMigrationPostgreSqlTests.cs
+?? tests/FugaTES.Testes/CarrierProtocolBindingTests.cs
+?? tests/FugaTES.Testes/CarrierSapDiscoveryTests.cs
+?? tests/FugaTES.Testes/CarrierServiceBootstrapTests.cs
+?? tests/FugaTES.Testes/CarrierSyncAuthorizationTests.cs
+?? tests/FugaTES.Testes/CarrierSyncCompositionTests.cs
+?? tests/FugaTES.Testes/CarrierSyncPersistenceTests.cs
+?? tests/FugaTES.Testes/CarrierSyncPolicyTests.cs
+?? tests/FugaTES.Testes/CarrierSyncPollingClockTests.cs
+?? tests/FugaTES.Testes/CarrierSyncWinFormsTests.cs
+?? tests/FugaTES.Testes/CarrierSyncWorkerTests.cs
+?? tests/FugaTES.Testes/ContratosAcmLeituraTests.cs
+?? tests/FugaTES.Testes/DesktopZeroConfigRuntimeTests.cs
+?? tests/FugaTES.Testes/HmlGuardianFixtureTests.cs
+?? tests/FugaTES.Testes/HostIntegrationWorkerStartupGuardTests.cs
+?? tests/FugaTES.Testes/Inc006GuardianContratoSoapTests.cs
+?? tests/FugaTES.Testes/Inc006H7NonWeightCallbackTests.cs
+?? tests/FugaTES.Testes/MasterdataRuntimeWiringR32Tests.cs
+?? tests/FugaTES.Testes/MasterdataWinFormsOrchestrationR3Tests.cs
+?? tests/FugaTES.Testes/MvpApplicationOrchestrationTests.cs
+?? tests/FugaTES.Testes/MvpConfirmedFunctionalRulesTests.cs
+?? tests/FugaTES.Testes/MvpFlowResultProjectionTests.cs
+?? tests/FugaTES.Testes/MvpGuardianItemAndContratoWireTests.cs
+?? tests/FugaTES.Testes/MvpOperationalMonitorTests.cs
+?? tests/FugaTES.Testes/MvpSapCapabilitiesSdMmAcmTests.cs
+?? tests/FugaTES.Testes/SdDeliveryMvpPlannerTests.cs
+?? tests/FugaTES.Testes/TestResults/

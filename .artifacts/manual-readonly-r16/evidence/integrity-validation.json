@@ -1,0 +1,91 @@
+{
+  "Gate": "FUGATES-MASTERDATA-MANUAL-READONLY-STAGING-R16",
+  "ReleaseIdentity": "FUGATES_MASTERDATA_R15_STAGE_R16_20261011_181320_036_98c00995",
+  "StagingPath": "C:\\Users\\TI\\Downloads\\FUGATES_MASTERDATA_R15_STAGE_R16_20261011_181320_036_98c00995",
+  "PublishExitCode": 0,
+  "ReleaseBuild": "PASS",
+  "WindowsExecutable": "PE_AMD64",
+  "SelfContained": "PASS",
+  "R15CodeIncluded": true,
+  "R13PatchIncluded": true,
+  "CompiledInclusionEvidence": [
+    {
+      "Assembly": "FugaTES.WinForms.dll",
+      "CompiledMetadataSymbol": "CarrierManualReadOnlyComposition",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.WinForms.dll",
+      "CompiledMetadataSymbol": "ConsultarManualReadOnlyAsync",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.WinForms.dll",
+      "CompiledMetadataSymbol": "ConsultarReadOnlyAsync",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.Aplicacao.dll",
+      "CompiledMetadataSymbol": "ConsultarTransportadoraManualReadOnlyCasoDeUso",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.Aplicacao.dll",
+      "CompiledMetadataSymbol": "ResultadoCarrierManual",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.Integracao.SAP.dll",
+      "CompiledMetadataSymbol": "CarrierManualSapReadOnlyAdapter",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.Integracao.SAP.dll",
+      "CompiledMetadataSymbol": "CarrierManualODataDateParser",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.Integracao.Guardian.dll",
+      "CompiledMetadataSymbol": "GuardianCarrierManualReadOnlyAdapter",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.Integracao.Guardian.dll",
+      "CompiledMetadataSymbol": "ResolveApprovedCollectionUpdateRoute",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.Integracao.Guardian.dll",
+      "CompiledUserString": "R13_APPROVED_COLLECTION_ROUTE",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.HostIntegracao.dll",
+      "CompiledMetadataSymbol": "CarrierProtocolBinding",
+      "Present": true
+    },
+    {
+      "Assembly": "FugaTES.HostIntegracao.dll",
+      "CompiledUserString": "R13_APPROVED_COLLECTION_ROUTE",
+      "Present": true
+    }
+  ],
+  "AssemblyCount": 368,
+  "PrivateProfilesCopied": false,
+  "ConfigurationInventory": [
+    "appsettings.Development.json",
+    "FugaTES.HostIntegracao.deps.json",
+    "FugaTES.HostIntegracao.runtimeconfig.json",
+    "FugaTES.WinForms.deps.json",
+    "FugaTES.WinForms.runtimeconfig.json"
+  ],
+  "SourceChange": 0,
+  "SourceFilesUnchanged": 239,
+  "R15EvidenceFilesUnchanged": 9,
+  "ProtectedFilesUnchanged": 50,
+  "StagingRuntimeReady": false,
+  "WinFormsStarted": 0,
+  "WorkersStarted": 0,
+  "RealHttpCalls": 0,
+  "DatabaseConnections": 0
+}

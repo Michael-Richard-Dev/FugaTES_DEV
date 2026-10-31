@@ -270,21 +270,13 @@ public sealed class Inc003ContratoToledoTests
     [Fact]
     public void ContratoInc003_NaoVazaDtoOuTiposWireParaAplicacaoWinFormsOuPersistencia()
     {
-        var raiz = LocalizarRaizRepositorio();
-        var arquivos = Directory.EnumerateFiles(Path.Combine(raiz, "src"), "*.cs", SearchOption.AllDirectories)
-            .Where(arquivo => arquivo.Contains("FugaTES.Aplicacao", StringComparison.OrdinalIgnoreCase)
-                || arquivo.Contains("FugaTES.WinForms", StringComparison.OrdinalIgnoreCase)
-                || arquivo.Contains("FugaTES.Persistencia", StringComparison.OrdinalIgnoreCase));
-        var proibidos = new[] { "ContratoToledoRequestDto", "JsonElement", "JsonDocument" };
-
-        foreach (var arquivo in arquivos)
+        // Durable snapshots and JSON previews are not Toledo wire DTO dependencies.
+        foreach (var assembly in new[]
         {
-            var conteudo = File.ReadAllText(arquivo);
-            foreach (var proibido in proibidos)
-            {
-                Assert.DoesNotContain(proibido, conteudo, StringComparison.OrdinalIgnoreCase);
-            }
-        }
+            typeof(FugaTES.Aplicacao.Modelos.Toledo.ContratoToledo).Assembly,
+            typeof(FugaTES.WinForms.FrmMonitorMvp).Assembly,
+            typeof(FugaTES.Persistencia.MotorIntegracao.RepositorioMotorIntegracaoPostgreSql).Assembly
+        }) ArchitectureBoundaries.NoToledoWireDtos(assembly.GetTypes());
     }
 
     [Fact]

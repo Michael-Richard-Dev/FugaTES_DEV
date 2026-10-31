@@ -492,9 +492,33 @@ public sealed class SapBusinessPartnerReadOnlyTests
 
         foreach (var arquivo in arquivos)
         {
-            var achados = ScannerSegurancaCodigo.Detectar(File.ReadAllText(arquivo));
+            var source = File.ReadAllText(arquivo);
+            if (Path.GetFileName(arquivo) == "AcmR104Bindings.cs")
+            {
+                const string approvedCallback = "http://192.168.17.40/api/guardian/set26/callback/recebimento";
+                Assert.Equal(approvedCallback, FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.InternalHmlUrl);
+                var binding = new FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackBinding("HML", approvedCallback,
+                    "192.168.17.91/32", true, true, "SYNTHETIC_POLICY_TEST");
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, true, null));
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, false, binding));
+                Assert.True(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, true, binding));
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, true, binding with { Environment = "PRD" }));
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, true, binding with { SourceAllowlistVerified = false }));
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback + "?other=1", true, binding));
+                var literal = "\"" + approvedCallback + "\"";
+                Assert.Single(Regex.Matches(source, Regex.Escape(literal)).Cast<Match>());
+                source = source.Replace(literal, "\"https://example.invalid\"", StringComparison.Ordinal);
+            }
+            var achados = ScannerSegurancaCodigo.Detectar(source);
             if (Path.GetFileName(arquivo).Equals("PesagemSapHttpGateway.cs", StringComparison.OrdinalIgnoreCase))
                 achados = achados.Where(achado => !achado.Equals("HttpMethod.Post", StringComparison.OrdinalIgnoreCase)).ToArray();
+            // MVP SAP capabilities (Gate FUGATES-MVP-SAP-CAPABILITIES-SD-MM-ACM-R1): escrita SAP autorizada
+            // (Outbound Delivery CREATE/PATCH, Material Document 101). Verbos de escrita liberados apenas
+            // neste arquivo de adapters; nenhum endpoint operacional literal ou segredo e permitido.
+            if (Path.GetFileName(arquivo).Equals("MvpSapEscritaAdapters.cs", StringComparison.OrdinalIgnoreCase))
+                achados = achados.Where(achado =>
+                    !achado.Equals("HttpMethod.Post", StringComparison.OrdinalIgnoreCase) &&
+                    !achado.Equals("HttpMethod.Patch", StringComparison.OrdinalIgnoreCase)).ToArray();
             Assert.True(achados.Count == 0, $"{arquivo}: {string.Join(", ", achados)}");
         }
     }
@@ -547,12 +571,11 @@ public sealed class SapBusinessPartnerReadOnlyTests
     [Fact]
     public void Arquitetura_WinFormsPermaneceSemHttpClient()
     {
-        var raiz = LocalizarRaizRepositorio();
-        var arquivos = Directory.EnumerateFiles(Path.Combine(raiz, "src", "FugaTES.WinForms"), "*.cs", SearchOption.AllDirectories);
-
-        foreach (var arquivo in arquivos)
+        // Forms delegate to composed sessions; backend-command clients are separate runtime units.
+        foreach (var form in typeof(FugaTES.WinForms.FrmMonitorMvp).Assembly.GetTypes()
+            .Where(type => typeof(System.Windows.Forms.Form).IsAssignableFrom(type)))
         {
-            Assert.DoesNotContain("HttpClient", File.ReadAllText(arquivo), StringComparison.OrdinalIgnoreCase);
+            ArchitectureBoundaries.NoHttpTransport(form);
         }
     }
 

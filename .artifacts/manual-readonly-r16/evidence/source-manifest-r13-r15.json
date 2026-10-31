@@ -1,0 +1,62 @@
+[
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Aplicacao\\Transportadoras\\CarrierManualReadOnly.cs",
+    "SHA256": "57E301EAADA087F6BF711E257D07F0DC030BEA58434089A5A7076531661DAD0E",
+    "Bytes": 6903
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.SAP\\BusinessPartner\\CarrierManualSapReadOnlyAdapter.cs",
+    "SHA256": "2F801F369AD1D51C8DDBBE48099C4915A05BF412CAD8663A64346EB04CC20A3C",
+    "Bytes": 3074
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianCarrierManualReadOnlyAdapter.cs",
+    "SHA256": "97B81E4FB42B645188144EAC9399C304FFC8813DDE0F2FB5A36E8D48FCBE59A5",
+    "Bytes": 3783
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierManualReadOnlyComposition.cs",
+    "SHA256": "53674B0BB32B8253A5D58552CF240BA73647670B49CD1C15A0995787862449BD",
+    "Bytes": 8728
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\CarrierDesktopLifecycle.cs",
+    "SHA256": "B9B13F9F3509C65C425376FF870E2581934341665618C611FF911490BCB7E83A",
+    "Bytes": 8487
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\MasterdataR3\\MasterdataSharedOrchestratorR3.cs",
+    "SHA256": "809F10A54404C8ED23F0B9C4C826018CAD55CFFADF40A3FF8FEDC9366A7AAFB7",
+    "Bytes": 14266
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.WinForms\\Transportadoras\\MasterdataR3\\FrmCadastrosGuardianR3.cs",
+    "SHA256": "ED379C3D4E76857840F75D23EABBAC1C5A960276AAAAFF85F41524D90E6850D3",
+    "Bytes": 8551
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\tests\\FugaTES.Testes\\CarrierManualReadOnlyR15Tests.cs",
+    "SHA256": "0873519AC545F31965F794470246D5D4728FB37155A80B8C3930F3975AA00D98",
+    "Bytes": 11314
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\tests\\FugaTES.Testes\\CarrierManualReadOnlyHttpR15Tests.cs",
+    "SHA256": "574BBE47732048011D0A1B19CC817AEA86CFBF262605861C08BA94FF7B66822C",
+    "Bytes": 8836
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\tests\\FugaTES.Testes\\CarrierManualReadOnlyProfileR15Tests.cs",
+    "SHA256": "01B4105BA8EE72898639A6EDB3826D3732B4896E9B40EB9F3B5B934602A5B0CB",
+    "Bytes": 4465
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.Integracao.Guardian\\GuardianCarrierSyncAdapter.cs",
+    "SHA256": "8F97B8DE1C3DC95D35349D3A4F47B7AEAC114DB6A39846F4E582A961A5A90449",
+    "Bytes": 8683
+  },
+  {
+    "Path": "C:\\Visual Studio 2026\\Projetos\\Fuga\\FugaTES\\FugaTES_DEV\\src\\FugaTES.HostIntegracao\\CarrierProtocolBinding.cs",
+    "SHA256": "D99DC4BE26C146295BA403F1CB66CFBB9FE1B62594DC1E39BB11717CCBFE78AF",
+    "Bytes": 8636
+  }
+]

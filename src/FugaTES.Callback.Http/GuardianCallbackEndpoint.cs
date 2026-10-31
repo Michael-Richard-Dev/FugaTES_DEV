@@ -4,7 +4,7 @@ using FugaTES.Aplicacao.Modelos.Recebimento;
 
 namespace FugaTES.Callback.Http;
 
-public static class GuardianCallbackEndpoint
+public static partial class GuardianCallbackEndpoint
 {
     public const string Route = "/api/guardian/set26/callback/recebimento";
 
@@ -18,7 +18,54 @@ public static class GuardianCallbackEndpoint
         endpoints.MapPost(route, (HttpContext context) => HandleAsync(context));
     }
 
-    public static async Task HandleAsync(HttpContext context)
+    public static void MapEvento(IEndpointRouteBuilder endpoints, string route)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+        if (string.IsNullOrWhiteSpace(route)) throw new ArgumentException("Callback route is required.", nameof(route));
+        endpoints.MapPost(route, (HttpContext context) => HandleEventoAsync(context));
+    }
+
+    private static async Task HandleEventoLegacyAsync(HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (!context.Request.HasJsonContentType())
+        {
+            await WriteErrorAsync(context, StatusCodes.Status415UnsupportedMediaType, "INVALID_CONTENT_TYPE");
+            return;
+        }
+        try
+        {
+            var dto = await context.Request.ReadFromJsonAsync<GuardianEventoHttpDto>(context.RequestAborted)
+                ?? throw new ArgumentException("Callback body is required.");
+            await context.RequestServices.GetRequiredService<ProcessarEventoGuardianCasoDeUso>()
+                .ExecutarAsync(dto.Mapear(), context.RequestAborted);
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/plain";
+            await context.Response.WriteAsync("OK", context.RequestAborted);
+        }
+        catch (JsonException)
+        {
+            await WriteErrorAsync(context, StatusCodes.Status400BadRequest, "INVALID_JSON");
+        }
+        catch (ArgumentException)
+        {
+            await WriteErrorAsync(context, StatusCodes.Status400BadRequest, "INVALID_CALLBACK");
+        }
+        catch (InvalidOperationException)
+        {
+            await WriteErrorAsync(context, StatusCodes.Status409Conflict, "CALLBACK_CONFLICT");
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, "CALLBACK_FAILED");
+        }
+    }
+
+    private static async Task HandleLegacyAsync(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         try

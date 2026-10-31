@@ -4,7 +4,8 @@ using Npgsql;
 
 namespace FugaTES.Persistencia.Consultas.ContratosAcm;
 
-public sealed class ContratosAcmPostgreSqlReadRepository(NpgsqlDataSource source) : IContratosAcmReadRepository
+// roleEsperada nula mantem o comportamento historico: identidade fixa na role ACM compartilhada.
+public sealed class ContratosAcmPostgreSqlReadRepository(NpgsqlDataSource source,bool exigirIdentidadeAcm=false,string? roleEsperada=null) : IContratosAcmReadRepository
 {
     public const string ConsultaSql = """
         select v.payload_contrato->>'Centro', v.numero_contrato, v.versao, v.criado_em,
@@ -14,7 +15,7 @@ public sealed class ContratosAcmPostgreSqlReadRepository(NpgsqlDataSource source
         from fugates.contrato_sap_toledo_versao v
         join fugates.contrato_sap_toledo_identidade identidade on identidade.numero_contrato=v.numero_contrato
         join fugates.integracao i on i.id=v.integracao_id
-        where v.payload_contrato->>'Centro' = @centro
+        where @todos or v.payload_contrato->>'Centro' = @centro
         order by v.criado_em desc, v.numero_contrato, v.versao desc
         limit 500
         """;
@@ -26,8 +27,18 @@ public sealed class ContratosAcmPostgreSqlReadRepository(NpgsqlDataSource source
         await using var tx = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
         await using (var readOnly = new NpgsqlCommand("SET TRANSACTION READ ONLY", connection, tx))
             await readOnly.ExecuteNonQueryAsync(ct);
+        if(exigirIdentidadeAcm)
+        {
+            await using var identity=FugaTES.Persistencia.Consultas.Monitor.MonitorPostgreSqlReadRepository.ComandoIdentidade(roleEsperada,connection,tx);
+            if(await identity.ExecuteScalarAsync(ct) is not true)throw new InvalidOperationException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
+        }
         await using var command = new NpgsqlCommand(ConsultaSql, connection, tx) { CommandTimeout = 10 };
-        command.Parameters.AddWithValue("centro", centro.Trim());
+        // Sentinela TODOS: dispensa a igualdade de centro sem remover o filtro parametrizado,
+        // de modo que um contrato de outro centro nao fica invisivel. Ordem, limite e
+        // transacao somente leitura permanecem exatamente os mesmos.
+        var todos = ContratosAcmConsulta.EhTodosOsCentros(centro);
+        command.Parameters.AddWithValue("todos", todos);
+        command.Parameters.AddWithValue("centro", todos ? string.Empty : centro.Trim());
         var result = new List<ContratoAcmLeitura>();
         await using (var reader = await command.ExecuteReaderAsync(ct))
         {

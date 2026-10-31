@@ -1,0 +1,1 @@
+dotnet publish src\FugaTES.WinForms\FugaTES.WinForms.csproj --configuration Release --runtime win-x64 --self-contained true -p:UseAppHost=true -p:PublishSingleFile=false -p:PublishTrimmed=false --artifacts-path .artifacts\manual-readonly-r16 --output C:\Users\TI\Downloads\FUGATES_MASTERDATA_R15_STAGE_R16_20261011_181320_036_98c00995 --verbosity minimal

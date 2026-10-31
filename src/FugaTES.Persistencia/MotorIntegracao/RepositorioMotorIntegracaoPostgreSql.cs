@@ -3,16 +3,20 @@ using FugaTES.Aplicacao.Contratos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Servicos.MotorIntegracao;
 using Npgsql;
+using FugaTES.Aplicacao.Configuracao;
 
 namespace FugaTES.Persistencia.MotorIntegracao;
 
 public sealed class RepositorioMotorIntegracaoPostgreSql : IMotorIntegracaoRepository
 {
     private readonly NpgsqlDataSource dataSource;
+    private readonly MotorIntegracaoOptions? options;
 
-    public RepositorioMotorIntegracaoPostgreSql(NpgsqlDataSource dataSource)
+    public RepositorioMotorIntegracaoPostgreSql(NpgsqlDataSource dataSource, MotorIntegracaoOptions? options = null)
     {
         this.dataSource = dataSource;
+        this.options = options;
+        if (options is not null && !options.EhValida()) throw new ArgumentException("R165AG_MOTOR_OPTIONS_INVALID", nameof(options));
     }
 
     public async Task<bool> EstaDisponivelAsync(CancellationToken cancellationToken)
@@ -101,7 +105,9 @@ public sealed class RepositorioMotorIntegracaoPostgreSql : IMotorIntegracaoRepos
               )
             order by i.criado_em;
             """;
-        await using var command = dataSource.CreateCommand(sql);
+        var scopedSql = AcmInboundWindowSqlScope.Apply(sql, "order by i.criado_em;", options);
+        await using var command = dataSource.CreateCommand(scopedSql);
+        AcmInboundWindowSqlScope.AddParameters(command, options);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var itens = new List<IntegracaoMotor>();
         while (await reader.ReadAsync(cancellationToken))
@@ -175,7 +181,8 @@ public sealed class RepositorioMotorIntegracaoPostgreSql : IMotorIntegracaoRepos
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         try
         {
-            await using var select = new NpgsqlCommand(selectSql, connection, transaction);
+            await using var select = new NpgsqlCommand(AcmInboundWindowSqlScope.Apply(selectSql, "for update skip locked;", options), connection, transaction);
+            AcmInboundWindowSqlScope.AddParameters(select, options);
             select.Parameters.AddWithValue("integracao_id", integracaoId);
             select.Parameters.AddWithValue("fingerprint_esperado", fingerprintEsperado);
             select.Parameters.AddWithValue("estado_esperado", EstadoParaBanco(estadoEsperado));
@@ -209,8 +216,9 @@ public sealed class RepositorioMotorIntegracaoPostgreSql : IMotorIntegracaoRepos
                 await insert.ExecuteNonQueryAsync(cancellationToken);
             }
 
-            await using (var update = new NpgsqlCommand(updateSql, connection, transaction))
+            await using (var update = new NpgsqlCommand(AcmInboundWindowSqlScope.Apply(updateSql, "returning i.id;", options), connection, transaction))
             {
+                AcmInboundWindowSqlScope.AddParameters(update, options);
                 update.Parameters.AddWithValue("novo_fencing_token", claim.NovoFencingToken);
                 update.Parameters.AddWithValue("worker", worker.Valor);
                 update.Parameters.AddWithValue("lease_duration", leaseDuration);

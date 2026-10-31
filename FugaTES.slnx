@@ -1,17 +1,36 @@
-﻿<Solution>
+<Solution>
   <Folder Name="/src/">
-    <Project Path="src/FugaTES.Callback.Http/FugaTES.Callback.Http.csproj" />
+    <Project Path="src/FugaTES.AcmSoapLookup.R33/FugaTES.AcmSoapLookup.R33.csproj" />
     <Project Path="src/FugaTES.Aplicacao/FugaTES.Aplicacao.csproj" />
+    <Project Path="src/FugaTES.Callback.Http/FugaTES.Callback.Http.csproj" />
     <Project Path="src/FugaTES.Dominio/FugaTES.Dominio.csproj" />
     <Project Path="src/FugaTES.HostIntegracao/FugaTES.HostIntegracao.csproj" />
     <Project Path="src/FugaTES.Infraestrutura/FugaTES.Infraestrutura.csproj" />
-    <Project Path="src/FugaTES.Integracao.SAP/FugaTES.Integracao.SAP.csproj" />
     <Project Path="src/FugaTES.Integracao.Guardian/FugaTES.Integracao.Guardian.csproj" />
+    <Project Path="src/FugaTES.Integracao.SAP/FugaTES.Integracao.SAP.csproj" />
     <Project Path="src/FugaTES.Integracao.Toledo/FugaTES.Integracao.Toledo.csproj" />
     <Project Path="src/FugaTES.Persistencia/FugaTES.Persistencia.csproj" />
     <Project Path="src/FugaTES.WinForms/FugaTES.WinForms.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/FugaTES.AcmSoapLookup.R33.Tests/FugaTES.AcmSoapLookup.R33.Tests.csproj" />
+    <Project Path="tests/FugaTES.BpEnrichment.R20B.Tests/FugaTES.BpEnrichment.R20B.Tests.csproj" />
+    <Project Path="tests/FugaTES.CarrierBinding.R37.Tests/FugaTES.CarrierBinding.R37.Tests.csproj" />
+    <Project Path="tests/FugaTES.DurableSnapshot.R24.Tests/FugaTES.DurableSnapshot.R24.Tests.csproj" />
+    <Project Path="tests/FugaTES.HmlFixture/FugaTES.HmlFixture.csproj" />
+    <Project Path="tests/FugaTES.Masterdata.R28.Tests/FugaTES.Masterdata.R28.Tests.csproj" />
+    <Project Path="tests/FugaTES.MvpPostgreSqlE2E/FugaTES.MvpPostgreSqlE2E.csproj" />
+    <Project Path="tests/FugaTES.PagedCoordinator.R20C.Tests/FugaTES.PagedCoordinator.R20C.Tests.csproj" />
+    <Project Path="tests/FugaTES.PagedReconciliation.R20A.Tests/FugaTES.PagedReconciliation.R20A.Tests.csproj" />
+    <Project Path="tests/FugaTES.SingleCreate.R31.Tests/FugaTES.SingleCreate.R31.Tests.csproj" />
+    <Project Path="tests/FugaTES.SingleCreate.R41.Tests/FugaTES.SingleCreate.R41.Tests.csproj" />
     <Project Path="tests/FugaTES.Testes/FugaTES.Testes.csproj" />
+    <Project Path="tests/FugaTES.WinForms.Monitor.R165M.Tests/FugaTES.WinForms.Monitor.R165M.Tests.csproj" />
+    <Project Path="tests/R164E.Integration.Tests/R164E.Integration.Tests.csproj" />
+    <Project Path="tests/R158.SapInboundReadiness.Tests/R158.SapInboundReadiness.Tests.csproj" />
+    <Project Path="tests/R165A.Tests/R165A.Tests.csproj" />
+    <Project Path="tests/R165G.TicketIdentity.Tests/R165G.TicketIdentity.Tests.csproj" />
+    <Project Path="tests/R165R.Provider.Tests/R165R.Provider.Tests.csproj" />
+    <Project Path="tests/R165U.Automatic.Tests/R165U.Automatic.Tests.csproj" />
   </Folder>
 </Solution>

@@ -8,9 +8,13 @@ public partial class FrmContratosAcm : Form
     private readonly IDisposable? lifetime;
     private readonly CancellationTokenSource cancelamento = new();
     private bool carregando;
+    private readonly Guid? integrationScope;
 
-    public FrmContratosAcm(ContratosAcmConsulta consulta, IDisposable? lifetime = null,string? operationalBlocker=null,bool restPreview=false,bool execucaoR57=false)
+    public FrmContratosAcm(ContratosAcmConsulta consulta, IDisposable? lifetime = null,string? operationalBlocker=null,bool restPreview=false,bool execucaoR57=false,
+        FugaTES.Aplicacao.Servicos.ManualRetry.IAcmManualRetryCommandClient? manualRetry=null,Action? retryStateChanged=null,Guid? integrationScope=null,ManualRetry.AcmManualRetryController? sharedRetry=null)
     {
+        if(integrationScope==Guid.Empty)throw new ArgumentException("Integração inválida.",nameof(integrationScope));
+        this.integrationScope=integrationScope;
         this.consulta = consulta;
         this.lifetime = lifetime;
         InitializeComponent();
@@ -21,6 +25,20 @@ public partial class FrmContratosAcm : Form
         // Acao JSON por contrato/item. Somente no caminho produtivo: as previas R55/R57
         // refazem as colunas da grade e retornam antes desta linha.
         grid.CellContentClick += (_, e) => AbrirJsonSeAcionado(e.RowIndex, e.ColumnIndex);
+        grid.Columns.Add(new DataGridViewTextBoxColumn{Name="FonteDados",HeaderText="Origem / natureza",DataPropertyName="FonteDados",ReadOnly=true});
+        // Keep the JSON action and provenance visible without scrolling over technical correlations.
+        grid.Columns["json"]!.DisplayIndex=0;
+        grid.Columns["FonteDados"]!.DisplayIndex=4;
+        grid.Columns["FonteDados"]!.AutoSizeMode=DataGridViewAutoSizeColumnMode.None;
+        grid.Columns["FonteDados"]!.Width=220;
+        grid.CellFormatting+=(_,e)=>
+        {
+            if(grid.Columns[e.ColumnIndex].Name!="FonteDados")return;
+            e.Value=(e.Value as string) switch {"SIMULACAO_CONFIRMADA"=>"SIMULAÇÃO CONFIRMADA",
+                "PROJECAO_PERSISTIDA_ORIGEM_NAO_ATESTADA"=>"PERSISTIDO / ORIGEM NÃO ATESTADA",_=>e.Value};
+        };
+        ConfigureRetry(manualRetry,retryStateChanged,sharedRetry);
+        if(operationalBlocker is null)ConfigurarCentrosEAtualizacaoAutomatica();
         if(operationalBlocker is null)Shown += async (_, _) => await ConsultarAsync();
         else {status.Text=operationalBlocker;atualizar.Enabled=false;if(status.Parent is TableLayoutPanel panel)panel.RowStyles[2].Height=120;}
         FormClosing += (_, _) => cancelamento.Cancel();
@@ -152,10 +170,20 @@ public partial class FrmContratosAcm : Form
         try
         {
             var rows = await consulta.ConsultarAsync(filtro, cancelamento.Token);
+            if(integrationScope is { } target)rows=rows.Where(r=>r.IntegracaoId==target).ToArray();
             if (cancelamento.IsCancellationRequested) return;
             grid.DataSource = rows.ToArray();
-            status.Text = rows.Count == 0 ? $"Nenhum contrato encontrado para o centro {filtro}"
-                : $"Centro {filtro}: {rows.Count} versoes / limite 500";
+            var todos = ContratosAcmConsulta.EhTodosOsCentros(filtro);
+            var escopo = todos ? "Todos os centros autorizados" : $"Centro {filtro}";
+            // Vazio em "todos os centros" nao comprova ausencia de registros: a API privada de
+            // leitura pode ser anterior ao seletor TODOS e tratar o sentinela como um centro.
+            var vazio = integrationScope is not null
+                ? "Integração selecionada não retornada pela leitura atual; nenhum outro contrato será usado."
+                : todos
+                    ? "Nenhum contrato retornado para todos os centros. Isso não comprova ausência de registros: confirme se a API privada de leitura já publica o seletor TODOS."
+                    : $"Nenhum contrato encontrado no centro {filtro}";
+            status.Text = rows.Count == 0 ? vazio : $"{escopo}: {rows.Count} versoes / limite 500";
+            await AtualizarReenviosAsync(rows);
         }
         catch (OperationCanceledException) when (cancelamento.IsCancellationRequested) { }
         catch
@@ -166,7 +194,71 @@ public partial class FrmContratosAcm : Form
         finally
         {
             carregando = false;
-            if (!IsDisposed && !cancelamento.IsCancellationRequested) atualizar.Enabled = centro.Enabled = true;
+            if (!IsDisposed && !cancelamento.IsCancellationRequested)
+            {
+                atualizar.Enabled = true;
+                centro.Enabled = todosOsCentros?.Checked != true;
+                if (todosOsCentros is not null) todosOsCentros.Enabled = true;
+            }
         }
+    }
+
+    private CheckBox? todosOsCentros;
+    private System.Windows.Forms.Timer? atualizacaoAutomatica;
+
+    /// <summary>
+    /// Visibilidade por centro e atualizacao periodica da grade.
+    ///
+    /// Um contrato recebido do SAP nao pode ficar invisivel apenas por pertencer a um centro
+    /// diferente do piloto: o campo Centro continua editavel e a opcao "Todos os centros"
+    /// dispensa o filtro, usando a MESMA leitura autorizada somente leitura. Nenhuma consulta
+    /// nova e criada e nenhum privilegio e ampliado.
+    ///
+    /// A atualizacao automatica de 10 s apenas reexecuta a consulta de leitura; nunca dispara
+    /// reenvio, POST SAP, chamada Guardian ou worker.
+    /// </summary>
+    private void ConfigurarCentrosEAtualizacaoAutomatica()
+    {
+        if (centro.Parent is { } barra)
+        {
+            todosOsCentros = new CheckBox
+            {
+                Text = "Todos os centros",
+                AutoSize = true,
+                Margin = new Padding(12, 7, 0, 0),
+                AccessibleName = "Todos os centros autorizados"
+            };
+            todosOsCentros.CheckedChanged += async (_, _) =>
+            {
+                if (todosOsCentros.Checked)
+                {
+                    centro.Text = ContratosAcmConsulta.TodosOsCentros;
+                    centro.Enabled = false;
+                }
+                else
+                {
+                    centro.Enabled = true;
+                    if (ContratosAcmConsulta.EhTodosOsCentros(centro.Text))
+                        centro.Text = ContratosAcmConsulta.CentroInicial;
+                }
+                await ConsultarAsync();
+            };
+            barra.Controls.Add(todosOsCentros);
+        }
+
+        // Mesmo intervalo do painel inicial, para que a grade e o estado de conexao andem juntos.
+        atualizacaoAutomatica = new System.Windows.Forms.Timer { Interval = 10000 };
+        atualizacaoAutomatica.Tick += async (_, _) =>
+        {
+            if (IsDisposed || Disposing || carregando || !atualizar.Enabled || cancelamento.IsCancellationRequested) return;
+            await ConsultarAsync();
+        };
+        Shown += (_, _) => atualizacaoAutomatica?.Start();
+        FormClosing += (_, _) =>
+        {
+            atualizacaoAutomatica?.Stop();
+            atualizacaoAutomatica?.Dispose();
+            atualizacaoAutomatica = null;
+        };
     }
 }

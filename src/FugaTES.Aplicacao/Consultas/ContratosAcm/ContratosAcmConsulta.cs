@@ -18,6 +18,7 @@ public sealed record ContratoAcmLeitura(string? Centro, string NumeroContrato, l
     /// Nulo quando a linha nao tem payload armazenado.
     /// </summary>
     public string? PayloadContratoJson { get; init; }
+    public string FonteDados {get;init;}="PROJECAO_PERSISTIDA";
 }
 
 public interface IContratosAcmReadRepository
@@ -28,10 +29,24 @@ public interface IContratosAcmReadRepository
 public sealed class ContratosAcmConsulta(IContratosAcmReadRepository repository)
 {
     public const string CentroInicial = "3011";
+
+    /// <summary>
+    /// Seletor que dispensa o filtro de centro e devolve todos os centros autorizados pela
+    /// fonte de leitura. Existe para que um contrato recebido do SAP nunca fique invisivel
+    /// apenas por pertencer a um centro diferente do piloto. Nao amplia privilegio: a fonte
+    /// continua sendo a mesma leitura autorizada, somente leitura, com o mesmo limite.
+    /// </summary>
+    public const string TodosOsCentros = "TODOS";
+
+    public static bool EhTodosOsCentros(string? centro)
+        => string.Equals(centro?.Trim(), TodosOsCentros, StringComparison.OrdinalIgnoreCase);
+
     public Task<IReadOnlyList<ContratoAcmLeitura>> ConsultarAsync(string centro, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(centro)) throw new ArgumentException("Informe o centro.", nameof(centro));
         ct.ThrowIfCancellationRequested();
-        return repository.ConsultarAsync(centro.Trim(), ct);
+        // O sentinela e normalizado aqui para que todas as implementacoes do repositorio
+        // recebam exatamente o mesmo valor, sem depender da caixa digitada na tela.
+        return repository.ConsultarAsync(EhTodosOsCentros(centro) ? TodosOsCentros : centro.Trim(), ct);
     }
 }

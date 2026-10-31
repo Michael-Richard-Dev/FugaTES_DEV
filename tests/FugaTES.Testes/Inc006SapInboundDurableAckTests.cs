@@ -21,6 +21,9 @@ namespace FugaTES.Testes;
 
 public sealed class Inc006SapInboundDurableAckTests
 {
+    private const string BasicUsername = "SYNTHETIC_R165AH_DURABLE_USER";
+    private const string BasicPassword = "SYNTHETIC_R165AH_DURABLE_NOT_A_CREDENTIAL";
+
     [Fact]
     public async Task Novo_replay_e_nova_versao_nao_processam_inline()
     {
@@ -134,8 +137,8 @@ public sealed class Inc006SapInboundDurableAckTests
     public async Task Host_sap_only_constroi_sem_config_callback_e_sem_rede()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
-        foreach (var pair in ProductiveConfig().AsEnumerable())
-            if (pair.Value is not null) builder.Configuration[pair.Key] = pair.Value;
+        builder.Configuration.Sources.Clear();
+        builder.Configuration.AddInMemoryCollection(ProductiveConfig().AsEnumerable());
         var routes = InboundHttpHostComposition.Configurar(builder.Services, builder.Configuration, false);
         await using var app = builder.Build();
         HealthEndpoint.Map(app);
@@ -172,7 +175,9 @@ public sealed class Inc006SapInboundDurableAckTests
         var values = new Dictionary<string, string?>
         {
             ["SapContractInbound:ProductiveEnabled"] = "true",
-            ["SapContractInbound:SecurityMode"] = "LoopbackOnly"
+            ["SapContractInbound:SecurityMode"] = "LoopbackOnly",
+            ["SapInbound:BasicAuth:Username"] = BasicUsername,
+            ["SapInbound:BasicAuth:Password"] = BasicPassword
         };
         if (includeConnection) values["ConnectionStrings:FugaTES"] = "Host=example.invalid;Database=fugates;Username=fugates";
         if (offline) values["SapContractInbound:OfflineEnabled"] = "true";
@@ -189,6 +194,7 @@ public sealed class Inc006SapInboundDurableAckTests
     private static ServiceProvider Provider(RecordingStore store)
     {
         var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(ProductiveConfig());
         services.AddSingleton<IContratoSapToledoVersaoStore>(store);
         services.AddSingleton<ContratoSapToledoCanonicalizer>();
         services.AddScoped<AceitarContratoSapToledoDuravelCasoDeUso>();
@@ -201,6 +207,8 @@ public sealed class Inc006SapInboundDurableAckTests
         var context = new DefaultHttpContext { RequestServices = provider };
         context.Connection.RemoteIpAddress = remoteIp ?? IPAddress.Loopback;
         context.Request.Method = "POST";
+        context.Request.Headers.Authorization = "Basic " +
+            Convert.ToBase64String(Encoding.UTF8.GetBytes(BasicUsername + ":" + BasicPassword));
         context.Request.ContentType = contentType;
         context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(
             $$"""{"Contrato":[{"NumeroContrato":"CONTRATO-A","Material":"{{material}}"}]}"""));

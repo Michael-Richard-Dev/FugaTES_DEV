@@ -8,19 +8,25 @@ partial class FrmIntegracoes
     private Button transportadoras = null!;
     private Button guardian = null!;
     private Button contratosJson = null!;
+    private Button protocolosPreCadastro = null!;
+    private Button toledoRecebimentos = null!;
+    private Button ordensVendaSd = null!;
     protected override void Dispose(bool disposing) { if (disposing) components?.Dispose(); base.Dispose(disposing); }
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
         Text = "Integrações — FugaTES HML";
-        ClientSize = new Size(660, 360);
-        MinimumSize = new Size(620, 350);
+        ClientSize = new Size(660, 575);
+        MinimumSize = new Size(620, 565);
         StartPosition = FormStartPosition.CenterParent;
         Font = new Font("Segoe UI", 10F);
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, RowCount = 4 };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, RowCount = 7 };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.Controls.Add(new Label { Text = "Integrações", Dock = DockStyle.Fill, Font = new Font("Segoe UI", 17F, FontStyle.Bold) }, 0, 0);
         contratos = new Button { Text = "Contratos ACM", Dock = DockStyle.Fill, Margin = new Padding(0, 8, 0, 8) };
@@ -39,6 +45,16 @@ partial class FrmIntegracoes
         contratosJson = new Button { Text = "Contratos ACM — JSON por contrato/item", Dock = DockStyle.Top,
             Height = 46, Margin = new Padding(0, 8, 0, 8), Visible = false, Name = "contratosJson" };
         layout.Controls.Add(contratosJson, 0, 3);
+        protocolosPreCadastro = new Button { Text = "Protocolos de Pré-Cadastro Guardian", Name = "protocolosPreCadastro",
+            Dock = DockStyle.Top, Height = 46, Margin = new Padding(0, 8, 0, 8), Enabled = false };
+        layout.Controls.Add(protocolosPreCadastro, 0, 4);
+        toledoRecebimentos=new Button{Text="Recebimentos Guardian / Toledo",Name="toledoRecebimentos",Dock=DockStyle.Top,Height=46,Margin=new Padding(0,8,0,8),Enabled=false};
+        layout.Controls.Add(toledoRecebimentos,0,5);
+        // Fluxo SD, em construcao: leitura de ordens de venda no SAP para validar a busca. Nao
+        // despacha nada, e por isso fica fora do grupo de cadastros SAP -> Guardian.
+        ordensVendaSd = new Button { Text = "Ordens de venda (SD) — leitura SAP", Name = "ordensVendaSd",
+            Dock = DockStyle.Top, Height = 46, Margin = new Padding(0, 8, 0, 8) };
+        layout.Controls.Add(ordensVendaSd, 0, 6);
         Controls.Add(layout);
     }
 }

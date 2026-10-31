@@ -1,12 +1,12 @@
 {
   "profiles": {
-    "FugaTES.Callback.Http": {
+    "FugaTESLocalInert": {
       "commandName": "Project",
-      "launchBrowser": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://127.0.0.1:18085",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "https://localhost:54601;http://localhost:54602"
+      }
     }
   }
 }

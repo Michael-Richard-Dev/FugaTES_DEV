@@ -11,8 +11,9 @@ public sealed record PesagemSapWireDto(
     [property: JsonPropertyName("UsuarioPesagem")] string? UsuarioPesagem,
     [property: JsonPropertyName("UsuarioClassificacao")] string? UsuarioClassificacao,
     [property: JsonPropertyName("IdPlanejamento")] string? IdPlanejamento,
-    [property: JsonPropertyName("IdAgendamento")] int? IdAgendamento,
-    [property: JsonPropertyName("IdTransportadora")] string IdTransportadora,
+    // ACM uses its attested CHAR(10); legacy non-ACM serialization retains its integer.
+    [property: JsonPropertyName("IdAgendamento")] object? IdAgendamento,
+    [property: JsonPropertyName("IdTransportadora")] string? IdTransportadora,
     [property: JsonPropertyName("FreteTonelada")] decimal? FreteTonelada,
     [property: JsonPropertyName("PesoBruto")] decimal PesoBruto,
     [property: JsonPropertyName("PesoTara")] decimal PesoTara,
@@ -32,7 +33,7 @@ public sealed record PesagemSapWireDto(
 
 public sealed record QualidadePesagemSapWireDto(
     [property: JsonPropertyName("Tipo")] string Tipo,
-    [property: JsonPropertyName("Grupo")] string Grupo,
+    [property: JsonPropertyName("Grupo")] string? Grupo,
     [property: JsonPropertyName("ValorAferido")] decimal ValorAferido);
 
 public sealed record ItemPesagemSapWireDto(

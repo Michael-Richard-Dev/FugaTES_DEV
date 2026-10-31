@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <ProjectReference Include="../../src/FugaTES.WinForms/FugaTES.WinForms.csproj" />
+    <Compile Include="MonitorReadbackTests.cs" />
+    <Compile Include="LocalSimulationReadbackTests.cs" />
+    <Compile Include="PhysicalMonitorTests.cs" />
+    <Compile Include="LivePhysicalConnectionTests.cs" />
+    <Compile Include="UnifiedDevClientTests.cs" />
+    <Compile Include="ToledoReceiptsFormTests.cs" />
+    <Compile Include="ToledoSapReturnUiTests.cs" />
+    <Compile Include="ManualRetryUiTests.cs" />
+    <Compile Include="ProtocolRestRetryTests.cs" />
+    <Compile Include="RetryCommandBindingRedTests.cs" />
+    <Compile Include="RetryCommandDesktopTests.cs" />
+    <Compile Include="ConsolidatedProtocolTests.cs" />
+    <Compile Include="UnifiedDesktopTests.cs" />
+    <Compile Include="../../tools/R165AJ.LocalDemo/LocalObservationFile.cs" Link="LocalObservationFile.cs" />
+    <Compile Include="GuardianProtocolFormTests.cs" />
+    <Compile Include="GuardianProtocolClientTests.cs" />
+    <Compile Include="GuardianProtocolControllerTests.cs" />
+    <Compile Include="GuardianProtocolReadbackTests.cs" />
+    <Compile Include="AcmMonitorStartupTests.cs" />
+    <Compile Include="MonitorCandidateGuiTests.cs" />
+    <Compile Include="MonitorMetadataUTests.cs" />
+    <Compile Include="MonitorReadModelTests.cs" />
+    <Compile Include="MvpOperationalMonitorTests.cs" />
+    <ProjectReference Include="../../src/FugaTES.Aplicacao/FugaTES.Aplicacao.csproj" />
+    <ProjectReference Include="../../src/FugaTES.Persistencia/FugaTES.Persistencia.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>
+
+
+

@@ -6,6 +6,8 @@ using System.Text.Json;
 using FugaTES.Aplicacao.CasosDeUso.Toledo;
 using FugaTES.Aplicacao.Resultados.Toledo;
 using FugaTES.Aplicacao.Servicos.ContratosSapToledo;
+using FugaTES.Aplicacao.Configuracao;
+using FugaTES.Aplicacao.Contratos.ContratosSapToledo;
 
 namespace FugaTES.Callback.Http;
 
@@ -35,6 +37,19 @@ public static class SapContractInboundEndpoint
             await WriteAsync(context, StatusCodes.Status403Forbidden, new { mensagem = "Acesso negado." });
             return;
         }
+        if (!IsAuthorized(context))
+        {
+            await WriteAsync(context, StatusCodes.Status401Unauthorized, new { mensagem = "Acesso negado." });
+            return;
+        }
+        var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
+        if (configuration["SapContractInbound:SecurityMode"] == "LoopbackBasicHttps" &&
+            (context.Request.Headers["X-Forwarded-Proto"].Count != 1 ||
+             context.Request.Headers["X-Forwarded-Proto"][0] != "https"))
+        {
+            await WriteAsync(context, StatusCodes.Status403Forbidden, new { mensagem = "Acesso negado." });
+            return;
+        }
         if (!context.Request.HasJsonContentType())
         {
             await WriteAsync(context, StatusCodes.Status415UnsupportedMediaType, new { mensagem = "Content-Type inválido." });
@@ -49,9 +64,63 @@ public static class SapContractInboundEndpoint
                 throw new ArgumentException("Contrato collection must contain exactly one item.");
 
             var snapshot = SapContractInboundMapper.MapearSnapshot(dto.Contrato.Single()!);
-            var correlationId = Guid.NewGuid().ToString("N");
-            var result = await context.RequestServices.GetRequiredService<AceitarContratoSapToledoDuravelCasoDeUso>()
-                .ExecutarAsync(snapshot, correlationId, context.RequestAborted);
+            var automaticText = configuration["SapContractInbound:AutomaticProcessingEnabled"];
+            if (automaticText is not null && !bool.TryParse(automaticText, out _))
+            {
+                await WriteAsync(context, StatusCodes.Status503ServiceUnavailable, new { mensagem = "SAP_INBOUND_SCOPE_UNAVAILABLE" });
+                return;
+            }
+            var automatic = bool.TryParse(automaticText, out var enabledAutomatic) && enabledAutomatic;
+            var windowText = configuration["MotorIntegracao:AcmInboundWindow:Enabled"];
+            if (windowText is not null && !bool.TryParse(windowText, out _))
+            {
+                await WriteAsync(context, StatusCodes.Status503ServiceUnavailable, new { mensagem = "SAP_INBOUND_SCOPE_UNAVAILABLE" });
+                return;
+            }
+            AcmInboundWindowOptions? window = null;
+            if (automatic || bool.TryParse(windowText, out var windowEnabled) && windowEnabled)
+            {
+                MotorIntegracaoOptions? scope = null;
+                try { scope = configuration.GetSection("MotorIntegracao").Get<MotorIntegracaoOptions>(); }
+                catch (InvalidOperationException) { /* Invalid configuration never authorizes persistence. */ }
+                if (scope is null || !scope.EhValida() ||
+                    (!scope.UsaEscopoAcm && !scope.AcmInboundWindow.Enabled))
+                {
+                    await WriteAsync(context, StatusCodes.Status503ServiceUnavailable, new { mensagem = "SAP_INBOUND_SCOPE_UNAVAILABLE" });
+                    return;
+                }
+                if (scope.AcmInboundWindow.Enabled)
+                {
+                    window = scope.AcmInboundWindow;
+                    if (!automatic || configuration["SapContractInbound:SecurityMode"] != "LoopbackBasicHttps")
+                    {
+                        await WriteAsync(context, StatusCodes.Status503ServiceUnavailable, new { mensagem = "SAP_INBOUND_SCOPE_UNAVAILABLE" });
+                        return;
+                    }
+                    var clock = context.RequestServices.GetRequiredService<TimeProvider>();
+                    if (!window.EstaAberta(clock.GetUtcNow()))
+                    {
+                        await WriteAsync(context, StatusCodes.Status403Forbidden, new { mensagem = "SAP_INBOUND_WINDOW_CLOSED" });
+                        return;
+                    }
+                    if (!window.SnapshotPermitido(snapshot))
+                    {
+                        await WriteAsync(context, StatusCodes.Status422UnprocessableEntity, new { mensagem = "SAP_INBOUND_SCOPE_NOT_AUTHORIZED" });
+                        return;
+                    }
+                }
+                else if (snapshot.NumeroContrato != scope.AcmPilotNumeroContrato || snapshot.Centro != scope.AcmPilotCentro ||
+                         snapshot.Item != scope.AcmPilotItem)
+                {
+                    await WriteAsync(context, StatusCodes.Status422UnprocessableEntity, new { mensagem = "SAP_INBOUND_SCOPE_NOT_AUTHORIZED" });
+                    return;
+                }
+            }
+            var correlationId = window?.CriarCorrelationId() ?? Guid.NewGuid().ToString("N");
+            var useCase = context.RequestServices.GetRequiredService<AceitarContratoSapToledoDuravelCasoDeUso>();
+            var result = window is null
+                ? await useCase.ExecutarAsync(snapshot, correlationId, context.RequestAborted)
+                : await useCase.ExecutarAdmitidoAsync(snapshot, correlationId, window.CriarAdmissao(), context.RequestAborted);
             await WriteAsync(context, StatusCodes.Status201Created, new
             {
                 resultado = result.Reentrega ? "REENTREGA_IDEMPOTENTE" : "ACEITO",
@@ -60,6 +129,10 @@ public static class SapContractInboundEndpoint
                 reentrega = result.Reentrega,
                 correlationId = result.CorrelationId
             });
+        }
+        catch (AcmInboundScopeConflictException)
+        {
+            await WriteAsync(context, StatusCodes.Status409Conflict, new { mensagem = "SAP_INBOUND_ADMISSION_CONFLICT" });
         }
         catch (JsonException)
         {

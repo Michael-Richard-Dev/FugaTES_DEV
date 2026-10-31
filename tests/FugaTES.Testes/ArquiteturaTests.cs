@@ -101,6 +101,7 @@ public sealed class ArquiteturaTests
         var builder = Host.CreateApplicationBuilder([]);
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["FUGATES_INTEGRATION_WORKER_ENABLED"] = null,
             ["HostIntegracao:PollInterval"] = "00:00:01",
             ["HostIntegracao:ShutdownGracePeriod"] = "00:00:05",
             ["HostIntegracao:ExternalMode"] = "Fake",
@@ -114,7 +115,7 @@ public sealed class ArquiteturaTests
 
         using var host = builder.Build();
 
-        Assert.Contains(host.Services.GetServices<IHostedService>(), servico => servico is HospedagemIntegracaoWorker);
+        Assert.DoesNotContain(host.Services.GetServices<IHostedService>(), servico => servico is HospedagemIntegracaoWorker);
     }
     private static Dictionary<string, string[]> CarregarGrafoProjetos()
     {

@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="6fedc219-6b5a-4fc9-9655-d670850f8596" name="TI@NT-TI-256 2026-10-07 20:18:41" runUser="NT-TI-256\TI" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-07T20:18:41.4667719-03:00" queuing="2026-10-07T20:18:41.4667724-03:00" start="2026-10-07T20:18:39.1276821-03:00" finish="2026-10-07T20:18:41.5152148-03:00" />
+  <TestSettings name="default" id="69bbc0fc-c160-4f05-a483-8fd42e21468a">
+    <Deployment runDeploymentRoot="TI_NT-TI-256_2026-10-07_20_18_41" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="2276e714-1c7b-4265-b137-6161210664a6" testId="981aab03-73ec-98d9-f8cf-4b16d7eff16a" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Secret_field_in_profile_is_rejected" computerName="NT-TI-256" duration="00:00:00.0091294" startTime="2026-10-07T20:18:41.4254275-03:00" endTime="2026-10-07T20:18:41.4254606-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2276e714-1c7b-4265-b137-6161210664a6" />
+    <UnitTestResult executionId="2d83038f-7c08-47e6-a37e-5aee6701cae7" testId="c7eb6626-3ca5-5e47-56aa-95e99dee2d90" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Disabled_ssh_cannot_depend_on_desktop_tunnel" computerName="NT-TI-256" duration="00:00:00.0060390" startTime="2026-10-07T20:18:41.4251818-03:00" endTime="2026-10-07T20:18:41.4252197-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2d83038f-7c08-47e6-a37e-5aee6701cae7" />
+    <UnitTestResult executionId="6208f4b4-6dfe-45ed-8347-a53fc7a52a3d" testId="18afef08-9dc6-56bf-61d9-a2d4d39c8120" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Unsafe_service_configuration_is_rejected(environment: &quot;HML&quot;, inc005: False, port: 15432, reason: &quot;CARRIER_SERVICE_PORT_NOT_DEDICATED&quot;)" computerName="NT-TI-256" duration="00:00:00.0014804" startTime="2026-10-07T20:18:41.3743009-03:00" endTime="2026-10-07T20:18:41.3745431-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6208f4b4-6dfe-45ed-8347-a53fc7a52a3d" />
+    <UnitTestResult executionId="6527183d-80a4-44fe-be68-4edec4abd00a" testId="f6ce5a57-4f8d-61fc-4f69-d39dd6f4df2a" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Unsafe_service_configuration_is_rejected(environment: &quot;PRD&quot;, inc005: False, port: 15433, reason: &quot;CARRIER_SERVICE_ENVIRONMENT_INVALID&quot;)" computerName="NT-TI-256" duration="00:00:00.0004294" startTime="2026-10-07T20:18:41.3748653-03:00" endTime="2026-10-07T20:18:41.3750533-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6527183d-80a4-44fe-be68-4edec4abd00a" />
+    <UnitTestResult executionId="dd6bef6f-7e67-4676-a551-bcdfc144ba91" testId="1a5c973c-f644-22e9-17b5-0477af249be0" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Unsafe_service_configuration_is_rejected(environment: &quot;HML&quot;, inc005: True, port: 15433, reason: &quot;CARRIER_INC005_FORBIDDEN&quot;)" computerName="NT-TI-256" duration="00:00:00.0000185" startTime="2026-10-07T20:18:41.3751599-03:00" endTime="2026-10-07T20:18:41.3751976-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dd6bef6f-7e67-4676-a551-bcdfc144ba91" />
+    <UnitTestResult executionId="b0244ade-2c81-4c60-bcc8-f89b004aa951" testId="b89e9e76-366f-3a48-8bc1-3e5cadc568c4" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Ssh_is_strict_hidden_noninteractive_and_dedicated" computerName="NT-TI-256" duration="00:00:00.0197045" startTime="2026-10-07T20:18:41.2977167-03:00" endTime="2026-10-07T20:18:41.3276441-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b0244ade-2c81-4c60-bcc8-f89b004aa951" />
+    <UnitTestResult executionId="87996edf-feed-4e71-9565-f517f86374f0" testId="633c7b6f-39a5-57f0-a33c-b135c0f49efc" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Dedicated_hml_profile_is_valid" computerName="NT-TI-256" duration="00:00:00.0001977" startTime="2026-10-07T20:18:41.4238152-03:00" endTime="2026-10-07T20:18:41.4238857-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="87996edf-feed-4e71-9565-f517f86374f0" />
+    <UnitTestResult executionId="922023c0-98ad-49fe-94f6-a039552c58b1" testId="56111de1-4995-7198-f203-c249f995b046" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Missing_external_profile_is_explicitly_blocked" computerName="NT-TI-256" duration="00:00:00.0024627" startTime="2026-10-07T20:18:41.3752849-03:00" endTime="2026-10-07T20:18:41.3776867-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="922023c0-98ad-49fe-94f6-a039552c58b1" />
+    <UnitTestResult executionId="36d3696c-30f8-426c-bbaa-fde1827e352b" testId="d145b540-4008-a8d6-4f67-8a49d055532e" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Service_connection_is_write_capable_and_secrets_are_memory_only" computerName="NT-TI-256" duration="00:00:00.0451512" startTime="2026-10-07T20:18:41.3459797-03:00" endTime="2026-10-07T20:18:41.3729930-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="36d3696c-30f8-426c-bbaa-fde1827e352b" />
+    <UnitTestResult executionId="3591c508-5abc-464d-a997-676d6ea49d48" testId="e34256e0-278b-b8e9-cfe6-bd6c52de9c11" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Bootstrap_without_profile_returns_typed_failure_before_connecting" computerName="NT-TI-256" duration="00:00:00.0079373" startTime="2026-10-07T20:18:41.4247773-03:00" endTime="2026-10-07T20:18:41.4249263-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3591c508-5abc-464d-a997-676d6ea49d48" />
+    <UnitTestResult executionId="8d07cf47-f2dc-41c1-899f-ec8e0f4860e5" testId="f34f5334-28ba-69ed-eb69-9de619059759" testName="FugaTES.Testes.CarrierServiceBootstrapTests.Different_service_account_is_blocked" computerName="NT-TI-256" duration="00:00:00.0002732" startTime="2026-10-07T20:18:41.4253060-03:00" endTime="2026-10-07T20:18:41.4253398-03:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8d07cf47-f2dc-41c1-899f-ec8e0f4860e5" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Secret_field_in_profile_is_rejected" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="981aab03-73ec-98d9-f8cf-4b16d7eff16a">
+      <Execution id="2276e714-1c7b-4265-b137-6161210664a6" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Secret_field_in_profile_is_rejected" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Unsafe_service_configuration_is_rejected(environment: &quot;HML&quot;, inc005: True, port: 15433, reason: &quot;CARRIER_INC005_FORBIDDEN&quot;)" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="1a5c973c-f644-22e9-17b5-0477af249be0">
+      <Execution id="dd6bef6f-7e67-4676-a551-bcdfc144ba91" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Unsafe_service_configuration_is_rejected" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Different_service_account_is_blocked" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="f34f5334-28ba-69ed-eb69-9de619059759">
+      <Execution id="8d07cf47-f2dc-41c1-899f-ec8e0f4860e5" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Different_service_account_is_blocked" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Unsafe_service_configuration_is_rejected(environment: &quot;PRD&quot;, inc005: False, port: 15433, reason: &quot;CARRIER_SERVICE_ENVIRONMENT_INVALID&quot;)" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="f6ce5a57-4f8d-61fc-4f69-d39dd6f4df2a">
+      <Execution id="6527183d-80a4-44fe-be68-4edec4abd00a" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Unsafe_service_configuration_is_rejected" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Bootstrap_without_profile_returns_typed_failure_before_connecting" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="e34256e0-278b-b8e9-cfe6-bd6c52de9c11">
+      <Execution id="3591c508-5abc-464d-a997-676d6ea49d48" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Bootstrap_without_profile_returns_typed_failure_before_connecting" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Missing_external_profile_is_explicitly_blocked" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="56111de1-4995-7198-f203-c249f995b046">
+      <Execution id="922023c0-98ad-49fe-94f6-a039552c58b1" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Missing_external_profile_is_explicitly_blocked" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Unsafe_service_configuration_is_rejected(environment: &quot;HML&quot;, inc005: False, port: 15432, reason: &quot;CARRIER_SERVICE_PORT_NOT_DEDICATED&quot;)" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="18afef08-9dc6-56bf-61d9-a2d4d39c8120">
+      <Execution id="6208f4b4-6dfe-45ed-8347-a53fc7a52a3d" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Unsafe_service_configuration_is_rejected" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Service_connection_is_write_capable_and_secrets_are_memory_only" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="d145b540-4008-a8d6-4f67-8a49d055532e">
+      <Execution id="36d3696c-30f8-426c-bbaa-fde1827e352b" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Service_connection_is_write_capable_and_secrets_are_memory_only" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Disabled_ssh_cannot_depend_on_desktop_tunnel" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="c7eb6626-3ca5-5e47-56aa-95e99dee2d90">
+      <Execution id="2d83038f-7c08-47e6-a37e-5aee6701cae7" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Disabled_ssh_cannot_depend_on_desktop_tunnel" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Ssh_is_strict_hidden_noninteractive_and_dedicated" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="b89e9e76-366f-3a48-8bc1-3e5cadc568c4">
+      <Execution id="b0244ade-2c81-4c60-bcc8-f89b004aa951" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Ssh_is_strict_hidden_noninteractive_and_dedicated" />
+    </UnitTest>
+    <UnitTest name="FugaTES.Testes.CarrierServiceBootstrapTests.Dedicated_hml_profile_is_valid" storage="c:\visual studio 2026\projetos\fuga\fugates\fugates_dev\.artifacts\carrier-r3-bootstrap\bin\fugates.testes\debug\fugates.testes.dll" id="633c7b6f-39a5-57f0-a33c-b135c0f49efc">
+      <Execution id="87996edf-feed-4e71-9565-f517f86374f0" />
+      <TestMethod codeBase="C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\.artifacts\carrier-r3-bootstrap\bin\FugaTES.Testes\debug\FugaTES.Testes.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="FugaTES.Testes.CarrierServiceBootstrapTests" name="Dedicated_hml_profile_is_valid" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="981aab03-73ec-98d9-f8cf-4b16d7eff16a" executionId="2276e714-1c7b-4265-b137-6161210664a6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c7eb6626-3ca5-5e47-56aa-95e99dee2d90" executionId="2d83038f-7c08-47e6-a37e-5aee6701cae7" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="18afef08-9dc6-56bf-61d9-a2d4d39c8120" executionId="6208f4b4-6dfe-45ed-8347-a53fc7a52a3d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f6ce5a57-4f8d-61fc-4f69-d39dd6f4df2a" executionId="6527183d-80a4-44fe-be68-4edec4abd00a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1a5c973c-f644-22e9-17b5-0477af249be0" executionId="dd6bef6f-7e67-4676-a551-bcdfc144ba91" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b89e9e76-366f-3a48-8bc1-3e5cadc568c4" executionId="b0244ade-2c81-4c60-bcc8-f89b004aa951" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="633c7b6f-39a5-57f0-a33c-b135c0f49efc" executionId="87996edf-feed-4e71-9565-f517f86374f0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="56111de1-4995-7198-f203-c249f995b046" executionId="922023c0-98ad-49fe-94f6-a039552c58b1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d145b540-4008-a8d6-4f67-8a49d055532e" executionId="36d3696c-30f8-426c-bbaa-fde1827e352b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e34256e0-278b-b8e9-cfe6-bd6c52de9c11" executionId="3591c508-5abc-464d-a997-676d6ea49d48" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f34f5334-28ba-69ed-eb69-9de619059759" executionId="8d07cf47-f2dc-41c1-899f-ec8e0f4860e5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados que não estão em uma lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos os resultados carregados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="11" executed="11" passed="11" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.11)&#xD;
+[xUnit.net 00:00:01.03]   Discovering: FugaTES.Testes&#xD;
+[xUnit.net 00:00:01.23]   Discovered:  FugaTES.Testes&#xD;
+[xUnit.net 00:00:01.27]   Starting:    FugaTES.Testes&#xD;
+[xUnit.net 00:00:01.43]   Finished:    FugaTES.Testes&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

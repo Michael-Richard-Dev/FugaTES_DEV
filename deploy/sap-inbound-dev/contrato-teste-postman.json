@@ -1,0 +1,30 @@
+{
+  "Contrato": [
+    {
+      "SistemaBalanca": "TOLEDO",
+      "NumeroContrato": "9999000001",
+      "Item": "10",
+      "TipoContrato": "AC3P",
+      "DescricaoTipoContrato": "Contrato de compra a tres partes",
+      "DataEmissao": "2026-10-29",
+      "DataEntregaInicio": "2026-10-29",
+      "DataEntregaFim": "2026-12-31",
+      "DiasToler": 5,
+      "DataLimiteEntrega": "2027-01-05",
+      "StatusContrato": "T",
+      "QuantidadeContrato": 1000.000,
+      "QuantidadeSaldoDevolucao": 0.000,
+      "IdParceiro": "0020000051",
+      "Material": "000000000007000000",
+      "UnidCont": "KG",
+      "TipoPesagem": "E",
+      "TabelaQualidadeID": "",
+      "TabelaQualidadeVersao": "",
+      "TabelaQualidadeVersaoValidade": "",
+      "Observacao": "CONTRATO SINTETICO DE TESTE - NAO EXISTE NO SAP",
+      "ValorUnitario": 1.00,
+      "Centro": "3011",
+      "OperacaoContrato": "10"
+    }
+  ]
+}

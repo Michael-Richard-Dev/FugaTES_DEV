@@ -1,0 +1,86 @@
+[
+  {
+    "zip_entry": "candidate/src/FugaTES.Persistencia/Transportadoras/SingleCreateJournalPostgreSqlR31.cs",
+    "SHA256": "331BD60371D8DE1E864F22A7BD6B239B5CFB896A21AA4D114C4E364F0C3EAF6A",
+    "bytes": 5599,
+    "responsabilidade": "Reserva transacional; rollback; CommitAsync aguardado",
+    "metodos": "TryPrepareAsync; BeginTransactionAsync; CommitAsync"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/SingleCreateJournalPolicyR31.cs",
+    "SHA256": "49E9CDB326B2B22F918AE7DCEB44F38F84A88F1697340E065E5EAAAF9E95362E",
+    "bytes": 2934,
+    "responsabilidade": "Classificacao Reserved/Rejected/Unknown",
+    "metodos": "ClassifyInsert"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.Aplicacao/Transportadoras/SingleCreateR31/GuardianSingleCreateUseCaseR31.cs",
+    "SHA256": "1459751F9D716C1AD60E2684EB7A26DB40FB29DAFDE551704494C7D6F83597DD",
+    "bytes": 5944,
+    "responsabilidade": "Resultado desconhecido bloqueia HTTP",
+    "metodos": "TryPrepareAsync; CREATE_PREPARE_OUTCOME_UNKNOWN; writer.GravarAsync"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopBindingR41.cs",
+    "SHA256": "76F03AED9C3A7D7D3752D9FC63CB7881A3C20588CE653B0B6A16AECC9014A156",
+    "bytes": 6089,
+    "responsabilidade": "Binding; rejeicao de Enlist habilitado",
+    "metodos": "BindAsync; Enlist"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Runtime/SingleCreateDatabaseProfileR139.cs",
+    "SHA256": "349AD51129A1CDA29935F9AC5B79D2353E60319CDAB1A8E497F91ABCBF22A28A",
+    "bytes": 1940,
+    "responsabilidade": "Perfil dedicado; Enlist=false",
+    "metodos": "Enlist=false"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopCompositionR139.cs",
+    "SHA256": "2B8B24680F50E314326E353F3CF2A3C906E029BBDDF9A6A221DC9D565A724364",
+    "bytes": 12184,
+    "responsabilidade": "Composicao do datasource e binding",
+    "metodos": "CreateSingleCreateSource; BindAsync"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/SingleCreateDesktopControllerR139.cs",
+    "SHA256": "43DA4FD6DD841AE060B7B1E073C762C09F90572C60B989640544417D9F7EFDC8",
+    "bytes": 4151,
+    "responsabilidade": "Controller; validacao e execucao com lock compartilhado",
+    "metodos": "ValidateAsync; ExecuteAsync"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/FrmCadastrosGuardianR3.cs",
+    "SHA256": "62DB3E76DDC0E7AA36C7EB1B798453DBD0E3B316A90566636712DF907CD6D202",
+    "bytes": 17805,
+    "responsabilidade": "Handler do botao unitario",
+    "metodos": "_create.Click; AcionarSingleCreateAsync"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Transportadoras/CarrierDesktopComposition.cs",
+    "SHA256": "1515DD36806F13F369180CA434ADD5E37AB80C23ECA6085946D36B19E1FD65B1",
+    "bytes": 11927,
+    "responsabilidade": "Injecao da factory SingleCreate",
+    "metodos": "SingleCreateDesktopCompositionR139"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Transportadoras/CarrierDesktopLifecycle.cs",
+    "SHA256": "D98ACDDB07C023A039D2D85EB6C17F573B1A4491466CBCA484DEE6DAA99A3DAA",
+    "bytes": 12314,
+    "responsabilidade": "Lifecycle SingleCreate",
+    "metodos": "SingleCreate"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Transportadoras/MasterdataR3/MasterdataSharedOrchestratorR3.cs",
+    "SHA256": "29D0DE45D503A57BF11098D73CE102836E6CAA95EB0B711A18CA0A11E1452626",
+    "bytes": 17519,
+    "responsabilidade": "Lock compartilhado",
+    "metodos": "SingleCreate"
+  },
+  {
+    "zip_entry": "candidate/src/FugaTES.WinForms/Runtime/DesktopRuntime.cs",
+    "SHA256": "017D25E76F4D36089FB2DF5600ABC7EDFCA80B76123B327F5C02B77C6AB2E84D",
+    "bytes": 6572,
+    "responsabilidade": "Factory de datasource dedicado",
+    "metodos": "CreateSingleCreateSource"
+  }
+]

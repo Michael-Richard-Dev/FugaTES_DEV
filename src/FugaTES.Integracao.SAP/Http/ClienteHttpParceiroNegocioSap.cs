@@ -19,7 +19,7 @@ public sealed class ClienteHttpParceiroNegocioSap
         this.autenticacao = autenticacao ?? throw new ArgumentNullException(nameof(autenticacao));
     }
 
-    internal async Task<RespostaHttpParceiroNegocioSap> ObterAsync(string businessPartner, CancellationToken cancellationToken)
+    internal async Task<RespostaHttpParceiroNegocioSap> ObterAsync(string businessPartner, CancellationToken cancellationToken, bool solicitarJson = false)
     {
         if (opcoes.BaseUrl is null || !opcoes.BaseUrl.IsAbsoluteUri || opcoes.Timeout <= TimeSpan.Zero)
         {
@@ -30,6 +30,7 @@ public sealed class ClienteHttpParceiroNegocioSap
         timeout.CancelAfter(opcoes.Timeout);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, CriarUriConsulta(businessPartner));
+        if (solicitarJson) request.Headers.Accept.ParseAdd("application/json");
         await autenticacao.AplicarAsync(request, timeout.Token).ConfigureAwait(false);
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);

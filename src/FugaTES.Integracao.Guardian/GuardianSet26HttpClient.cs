@@ -8,10 +8,11 @@ using FugaTES.Aplicacao.Modelos.Guardian;
 
 namespace FugaTES.Integracao.Guardian;
 
-public sealed class GuardianSet26HttpClient(HttpClient httpClient, GuardianHttpOptions options, GuardianTokenClient tokenClient)
-    : IPreCadastroGuardianSet26Gateway, IEmissorGuardianSet26Gateway, ITransportadoraGuardianSet26Gateway
+public sealed partial class GuardianSet26HttpClient(HttpClient httpClient, GuardianHttpOptions options, GuardianTokenClient tokenClient)
+    : IPreCadastroGuardianSet26Gateway, IEmissorGuardianSet26Gateway, ITransportadoraGuardianSet26Gateway, IItemGuardianSet26Gateway
 {
     private const string EmissorEndpoint = "/api/v0/Guardian/Emissor";
+    private const string ItemEndpoint = "/api/v0/Guardian/Item";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task EnviarAsync(EmissorGuardianSet26 emissor, CancellationToken cancellationToken)
@@ -30,15 +31,79 @@ public sealed class GuardianSet26HttpClient(HttpClient httpClient, GuardianHttpO
         using var response = await SendAsync(options.ResolveEndpoint(options.TransportadoraEndpoint, nameof(options.TransportadoraEndpoint)), transportadora, cancellationToken);
     }
 
+    // Guardian Item: POST /api/v0/Guardian/Item. Valida apenas a PRESENCA do minimum wire comprovado
+    // (codigo, tipo, nome); estado e opcional. Nenhuma regra de negocio sobre o VALOR de tipo ou
+    // fatorConversao e aplicada aqui: ambos seguem verbatim para o wire.
+    public async Task EnviarAsync(ItemGuardianSet26 item, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        if (string.IsNullOrWhiteSpace(item.Codigo) || string.IsNullOrWhiteSpace(item.Tipo) || string.IsNullOrWhiteSpace(item.Nome))
+            throw new GuardianHttpException("Guardian item request is incomplete.");
+        using var response = await SendAsync(options.ResolveEndpoint(ItemEndpoint, nameof(ItemEndpoint)), item, cancellationToken);
+    }
+
     public async Task<ProtocoloGuardianSet26> EnviarAsync(PreCadastroRecebimentoGuardianSet26 preCadastro, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(preCadastro);
-        var endpoint = options.ResolveEndpoint(options.PreCadastroEndpoint, nameof(options.PreCadastroEndpoint));
-        var payload = new
+        if (preCadastro.NumeroReferencia is { Length: > 10 })
+            throw new GuardianHttpException("Guardian pre-registration reference exceeds ten characters.");
+        if (preCadastro.Id != 0 || preCadastro.CodigoFluxo != "FLX_RECEBIMENTO" ||
+            new[] { preCadastro.CodigoItem, preCadastro.CodigoEmissor,
+                preCadastro.CodigoContrato, preCadastro.NumeroReferencia, preCadastro.UrlParaRetorno }.Any(string.IsNullOrWhiteSpace) ||
+            preCadastro.IdAgenda <= 0 || preCadastro.CamposAdicionais is null)
+            throw new GuardianHttpException("Guardian pre-registration request is invalid.");
+        ValidatePreCadastroText(preCadastro.CodigoFluxo, 50, false, "codigoFluxo");
+        ValidatePreCadastroText(preCadastro.CodigoItem, 30, false, "codigoItem");
+        ValidatePreCadastroText(preCadastro.CodigoEmissor, 20, false, "codigoEmissor");
+        // The approved ACM reception flow may leave the carrier to the Guardian agent.
+        // Null is omitted by the DTO. A supplied carrier is still validated verbatim.
+        ValidatePreCadastroText(preCadastro.CodigoTransportadora, 20, true, "codigoTransportadora");
+        ValidatePreCadastroText(preCadastro.CodigoContrato, 20, false, "codigoContrato");
+        ValidatePreCadastroText(preCadastro.NumeroReferencia, 10, false, "numeroReferencia");
+        ValidatePreCadastroText(preCadastro.UrlParaRetorno, int.MaxValue, false, "urlParaRetorno");
+        if (!Uri.TryCreate(preCadastro.UrlParaRetorno, UriKind.Absolute, out var callback) ||
+            callback.Scheme is not ("http" or "https"))
+            throw new GuardianHttpException("Guardian pre-registration callback is invalid.");
+        ValidatePreCadastroText(preCadastro.PlacaVeiculo, 20, true, "placaVeiculo");
+        ValidatePreCadastroText(preCadastro.PlacaCarreta, 20, true, "placaCarreta");
+        ValidatePreCadastroText(preCadastro.Identificador, 24, true, "identificador");
+        ValidatePreCadastroText(preCadastro.CodigoMotorista, 20, true, "codigoMotorista");
+        ValidatePreCadastroText(preCadastro.CodigoVeiculo, 20, true, "codigoVeiculo");
+        ValidatePreCadastroText(preCadastro.CodigoTipoVeiculo, 20, true, "codigoTipoVeiculo");
+        var numbers = new HashSet<int>();
+        foreach (var field in preCadastro.CamposAdicionais)
         {
-            configuracao = new { urlParaRetorno = preCadastro.UrlParaRetorno },
-            dadosProtocoloPreCadastro = preCadastro
-        };
+            if (field is null || !numbers.Add(field.Numero))
+                throw new GuardianHttpException("Guardian pre-registration additional fields are ambiguous.");
+            ValidatePreCadastroText(field.Valor, 50, false, "camposAdicionais.valor");
+        }
+        if (!new[] { 1000, 1002, 1003 }.All(numbers.Contains))
+            throw new GuardianHttpException("Guardian pre-registration additional fields are incomplete.");
+        if (preCadastro.TransportadoraPreenchidaNoGuardian)
+        {
+            if (preCadastro.CodigoTransportadora is not null ||
+                !preCadastro.CamposAdicionais.Any(c => c.Numero == 1000 && c.Valor == "AC3P") ||
+                !preCadastro.CamposAdicionais.Any(c => c.Numero == 1002 && c.Valor == "3011") ||
+                !preCadastro.CamposAdicionais.Any(c => c.Numero == 1003 && c.Valor == "10"))
+                throw new GuardianHttpException("Guardian carrier completion context is not approved.");
+        }
+        else if (preCadastro.CodigoTransportadora is null)
+            throw new GuardianHttpException("Guardian carrier completion decision is required.");
+        if (preCadastro.Documentos is null)
+            throw new GuardianHttpException("Guardian pre-registration documents are invalid.");
+        foreach (var document in preCadastro.Documentos)
+        {
+            if (document is null || document.Count != 2 ||
+                document.Keys.Any(key => key is not ("descricao" or "pesoOrigem")) ||
+                !document.TryGetValue("descricao", out var description) ||
+                !document.TryGetValue("pesoOrigem", out var originWeight))
+                throw new GuardianHttpException("Guardian pre-registration document schema is invalid.");
+            ValidatePreCadastroText(description, 40, false, "documentos.descricao");
+            ValidatePreCadastroText(originWeight, 13, false, "documentos.pesoOrigem");
+        }
+        var endpoint = options.ResolveEndpoint(options.PreCadastroEndpoint, nameof(options.PreCadastroEndpoint));
+        var payload = new GuardianPreCadastroRequestDto(
+            new GuardianPreCadastroConfiguracaoDto(preCadastro.UrlParaRetorno), preCadastro);
         using var response = await SendAsync(endpoint, payload, cancellationToken);
         try
         {
@@ -52,12 +117,30 @@ public sealed class GuardianSet26HttpClient(HttpClient httpClient, GuardianHttpO
             var dto = document.RootElement.Deserialize<GuardianPreCadastroResponseDto>(JsonOptions);
             if (dto is null || dto.Id <= 0 || dto.DataCadastro is null)
                 throw new GuardianHttpException("Guardian pre-registration response is invalid.");
-            return new ProtocoloGuardianSet26(dto.Id.ToString(CultureInfo.InvariantCulture), dto.DataCadastro);
+            if (document.RootElement.TryGetProperty("numeroTicket", out var ticketElement))
+            {
+                if (ticketElement.ValueKind != JsonValueKind.Null &&
+                    (ticketElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(ticketElement.GetString())))
+                    throw new GuardianHttpException("Guardian pre-registration ticket is invalid.");
+            }
+            return new ProtocoloGuardianSet26(dto.Id.ToString(CultureInfo.InvariantCulture), dto.DataCadastro, dto.NumeroTicket);
         }
         catch (JsonException exception)
         {
             throw new GuardianHttpException("Guardian pre-registration response is invalid.", exception);
         }
+    }
+
+    private static void ValidatePreCadastroText(string? value, int maximumLength, bool optional, string field)
+    {
+        if (optional && value is null) return;
+        var marker = value?.Trim();
+        if (string.IsNullOrWhiteSpace(value) || value.Length > maximumLength ||
+            string.Equals(marker, "NÃO VALIDADO", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(marker, "NAO VALIDADO", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(marker, "PENDENTE", StringComparison.OrdinalIgnoreCase) ||
+            (marker!.StartsWith('[') && marker.EndsWith(']')))
+            throw new GuardianHttpException($"Guardian pre-registration field {field} is invalid or unverified.");
     }
 
     private async Task<HttpResponseMessage> SendAsync(Uri endpoint, object payload, CancellationToken cancellationToken)
@@ -75,6 +158,8 @@ public sealed class GuardianSet26HttpClient(HttpClient httpClient, GuardianHttpO
             var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, timeout.Token);
             if (response.IsSuccessStatusCode)
                 return response;
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                tokenClient.Invalidar(token);
             response.Dispose();
             throw new GuardianHttpException($"Guardian operation failed with HTTP {(int)response.StatusCode}.");
         }
