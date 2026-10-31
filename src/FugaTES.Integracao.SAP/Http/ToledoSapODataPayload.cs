@@ -1,5 +1,6 @@
 using FugaTES.Aplicacao.Servicos.Recebimento;
 using System.Globalization;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -29,7 +30,7 @@ public static partial class ToledoSapODataPayload
  }
  public static ToledoSapPreparedPayload Prepare(string original,ToledoSapPayloadOptions options)
   =>PrepareCore(original,options,Projection.Current,true);
- private enum Projection {Current,DirectionOnly,LegacyNumeric}
+ private enum Projection {Current,BeforeDecimalAndUserNormalization,DirectionOnly,LegacyNumeric}
  private static ToledoSapPreparedPayload PrepareCore(string original,ToledoSapPayloadOptions options,Projection projection,bool validateEntry,IReadOnlyList<FugaTES.Aplicacao.Servicos.Recebimento.ToledoSapParceiroAuditado>? partners=null)
  {
   if(Encoding.UTF8.GetByteCount(original)>1048576)throw Bad("SAP_PAYLOAD_TOO_LARGE");
@@ -37,7 +38,12 @@ public static partial class ToledoSapODataPayload
   Names(root,["SistemaBalanca","DataPesagem","TipoPesagem","IdPesagem","UsuarioPesagem","UsuarioClassificacao","IdPlanejamento","Centro","IdAgendamento","IdTransportadora","PesoBruto","PesoTara","Material","PesoAntesDesconto","PesoAposDesconto","NomeMotorista","CpfMotorista","Placa","Observacao","to_QualidPes","to_Pesagem"]);
   foreach(var name in new[]{"IdPesagem","Centro","IdPlanejamento","IdAgendamento","IdTransportadora","Material"})
    if(root.ContainsKey(name))root[name]=Identifier(root[name],name,name is "IdPesagem" or "Centro");
-  if(projection==Projection.Current)root["IdPesagem"]=SapWeighingId(root["IdPesagem"]);
+  if(projection is Projection.Current or Projection.BeforeDecimalAndUserNormalization)root["IdPesagem"]=SapWeighingId(root["IdPesagem"]);
+  if(projection==Projection.Current)
+  {
+   if(root.ContainsKey("UsuarioPesagem"))root["UsuarioPesagem"]=SapWeighingUser(Text(root["UsuarioPesagem"]));
+   foreach(var name in new[]{"PesoBruto","PesoTara","PesoAntesDesconto","PesoAposDesconto"})NormalizeDecimalField(root,name);
+  }
   var direction=SapWeighingType(root["TipoPesagem"]);
   root["TipoPesagem"]=projection==Projection.LegacyNumeric?(direction=="E"?"1":"2"):direction;
   var id=Identifier(root["IdPesagem"],"IdPesagem",true);var center=Identifier(root["Centro"],"Centro",true);
@@ -50,6 +56,7 @@ public static partial class ToledoSapODataPayload
   {
    if(item is not JsonObject q)throw Bad("SAP_QUALITY_OBJECT_REQUIRED");
    Names(q,["Tipo","Grupo","ValorAferido"]);var type=Text(q["Tipo"]);var value=Scalar(q["ValorAferido"]);
+   if(projection==Projection.Current&&!string.IsNullOrWhiteSpace(value))value=NormalizeDecimalText(value);
    if(string.IsNullOrWhiteSpace(type)&&(string.IsNullOrWhiteSpace(value)||Decimal(value)==0m))continue;
    if(string.IsNullOrWhiteSpace(type)||string.IsNullOrWhiteSpace(value)||Decimal(value)<0)throw Bad("SAP_MEASURED_QUALITY_REQUIRED");
    // Proven Guardian aliases from the operator's working SAP contract; never invent a measurement.
@@ -77,6 +84,7 @@ public static partial class ToledoSapODataPayload
     w["IdParceiro"]=partner.IdParceiroSap; // Only the owner is projected; Guardian delivery partner stays original.
    }
    if(validateEntry)ValidateEntryNfe(w,direction);
+   if(projection==Projection.Current)foreach(var name in new[]{"PercentualDesdobro","PesoAntesDesconto","PesoAposDesconto"})NormalizeDecimalField(w,name);
    foreach(var name in new[]{"ContratoACM","IdParceiro","IdParceiroEntrega"})if(w.ContainsKey(name))w[name]=Identifier(w[name],name,name is "ContratoACM" or "IdParceiro");
    foreach(var name in new[]{"Indice","NrIndiceTotal"}){if(!int.TryParse(Scalar(w[name]),NumberStyles.None,CultureInfo.InvariantCulture,out var n)||n<0)throw Bad("SAP_WEIGHING_INDEX_INVALID");w[name]=n;}
    if(!indexes.Add(w["Indice"]!.GetValue<int>())||w["NrIndiceTotal"]!.GetValue<int>()!=weights.Count)throw Bad("SAP_WEIGHING_INDEX_INVALID");
@@ -107,6 +115,27 @@ public static partial class ToledoSapODataPayload
  {var id=Identifier(node,"IdPesagem",true);if(id.Length>10)throw Bad("SAP_WEIGHING_ID_LENGTH_INVALID");return id.PadLeft(10,'0');}
  static string Identifier(JsonNode? node,string field,bool required)
  {var text=Scalar(node);if((required&&text.Length==0)||text.Length>30||!text.All(char.IsAsciiDigit))throw Bad("SAP_IDENTIFIER_INVALID_"+field.ToUpperInvariant());return text;}
+ // SAP-only projection; never shorten or edit the stored Guardian user/document.
+ static string SapWeighingUser(string value)
+ {if(value.Length<=15)return value;return value[..(char.IsHighSurrogate(value[14])?14:15)];}
+ static void NormalizeDecimalField(JsonObject value,string field)
+ {
+  if(!value.TryGetPropertyValue(field,out var node))return;
+  var normalized=NormalizeDecimalText(Scalar(node));
+  if(node?.GetValueKind()==JsonValueKind.String)value[field]=normalized;
+ }
+ // Comma is a decimal separator, never a grouping separator. No mixed separators or rounding.
+ static string NormalizeDecimalText(string value)
+ {
+  var normalized=value.Replace(',','.');
+  if(normalized.Length>128||!Regex.IsMatch(normalized,@"\A[0-9]+(?:\.[0-9]+)?\z",RegexOptions.CultureInvariant)||
+   !decimal.TryParse(normalized,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var number))throw Bad("SAP_DECIMAL_INVALID");
+  var dot=normalized.IndexOf('.');var scale=dot<0?0:normalized.Length-dot-1;
+  var coefficient=BigInteger.Parse(normalized.Replace(".","",StringComparison.Ordinal),CultureInfo.InvariantCulture);
+  var bits=decimal.GetBits(number);var parsed=(BigInteger)(uint)bits[0]+((BigInteger)(uint)bits[1]<<32)+((BigInteger)(uint)bits[2]<<64);
+  if(coefficient*BigInteger.Pow(10,(bits[3]>>16)&0x7f)!=parsed*BigInteger.Pow(10,scale))throw Bad("SAP_DECIMAL_INVALID");
+  return normalized;
+ }
  static decimal Decimal(string value)
  {if(!decimal.TryParse(value,NumberStyles.AllowLeadingSign|NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var n))throw Bad("SAP_QUALITY_NUMBER_INVALID");return n;}
  static long Date(string value,string? zone)
@@ -115,7 +144,7 @@ public static partial class ToledoSapODataPayload
   if(match.Success&&long.TryParse(match.Groups[1].Value,NumberStyles.AllowLeadingSign,CultureInfo.InvariantCulture,out var ms))
   {try{_ = DateTimeOffset.FromUnixTimeMilliseconds(ms);return ms;}catch{throw Bad("SAP_DATE_OUT_OF_RANGE");}}
   if(string.IsNullOrWhiteSpace(zone))throw Bad("SAP_WEIGHING_TIMEZONE_REQUIRED");
-  if(!DateTime.TryParseExact(value,new[]{"MM/dd/yyyy hh:mm:ss tt","M/d/yyyy h:mm:ss tt"},CultureInfo.InvariantCulture,DateTimeStyles.None,out var local))throw Bad("SAP_WEIGHING_DATE_INVALID");
+  if(!DateTime.TryParseExact(value,new[]{"MM/dd/yyyy hh:mm:ss tt","M/d/yyyy h:mm:ss tt","dd/MM/yyyy HH:mm:ss"},CultureInfo.InvariantCulture,DateTimeStyles.None,out var local))throw Bad("SAP_WEIGHING_DATE_INVALID");
   var tz=TimeZoneInfo.FindSystemTimeZoneById(zone);local=DateTime.SpecifyKind(local,DateTimeKind.Unspecified);
   if(tz.IsAmbiguousTime(local)||tz.IsInvalidTime(local))throw Bad("SAP_WEIGHING_DATE_AMBIGUOUS");
   return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local,tz)).ToUnixTimeMilliseconds();

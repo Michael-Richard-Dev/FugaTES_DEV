@@ -1,0 +1,58 @@
+{
+  "mode": "LOCAL_SYNTHETIC_HTTP_ONLY_URL_SCHEME_REWRITTEN_IN_TEST_NO_GUARDIAN_CALLS",
+  "assemblySha": "EF30AFC2C2A796405C99D8994AE21662EFC9A935A8060E876F7152106105BD7C",
+  "endpoint": "https://guardian.cloudprix.com.br/api/v1/Guardian/ProtocoloPreCadastro",
+  "RequestLine": "POST /api/v1/Guardian/ProtocoloPreCadastro HTTP/1.1",
+  "headers": [
+    {
+      "Key": "Host",
+      "Value": "guardian.cloudprix.com.br"
+    },
+    {
+      "Key": "Accept",
+      "Value": "*/*"
+    },
+    {
+      "Key": "Content-Type",
+      "Value": "application/json"
+    },
+    {
+      "Key": "Content-Length",
+      "Value": "387"
+    }
+  ],
+  "authorization": {
+    "scheme": "Bearer",
+    "matchesFreshSyntheticToken": true
+  },
+  "requestPayloadSha256": "332DD736D69774F71D1E03EFB4592823407AD9FB491A7F7BDC117D27594B6DA0",
+  "payload": {
+    "configuracao": {
+      "urlParaRetorno": "http://192.168.17.40/api/guardian/set26/callback/recebimento"
+    },
+    "dadosProtocoloPreCadastro": {
+      "id": 0,
+      "codigoItem": "7000000",
+      "codigoEmissor": "20000051",
+      "codigoContrato": "0000001144",
+      "numeroReferencia": "OC1144",
+      "camposAdicionais": [
+        {
+          "numero": 1000,
+          "valor": "AC3P"
+        },
+        {
+          "numero": 1002,
+          "valor": "3011"
+        },
+        {
+          "numero": 1003,
+          "valor": "10"
+        }
+      ],
+      "codigoFluxo": null,
+      "idAgenda": 1
+    }
+  },
+  "guardianBusinessPosts": 0
+}

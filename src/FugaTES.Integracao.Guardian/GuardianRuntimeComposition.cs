@@ -62,6 +62,10 @@ public static class GuardianRuntimeComposition
         services.AddSingleton<ICredenciaisGuardianSet26Provider, GuardianRuntimeCredenciaisProvider>();
         services.AddSingleton<HttpClient>();
         services.AddSingleton<GuardianTokenClient>();
+        services.AddSingleton<GuardianEmitterReadTransport>();
+        services.AddScoped<FugaTES.Aplicacao.Contratos.Guardian.IGuardianEmitterRead>(sp=>new GuardianEmitterReadAdapter(
+            sp.GetRequiredService<GuardianEmitterReadTransport>().Client,sp.GetRequiredService<GuardianHttpOptions>(),
+            sp.GetRequiredService<GuardianTokenClient>(),sp.GetRequiredService<FugaTES.Aplicacao.Servicos.Mvp.AcmR57NormalOptions>().DynamicEmitterSignatureId));
         services.AddScoped<GuardianSet26HttpClient>();
         services.AddScoped<FugaTES.Aplicacao.Servicos.Mvp.IAcmPreCadastroMinimoGatewayR57>(sp=>sp.GetRequiredService<GuardianSet26HttpClient>());
         services.AddScoped<IPreCadastroGuardianSet26Gateway>(sp => sp.GetRequiredService<GuardianSet26HttpClient>());

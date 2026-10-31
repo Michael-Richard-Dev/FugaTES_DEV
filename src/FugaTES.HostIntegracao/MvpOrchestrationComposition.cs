@@ -63,6 +63,8 @@ public static class MvpOrchestrationComposition
                 var sharedAuto = (configuration ?? r57Config)?.GetSection("MotorIntegracao:AcmAutomatico").Get<AcmAutomaticoOptions>();
                 normal = normal with { AcmInboundWindow = sharedWindow ?? new(), AcmAutomatico = sharedAuto ?? new() };
                 services.TryAddSingleton(normal);
+                if(normal.DynamicEmitterValidationEnabled)
+                    services.TryAddScoped<AcmGuardianEmitterResolver>();
                 services.TryAddScoped<IAcmR57RuntimeGate,AcmR57NormalRuntimeGate>();
                 services.TryAddScoped<IAcmR57Preparacao,AcmR57NormalPreparation>();
             }

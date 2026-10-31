@@ -12,7 +12,7 @@ public static partial class ToledoSapODataPayload
   if(partnerVersion is not null&&(partnerVersion!=ToledoSapContractPartners.Version||partners?.Count is not >0))return null;
   if(partners?.Count>0&&partnerVersion!=ToledoSapContractPartners.Version)return null;
   if(delivery is not null){try{original=ToledoDeliveryPartners.Apply(original,delivery);}catch{return null;}}
-  foreach(var projection in new[]{Projection.Current,Projection.DirectionOnly,Projection.LegacyNumeric})
+  foreach(var projection in new[]{Projection.Current,Projection.BeforeDecimalAndUserNormalization,Projection.DirectionOnly,Projection.LegacyNumeric})
   {
    try{var p=PrepareCore(original,options,projection,false,partners?.Count>0?partners:null);if(string.Equals(p.Sha256,expectedHash,StringComparison.OrdinalIgnoreCase))return(p,projection.ToString());}
    catch(ToledoSapPayloadException){}catch(System.Text.Json.JsonException){}

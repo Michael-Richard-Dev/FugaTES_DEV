@@ -1,0 +1,12 @@
+# ACM dynamic emitter — complete offline candidate
+Canonical plan: docs/superpowers/plans/2026-10-31-acm-dynamic-emitter.md
+Tasks1/2/3 complete offline; no deployment. GET adapter RED21->GREEN21; scoped pipeline RED14->GREEN14; receipt-capture reviewer defect RED->GREEN. Final exact DLL suites R165U630PASS and R158678PASS (1308/1308). Independent re-review: zero remaining findings.
+Real GET20000169, signature133289, HTTP200, active, sequencial216, existing Windows provider; zero business POSTs. Does not attest Linux provider.
+Historical constructor ABI preserved. Historical surface test checks all old members remain, permits additive capabilities. Copied test harness root errors preserved; canonical-root exact binaries PASS.
+Candidate R171_DYNAMIC_EMITTER_20261031_R1: four DLLs only, inert binding, explicit receive cutoff, precheck SQL READ ONLY NOT_EXECUTED, promotion/rollback. No1175 replay, no schema change, no provider/credential change, no MM/SD/Toledo installation changes, no commit/push. Deployment requires operational authorization.
+
+Physical precheck stopped R1 before any restart/backup: H4 uses criado_em timestamptz, not recebido_em. Dedicated app SELECT already true. Exact production SQL EXPLAIN RED42703 reproduced; focal fix changes one selected identifier only. No migration/GRANT, R170 untouched. R2 candidate pending rebuild/physicalGREEN.
+
+R2 physical EXPLAIN GREEN with existing app role. Exact binary suites630+678PASS. Only Persistence.dll differs fromR1; three DLLs identical. R1 stopped before backup/restart; R170 PID791355 preserved. R2SHA256=3280DADA2807DAD9C2CB5E7F868F5ECF3D9DBE6671807C765A5BC57B218ACEA7. Awaiting nominal approval for corrected binary; no operational retry until approval.
+
+R2 publication explicitly authorized and PASS. Main motor only changed to /opt/fugates/releases/FugaTES.ACM/R171_DYNAMIC_EMITTER_R2_3280DADA2807/runtime/host; PID810985 stable, NRestarts0. Four hashes exact; app role5433 pre/post READ ONLY, existing criado_em SELECT PASS. Backup integrity25files PASS, SHA256=2D3128C5C193FFB0623E5B3E6F7F40A1148DBE8351A5B79F20B321801CD673BF. Dynamic activation FromUtc=2026-10-31T16:41:31.291777+00:00, signature133289; no expiry. Protected service PIDs preserved and1175before=after. Installer0businessPOST/DBwrites/migrations/grants/credentialchanges. No new business end-to-end dispatched; automatic worker business posts not measured. Final evidence FINAL_INSTALL_ACCEPTANCE.json.

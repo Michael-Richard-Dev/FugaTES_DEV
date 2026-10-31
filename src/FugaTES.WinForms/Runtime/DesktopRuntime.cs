@@ -15,6 +15,23 @@ public sealed class DesktopRuntime : IDisposable
     public bool TunnelCreated => tunnel?.OwnsProcess == true;
     public NpgsqlDataSource CreateReadSource() => NpgsqlDataSource.Create(connectionString!);
 
+    /// <summary>
+    /// Fonte de ESCRITA. A conexao padrao do desktop e somente leitura por configuracao; aqui a
+    /// leitura obrigatoria e desligada para a transacao, e a identidade e conferida antes - banco
+    /// e usuario tem de ser os esperados, para uma configuracao trocada nao virar escrita no lugar
+    /// errado. A conferencia e repetida em CreateCarrierStore de proposito: unificar as duas
+    /// mudaria os codigos de erro de um caminho que ja esta em producao.
+    /// </summary>
+    public NpgsqlDataSource CreateWriteSource(string applicationName)
+    {
+        if (connectionString is null) throw new DesktopStartupException("DESKTOP_DATABASE_NOT_READY");
+        var options = new NpgsqlConnectionStringBuilder(connectionString)
+        { Options = "-c default_transaction_read_only=off", ApplicationName = applicationName };
+        if (options.Database != "fugates_dev" || options.Username != "fugates_dev_app")
+            throw new DesktopStartupException("DESKTOP_DATABASE_IDENTITY_INVALID");
+        return NpgsqlDataSource.Create(options.ConnectionString);
+    }
+
     public FugaTES.Persistencia.Transportadoras.CarrierSyncPostgreSqlStore CreateCarrierStore(out NpgsqlDataSource ownedSource)
     {
         if(connectionString is null)throw new DesktopStartupException("CARRIER_DESKTOP_DATABASE_NOT_READY");

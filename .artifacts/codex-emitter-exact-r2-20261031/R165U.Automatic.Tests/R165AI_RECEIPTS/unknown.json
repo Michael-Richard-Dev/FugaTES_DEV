@@ -1,0 +1,53 @@
+{
+  "scope": "SYNTHETIC_LOCAL_HARNESS_NOT_SAP_CPI_DELIVERY",
+  "outcome": "unknown",
+  "address": "http://127.0.0.1:50894",
+  "contract": "0000986703",
+  "localPostHttp": 201,
+  "concurrentRedeliveryHttp": 201,
+  "identicalReplayHttp": 201,
+  "input": {
+    "Contrato": [
+      {
+        "NumeroContrato": "0000986703",
+        "TipoContrato": "AC3P",
+        "DescricaoTipoContrato": "SYNTHETIC LOCAL TEST NOT SAP DELIVERY",
+        "Centro": "3011",
+        "TipoPesagem": "E",
+        "OperacaoContrato": "10",
+        "StatusContrato": "T",
+        "IdParceiro": "0020000051",
+        "Material": "7000000",
+        "QuantidadeContrato": 10000
+      }
+    ]
+  },
+  "integrationId": "f01da985-aa96-43b8-bb00-4d8cbacb8ff4",
+  "correlationId": "r165ag:cpi:e7945f2709e44d609a9749e7c75cfe0a:ab37d97e0a14409b9da14b888a840a69",
+  "h4Version": 1,
+  "h4Fingerprint": "6F99D796CE1056F0CC46C60C74CAD9B7DBC4D42779E0EB214A7D6417FD81FB27",
+  "h4Commit": "MODELLED_COMMIT_IN_EXISTING_IN_MEMORY_DOUBLE_NOT_PHYSICAL_POSTGRESQL",
+  "guardianAdapters": "REAL_SOAP_REST_TOKEN_CLASSES_WITH_IN_PROCESS_HTTP_HANDLER_ONLY",
+  "Lookups": 1,
+  "SoapCreates": 1,
+  "TokenCalls": 1,
+  "RestCreates": 1,
+  "simulatedProtocolId": null,
+  "journalStage": "R165U_REST_ARMED",
+  "journalStatus": "ResultadoIndeterminado",
+  "journalError": "GUARDIAN_R57_TIMEOUT",
+  "journalCorrelation": "r165ag:cpi:e7945f2709e44d609a9749e7c75cfe0a:ab37d97e0a14409b9da14b888a840a69",
+  "claimCorrelation": "r165ag:cpi:e7945f2709e44d609a9749e7c75cfe0a:ab37d97e0a14409b9da14b888a840a69",
+  "safeHttpStatus": 0,
+  "safeBusinessMessage": null,
+  "motorState": "ResultadoIndeterminado",
+  "attempts": 1,
+  "workerCount": 1,
+  "backlog": "UNCLAIMED",
+  "concurrentRedelivery": "SAME_DURABLE_IDENTITY",
+  "divergentPayload": "HTTP409",
+  "secondContract": "HTTP409",
+  "manualIntervention": false,
+  "realGuardianRequests": 0,
+  "hmlDatabaseWrites": 0
+}

@@ -64,12 +64,15 @@ public sealed class GuardianProtocolCommandService(
     GuardianHttpOptions httpOptions, GuardianProtocolCommandOptions options, TimeProvider timeProvider)
     : IGuardianProtocolCommandService
 {
+    private sealed record FrozenPreview(Guid Id,long Version,string Fingerprint,string PayloadHash,AcmR57NormalContract Contract,PreCadastroAcmR57 Request);
+    private FrozenPreview? frozenPreview;
     private const string Operation = "SAP_CONTRATO_TOLEDO";
     private const string Route = "/api/v1/Guardian/ProtocoloPreCadastro";
 
     public async Task<GuardianProtocolCommandView> PreviewAsync(Guid integrationId, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+        frozenPreview=null;
         var view = new GuardianProtocolCommandView { IntegrationId = integrationId };
         GuardianProtocolCommandView Block(string code, string state = "BLOCKED")
             => view with { CanSend = false, BlockCode = code, State = state };
@@ -100,6 +103,8 @@ public sealed class GuardianProtocolCommandService(
             };
             if (preparation is not IAcmR57NormalPreparacao normal)
                 return Block("GUARDIAN_COMMAND_NORMAL_PREPARATION_REQUIRED");
+            if(gate.Bloqueio(version) is "R171_EMITTER_VALIDATION_REQUIRED" or "R171_EMITTER_PROOF_EXPIRED" && await AcmR57DynamicAdmission.BloqueioAsync(gate,preparation,version,ct) is {} emitterBlock)
+                throw new AcmR57BlockedException(emitterBlock);
             var contract = normal.PrepararContrato(version);
             var request = normal.PrepararProtocolo(version, contract);
             var bytes = GuardianSet26HttpClient.SerializarPayloadR57(request);
@@ -133,6 +138,7 @@ public sealed class GuardianProtocolCommandService(
             if (await versions.TemPredecessorNaoTerminalAsync(version.NumeroContrato, version.Versao, ct))
                 return Block("GUARDIAN_COMMAND_PREDECESSOR_PENDING");
             if (AuthorizationBlock() is { } authorizationBlock) return Block(authorizationBlock);
+            frozenPreview=new(integrationId,version.Versao,version.FingerprintSha256,view.PayloadSha256!,contract,request);
             return view with { CanSend = true, BlockCode = null, State = "READY" };
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -144,6 +150,9 @@ public sealed class GuardianProtocolCommandService(
     {
         var preview = await PreviewAsync(integrationId, ct);
         if (!preview.CanSend) return preview;
+        var frozen=frozenPreview;
+        if(frozen is null||frozen.Id!=integrationId||frozen.Version!=preview.Version||frozen.Fingerprint!=preview.SnapshotFingerprint||frozen.PayloadHash!=preview.PayloadSha256)
+            return preview with{CanSend=false,BlockCode="GUARDIAN_COMMAND_PREPARED_PAYLOAD_UNAVAILABLE",State="BLOCKED"};
         if (!confirm) return preview with { CanSend = false, BlockCode = "GUARDIAN_COMMAND_CONFIRMATION_REQUIRED", State = "BLOCKED" };
         if (payloadSha256 != preview.PayloadSha256)
             return preview with { CanSend = false, BlockCode = "GUARDIAN_COMMAND_PAYLOAD_CHANGED", State = "BLOCKED" };
@@ -194,8 +203,9 @@ public sealed class GuardianProtocolCommandService(
                 new ContratoSapToledoCanonicalizer().Canonicalizar(version.Snapshot).FingerprintSha256 != preview.SnapshotFingerprint ||
                 preparation is not IAcmR57NormalPreparacao normal)
                 return result;
-            var contract = normal.PrepararContrato(version);
-            var request = normal.PrepararProtocolo(version, contract);
+            // Receipt collection is read-only: use the exact preflight values, never re-admit remotely after sending.
+            var contract = frozen.Contract;
+            var request = frozen.Request;
             if (Convert.ToHexString(SHA256.HashData(GuardianSet26HttpClient.SerializarPayloadR57(request))) != preview.PayloadSha256)
                 return result;
             var link = await links.ObterPorIntegracaoAsync(integrationId, capture.Token);

@@ -47,6 +47,9 @@ public sealed record AcmR57ApprovedScopeMaterialMapping
 
 public sealed record AcmR57NormalOptions
 {
+    public bool DynamicEmitterValidationEnabled { get; init; }
+    public int DynamicEmitterSignatureId { get; init; }
+    public DateTimeOffset? DynamicEmitterValidationFromUtc { get; init; }
     public AcmInboundWindowOptions AcmInboundWindow { get; init; } = new();
     public AcmAutomaticoOptions AcmAutomatico { get; init; } = new();
     public AcmR57ApprovedScopePartnerMapping[] ApprovedPartnerMappings { get; init; } = [];
@@ -95,8 +98,9 @@ public sealed record AcmR57ApprovedWindowMaterialMapping
     public string? EvidenceReference { get; init; }
 }
 
-public sealed class AcmR57NormalRuntimeGate(AcmR57NormalOptions options, TimeProvider? timeProvider = null) : IAcmR57RuntimeGate
+public sealed class AcmR57NormalRuntimeGate(AcmR57NormalOptions options, TimeProvider? timeProvider, AcmGuardianEmitterResolver? emitterResolver) : IAcmR57RuntimeGate
 {
+    public AcmR57NormalRuntimeGate(AcmR57NormalOptions options,TimeProvider? timeProvider=null):this(options,timeProvider,null){}
     private bool Janela => options.AcmInboundWindow?.Enabled == true;
     private bool Automatico => options.AcmAutomatico?.Enabled == true;
     // Os dois recortes exigem contrato NOVO no Guardian: um cadastro preexistente obriga
@@ -122,7 +126,7 @@ public sealed class AcmR57NormalRuntimeGate(AcmR57NormalOptions options, TimePro
         if (version.Snapshot.Centro != "3011" ||
             !AcmInboundWindowOptions.EscopoContratoAprovado(version.Snapshot.TipoContrato, version.Snapshot.TipoPesagem))
             return "R165U_BUSINESS_SCOPE_NOT_APPROVED";
-        try { _ = AcmR57NormalPreparation.ResolverCodigoEmissor(options, version); return null; }
+        try { _ = AcmR57NormalPreparation.ResolverCodigoEmissor(options, version, emitterResolver); return null; }
         catch (AcmR57BlockedException ex) { return ex.Code; }
     }
 }
@@ -135,8 +139,12 @@ public interface IAcmR57NormalPreparacao : IAcmR57Preparacao
     PreCadastroAcmR57 PrepararProtocolo(VersaoContratoSapToledo version, AcmR57NormalContract contract);
 }
 
-public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options) : IAcmR57NormalPreparacao
+public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options, AcmGuardianEmitterResolver? emitterResolver) : IAcmR57NormalPreparacao, IAcmR57DynamicEmitterPreparation
 {
+    public AcmR57NormalPreparation(AcmR57NormalOptions options):this(options,null){}
+    public Task ValidarEmissorAsync(VersaoContratoSapToledo version,CancellationToken ct)
+        => emitterResolver?.ValidarAsync(version,ct) ?? Task.FromException(new AcmR57BlockedException("R171_EMITTER_RESOLVER_UNAVAILABLE"));
+
     public AcmR57Vinculos Obter(VersaoContratoSapToledo version)
         => throw new AcmR57BlockedException("R165U_PER_STAGE_PREPARATION_REQUIRED");
 
@@ -147,8 +155,13 @@ public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options) : IAcmR
     private static string Required(string? value, string code, int max = 160)
         => Proven(value) && value!.Length <= max ? value : throw new AcmR57BlockedException(code);
 
-    internal static string ResolverCodigoEmissor(AcmR57NormalOptions options, VersaoContratoSapToledo version)
+    internal static string ResolverCodigoEmissor(AcmR57NormalOptions options, VersaoContratoSapToledo version, AcmGuardianEmitterResolver? emitterResolver = null)
     {
+        if(AcmGuardianEmitterResolver.UsesDynamic(options,version))
+        {
+            _=ResolverMaterialEscopo(options,version);
+            return emitterResolver?.Exigir(version) ?? throw new AcmR57BlockedException("R171_EMITTER_VALIDATION_REQUIRED");
+        }
         if (options.AcmInboundWindow?.Enabled == true) return ResolverWindowMappings(options, version).Partner;
         if (UsaMapeamentoPorEscopo(options)) return ResolverScopeMappings(options, version).Partner;
         if (!Proven(options.IdentifierMappingEvidence))
@@ -181,6 +194,7 @@ public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options) : IAcmR
 
     private static string ResolverCodigoItem(AcmR57NormalOptions options, VersaoContratoSapToledo version)
     {
+        if(AcmGuardianEmitterResolver.UsesDynamic(options,version))return ResolverMaterialEscopo(options,version);
         if (options.AcmInboundWindow?.Enabled == true) return ResolverWindowMappings(options, version).Material;
         if (UsaMapeamentoPorEscopo(options)) return ResolverScopeMappings(options, version).Material;
         if (!options.SapContractCopiedVerbatimApproved && options.ApprovedMaterialMapping is null)
@@ -203,6 +217,15 @@ public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options) : IAcmR
     // aprovacao, duas bloqueiam por ambiguidade. Em nenhum dos casos algo e enviado ao Guardian.
     // A tabela de mapeamentos e o que define o modo, nao o recorte de selecao: assim o motor
     // continuo e o reenvio manual por piloto resolvem identificadores pela MESMA fonte.
+    internal static string ResolverMaterialEscopo(AcmR57NormalOptions options,VersaoContratoSapToledo version)
+    {
+        var s=version.Snapshot;
+        if(version.Versao!=1||s.Centro!="3011"||!AcmInboundWindowOptions.EscopoContratoAprovado(s.TipoContrato,s.TipoPesagem))throw new AcmR57BlockedException("R170_SCOPE_INVALID");
+        var materials=options.ApprovedMaterialMappings.Where(m=>m.Centro==s.Centro&&m.Item==s.Item&&m.SapMaterial==s.Material&&Proven(m.GuardianCode)&&m.GuardianCode!.Length<=30&&Proven(m.EvidenceReference)).ToArray();
+        if(materials.Length!=1)throw new AcmR57BlockedException("R170_MATERIAL_MAPPING_REQUIRED");
+        return materials[0].GuardianCode!;
+    }
+
     private static bool UsaMapeamentoPorEscopo(AcmR57NormalOptions o) =>
         o.ApprovedPartnerMappings.Length > 0 || o.ApprovedMaterialMappings.Length > 0;
 
@@ -262,7 +285,7 @@ public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options) : IAcmR
         try { fields = MapeadorContratoAcmGuardian.MapearCamposConfirmados(s); }
         catch (FugaTES.Aplicacao.Servicos.SAP.DecisaoFuncionalPendenteSapException)
         { throw new AcmR57BlockedException("R165U_BUSINESS_MAPPING_NOT_APPROVED"); }
-        var codigoEmissor = ResolverCodigoEmissor(options, version);
+        var codigoEmissor = ResolverCodigoEmissor(options, version, emitterResolver);
         if (options.ValorProximidadeFimContrato is null or < 0 || !Proven(options.ProximityValueEvidence))
             throw new AcmR57BlockedException("R165U_PROXIMITY_VALUE_APPROVAL_REQUIRED");
         if (s.QuantidadeContrato is null or < 0)

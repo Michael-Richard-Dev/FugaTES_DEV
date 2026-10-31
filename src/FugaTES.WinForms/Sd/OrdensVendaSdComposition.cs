@@ -1,4 +1,8 @@
 using System.Net;
+using FugaTES.Integracao.Guardian;
+using FugaTES.Aplicacao.Contratos.Sd;
+using FugaTES.Persistencia.Sd;
+using FugaTES.Aplicacao.Servicos.Sd;
 using FugaTES.HostIntegracao;
 using FugaTES.Integracao.SAP.BusinessDocuments;
 using FugaTES.Integracao.SAP.Configuracao;
@@ -27,6 +31,100 @@ public static class OrdensVendaSdComposition
 
     public const string SapClientAprovado = "110";
 
+    /// <summary>
+    /// Codigos de emissor e item que o operador ja cadastrou no Guardian, em arquivo ao lado do
+    /// executavel para nao congelar um retrato do banco do Guardian dentro do binario. Ausente ou
+    /// vazio significa "nao sei": a conferencia nao acontece e quem decide e o Guardian, no POST.
+    /// </summary>
+    public const string ArquivoCadastro = "FugaTES.sd-guardian.json";
+
+    public static CadastroGuardianConhecido CarregarCadastro(string? conteudoJson)
+    {
+        if (string.IsNullOrWhiteSpace(conteudoJson)) return CadastroGuardianConhecido.Desconhecido;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(conteudoJson);
+            static string[] Lista(System.Text.Json.JsonElement raiz, string nome)
+                => raiz.TryGetProperty(nome, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.Array
+                    ? [.. v.EnumerateArray()
+                        .Where(e => e.ValueKind == System.Text.Json.JsonValueKind.String)
+                        .Select(e => e.GetString()!.Trim())
+                        .Where(s => s.Length > 0)]
+                    : [];
+            return new(Lista(doc.RootElement, "emissores"), Lista(doc.RootElement, "itens"));
+        }
+        // Arquivo corrompido nao pode liberar o envio por engano, nem impedir a tela de abrir.
+        catch (System.Text.Json.JsonException) { return CadastroGuardianConhecido.Desconhecido; }
+    }
+
+    private static CadastroGuardianConhecido LerCadastro()
+    {
+        var caminho = Path.Combine(AppContext.BaseDirectory, ArquivoCadastro);
+        try { return File.Exists(caminho) ? CarregarCadastro(File.ReadAllText(caminho)) : CadastroGuardianConhecido.Desconhecido; }
+        catch (IOException) { return CadastroGuardianConhecido.Desconhecido; }
+        catch (UnauthorizedAccessException) { return CadastroGuardianConhecido.Desconhecido; }
+    }
+
+    /// <summary>Origem do Guardian na nuvem, a mesma ja usada pelo pre-cadastro do ACM.</summary>
+    public const string GuardianAprovado = "https://guardian.cloudprix.com.br";
+
+    private sealed class Descartavel(params IDisposable?[] itens) : IDisposable
+    {
+        public void Dispose() { foreach (var i in itens) i?.Dispose(); }
+    }
+
+    /// <summary>
+    /// Monta o remetente do protocolo. Devolve nulo quando o perfil do Guardian nao fecha: a tela
+    /// continua lendo o SAP e mostrando a previsualizacao, apenas sem o botao de enviar.
+    /// </summary>
+    private static (IEnviarProtocoloSdGateway?, HttpClient?) CriarGuardian(IConfiguration config)
+    {
+        HttpClient? http = null;
+        try
+        {
+            if (!Uri.TryCreate(config["Guardian:BaseUrl"], UriKind.Absolute, out var guardian)
+                || guardian.Scheme != "https" || guardian.UserInfo.Length != 0
+                || guardian.GetLeftPart(UriPartial.Authority) != GuardianAprovado)
+                return (null, null);
+            foreach (var chave in new[] { "GuardianUser", "GuardianCredentialTarget", "GuardianSignatureTarget", "GuardianSignatureUser" })
+                if (string.IsNullOrWhiteSpace(config["Carrier:Secrets:" + chave])) return (null, null);
+
+            http = new HttpClient(new ProtocoloSdHttpGuard(new HttpClientHandler { AllowAutoRedirect = false }));
+            var opcoes = new GuardianHttpOptions
+            {
+                BaseUrl = new Uri(GuardianAprovado),
+                Timeout = TimeSpan.FromSeconds(30),
+                PreCadastroEndpoint = GuardianProtocoloSdClient.Rota
+            };
+            var credenciais = new CarrierServiceGuardianCredentials(config);
+            return (new GuardianProtocoloSdClient(http, opcoes, new GuardianTokenClient(http, opcoes, credenciais)), http);
+        }
+        catch { http?.Dispose(); return (null, null); }
+    }
+
+    /// <summary>
+    /// Registro duravel no PostgreSQL (tabela da migracao 007S1). Devolve nulo quando o banco nao
+    /// esta disponivel - e a tela entao NAO envia, porque sem conferir a duplicidade o envio seria
+    /// uma aposta. Antes isto era um arquivo ao lado do executavel, que dava um registro por
+    /// instalacao: a que nao enviou nao sabia do protocolo criado pela outra.
+    /// </summary>
+    /// <summary>
+    /// Abre a conexao sob demanda, e nao na montagem da tela. Montar e sincrono: esperar aqui o
+    /// tunel SSH bloqueava a thread da interface - e travava de vez, porque a continuacao tentava
+    /// voltar justamente para a thread bloqueada.
+    /// </summary>
+    private static async Task<(IRegistroProtocolosSd?, IDisposable?, string?)> AbrirRegistroAsync(CancellationToken ct)
+    {
+        try
+        {
+            var aberta = await ConexaoSdPostgreSql.AbrirAsync(ct).ConfigureAwait(false);
+            return (aberta.Fonte is null ? null : new RegistroProtocolosSdPostgreSql(aberta.Fonte),
+                    aberta.Posse, aberta.Motivo);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception erro) { return (null, null, "SD_BANCO_" + erro.GetType().Name); }
+    }
+
     public static FrmOrdensVendaSd Criar()
     {
         HttpClient? http = null;
@@ -47,7 +145,12 @@ public static class OrdensVendaSdComposition
                 },
                 new CarrierServiceSapAuthentication(config),
                 new CookieContainer());
-            return new FrmOrdensVendaSd(new OrdensVendaSdConsultaAdapter(executor), http);
+            // O envio ao Guardian e opcional: sem perfil de Guardian a tela abre so com a leitura
+            // e a previsualizacao, em vez de nao abrir.
+            var (guardian, httpGuardian) = CriarGuardian(config);
+            return new FrmOrdensVendaSd(new OrdensVendaSdConsultaAdapter(executor),
+                new Descartavel(http, httpGuardian), cadastro: LerCadastro(),
+                guardian: guardian, abrirRegistro: AbrirRegistroAsync);
         }
         catch (DesktopStartupException ex) { http?.Dispose(); return Bloqueada(ex.Code); }
         catch { http?.Dispose(); return Bloqueada("SD_SAP_PERFIL_INDISPONIVEL"); }
@@ -105,6 +208,29 @@ public sealed class OrdensVendaSdHttpGuard(HttpMessageHandler inner) : Delegatin
             && request.Method == HttpMethod.Get
             && uri.AbsolutePath.StartsWith(OrdensVendaSdComposition.RotaAprovada, StringComparison.Ordinal);
         if (!liberado) throw new InvalidOperationException("SD_HTTP_ROTA_OU_METODO_PROIBIDO");
+        return base.SendAsync(request, ct);
+    }
+}
+
+/// <summary>
+/// Defesa em profundidade do lado do Guardian: desta tela sai POST, e so para a autenticacao e
+/// para a criacao do protocolo. Nenhuma outra rota do Guardian e alcancavel daqui - em especial
+/// nenhuma de contrato, emissor, item ou transportadora.
+/// </summary>
+public sealed class ProtocoloSdHttpGuard(HttpMessageHandler inner) : DelegatingHandler(inner)
+{
+    private const string Token = "/api/v2/CreateToken";
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var uri = request.RequestUri;
+        var liberado = uri is not null
+            && uri.Scheme == "https" && uri.UserInfo.Length == 0 && uri.Fragment.Length == 0
+            && uri.GetLeftPart(UriPartial.Authority) == OrdensVendaSdComposition.GuardianAprovado
+            && request.Method == HttpMethod.Post
+            && (uri.AbsolutePath == GuardianProtocoloSdClient.Rota || uri.AbsolutePath == Token);
+        if (!liberado) throw new InvalidOperationException("SD_GUARDIAN_ROTA_OU_METODO_PROIBIDO");
         return base.SendAsync(request, ct);
     }
 }

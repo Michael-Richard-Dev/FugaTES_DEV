@@ -58,7 +58,7 @@ public sealed partial class AcmR57Pipeline
                 return await Save(stage, result) ? result : Unknown("R165U_FENCED_COMMIT_UNPROVEN");
             return result;
         }
-        var runtimeBlock = gate.Bloqueio(version);
+        var runtimeBlock = await AcmR57DynamicAdmission.BloqueioAsync(gate,preparacao,version,ct);
         if (runtimeBlock is not null) return await PreBlock(runtimeBlock);
         if (!gate.CorrelationPermitida(claim.CorrelationId)) return await PreBlock("R165AG_ADMISSION_MARKER_REQUIRED");
         if (await contratos.TemPredecessorNaoTerminalAsync(version.NumeroContrato, version.Versao, ct))

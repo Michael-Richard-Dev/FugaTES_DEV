@@ -1,0 +1,53 @@
+{
+  "scope": "SYNTHETIC_LOCAL_HARNESS_NOT_SAP_CPI_DELIVERY",
+  "outcome": "http400",
+  "address": "http://127.0.0.1:61343",
+  "contract": "0000986702",
+  "localPostHttp": 201,
+  "concurrentRedeliveryHttp": 201,
+  "identicalReplayHttp": 201,
+  "input": {
+    "Contrato": [
+      {
+        "NumeroContrato": "0000986702",
+        "TipoContrato": "AC3P",
+        "DescricaoTipoContrato": "SYNTHETIC LOCAL TEST NOT SAP DELIVERY",
+        "Centro": "3011",
+        "TipoPesagem": "E",
+        "OperacaoContrato": "10",
+        "StatusContrato": "T",
+        "IdParceiro": "0020000051",
+        "Material": "7000000",
+        "QuantidadeContrato": 10000
+      }
+    ]
+  },
+  "integrationId": "6be2c1c0-ba4f-46c0-a876-99087dd3c546",
+  "correlationId": "r165ag:cpi:e7945f2709e44d609a9749e7c75cfe0a:e0d0307e5b8a41d7a8d74863b8e992a6",
+  "h4Version": 1,
+  "h4Fingerprint": "933912EFBB25BEFD4F08CFA73470B683E016BA968CA1FA7E5E43144DE72ADAF5",
+  "h4Commit": "MODELLED_COMMIT_IN_EXISTING_IN_MEMORY_DOUBLE_NOT_PHYSICAL_POSTGRESQL",
+  "guardianAdapters": "REAL_SOAP_REST_TOKEN_CLASSES_WITH_IN_PROCESS_HTTP_HANDLER_ONLY",
+  "Lookups": 1,
+  "SoapCreates": 1,
+  "TokenCalls": 1,
+  "RestCreates": 1,
+  "simulatedProtocolId": null,
+  "journalStage": "R165Y_REST_REJECTED",
+  "journalStatus": "FalhaNaoReprocessavel",
+  "journalError": "GUARDIAN_R57_HTTP_400",
+  "journalCorrelation": "r165ag:cpi:e7945f2709e44d609a9749e7c75cfe0a:e0d0307e5b8a41d7a8d74863b8e992a6",
+  "claimCorrelation": "r165ag:cpi:e7945f2709e44d609a9749e7c75cfe0a:e0d0307e5b8a41d7a8d74863b8e992a6",
+  "safeHttpStatus": 400,
+  "safeBusinessMessage": "The codigoContrato field is invalid.",
+  "motorState": "FalhaDefinitiva",
+  "attempts": 1,
+  "workerCount": 1,
+  "backlog": "UNCLAIMED",
+  "concurrentRedelivery": "SAME_DURABLE_IDENTITY",
+  "divergentPayload": "HTTP409",
+  "secondContract": "HTTP409",
+  "manualIntervention": false,
+  "realGuardianRequests": 0,
+  "hmlDatabaseWrites": 0
+}

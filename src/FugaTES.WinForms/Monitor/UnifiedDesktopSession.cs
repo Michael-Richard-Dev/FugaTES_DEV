@@ -22,7 +22,7 @@ public sealed record UnifiedDesktopProfile
 public sealed class UnifiedDesktopSession:IDisposable
 {
     public const string Release="DEV110-TOLEDO-RECEIPTS-MONITOR-20261028-R1";
-    public const string Version="1.2.11";
+    public const string Version="1.2.12";
     private readonly UnifiedDesktopProfile profile;
     private readonly string directory;
     private readonly object readerLock=new();

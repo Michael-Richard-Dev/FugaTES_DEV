@@ -26,7 +26,7 @@ public sealed record ToledoPesagemCallbackDto(string SistemaBalanca,string DataP
         var system=Text(fields,"SistemaBalanca",true)!;
         if(!string.Equals(system,"Toledo",StringComparison.OrdinalIgnoreCase))throw Invalid("SistemaBalanca");
         var date=Text(fields,"DataPesagem",true)!;
-        if(!DateTime.TryParseExact(date,new[]{"MM/dd/yyyy h:mm:ss tt","MM/dd/yyyy hh:mm:ss tt"},
+        if(!DateTime.TryParseExact(date,new[]{"MM/dd/yyyy h:mm:ss tt","MM/dd/yyyy hh:mm:ss tt","dd/MM/yyyy HH:mm:ss"},
             CultureInfo.InvariantCulture,DateTimeStyles.None,out var parsedDate))throw Invalid("DataPesagem");
         // Wire has no timezone. Preserve local wall time; do not invent UTC or a business timezone.
         parsedDate=DateTime.SpecifyKind(parsedDate,DateTimeKind.Unspecified);
@@ -104,7 +104,8 @@ public sealed record ToledoPesagemCallbackDto(string SistemaBalanca,string DataP
     }
     private static decimal Weight(Dictionary<string,JsonElement> f,string key)
     {
-        var s=Scalar(f,key,true)!;
+        // Normalize only the numeric parsing copy. The persisted Guardian document remains exact.
+        var s=Scalar(f,key,true)!.Replace(',','.');
         if(s.Length>128 || !DecimalText.IsMatch(s) || !decimal.TryParse(s,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var value))throw Invalid(key);
         var dot=s.IndexOf('.');var scale=dot<0?0:s.Length-dot-1;
         var coefficient=BigInteger.Parse(s.Replace(".","",StringComparison.Ordinal),CultureInfo.InvariantCulture);

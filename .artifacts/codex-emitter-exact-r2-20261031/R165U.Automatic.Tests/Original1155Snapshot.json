@@ -1,0 +1,27 @@
+{
+  "Centro": "3011",
+  "Material": "000000000007000000",
+  "DiasToler": 0,
+  "IdParceiro": "0020000051",
+  "Observacao": "",
+  "DataEmissao": "23/10/2026",
+  "TipoPesagem": "E",
+  "TipoContrato": "AC3P",
+  "ValorUnitario": 1.0,
+  "CentroOpcional": [
+    "3011"
+  ],
+  "DataEntregaFim": "31/12/2026",
+  "NumeroContrato": "0000001155",
+  "SistemaBalanca": "Toledo",
+  "StatusContrato": "T",
+  "OperacaoContrato": "10",
+  "DataEntregaInicio": "23/10/2026",
+  "DataLimiteEntrega": "00/00/0000",
+  "TabelaQualidadeID": "0000000071",
+  "QuantidadeContrato": 10000.0,
+  "DescricaoTipoContrato": "ACM contrato compra de terceiros",
+  "TabelaQualidadeVersao": "001",
+  "QuantidadeSaldoDevolucao": 0,
+  "TabelaQualidadeVersaoValidade": "001"
+}

@@ -11,19 +11,21 @@ partial class FrmIntegracoes
     private Button protocolosPreCadastro = null!;
     private Button toledoRecebimentos = null!;
     private Button ordensVendaSd = null!;
+    private Button pedidosCompraMm = null!;
     protected override void Dispose(bool disposing) { if (disposing) components?.Dispose(); base.Dispose(disposing); }
     private void InitializeComponent()
     {
         components = new System.ComponentModel.Container();
         Text = "Integrações — FugaTES HML";
-        ClientSize = new Size(660, 575);
-        MinimumSize = new Size(620, 565);
+        ClientSize = new Size(660, 645);
+        MinimumSize = new Size(620, 635);
         StartPosition = FormStartPosition.CenterParent;
         Font = new Font("Segoe UI", 10F);
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, RowCount = 7 };
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, RowCount = 8 };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
@@ -55,6 +57,9 @@ partial class FrmIntegracoes
         ordensVendaSd = new Button { Text = "Ordens de venda (SD) — leitura SAP", Name = "ordensVendaSd",
             Dock = DockStyle.Top, Height = 46, Margin = new Padding(0, 8, 0, 8) };
         layout.Controls.Add(ordensVendaSd, 0, 6);
+        pedidosCompraMm = new Button { Text = "Pedidos de compra (MM) — leitura SAP", Name = "pedidosCompraMm",
+            Dock = DockStyle.Top, Height = 46, Margin = new Padding(0, 8, 0, 8) };
+        layout.Controls.Add(pedidosCompraMm, 0, 7);
         Controls.Add(layout);
     }
 }

@@ -1,0 +1,12 @@
+{
+  "Enabled": false,
+  "LocalPort": 15433,
+  "CredentialTarget": "FugaTES/HML/ACM/PostgreSQL",
+  "ClearanceReference": "",
+  "TransportSslMode": "",
+  "TransportPolicyReference": "",
+  "ReadbackEnabled": false,
+  "GuardianProtocol": {
+    "Enabled": false
+  }
+}

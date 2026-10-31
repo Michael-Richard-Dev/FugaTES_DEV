@@ -458,6 +458,27 @@ public sealed class GuardianProtocolCommandServiceTests
         h.AssertNoDispatch();
     }
 
+    [Fact] public async Task Confirmed_receipt_does_not_require_fresh_emitter_admission_after_send_or_cancellation()
+    {
+        using var h=await Harness.Create();using var cancelled=new CancellationTokenSource();
+        var preparation=new ExpiringEmitterPreparation();
+        h.Processor.After=()=>{preparation.Expired=true;cancelled.Cancel();};
+        var service=h.Service(preparation:preparation,gate:new ExpiringEmitterGate(preparation));
+        var preview=await service.PreviewAsync(h.Id,default);Assert.True(preview.CanSend,preview.BlockCode);
+        var result=await service.SendAsync(h.Id,preview.PayloadSha256!,preview.PreviewId!,true,cancelled.Token);
+        Assert.Equal("CONFIRMED",result.State);Assert.Equal(901,result.ProtocolId);Assert.Equal(1,h.Wire.ProtocolRequests);Assert.Equal(0,preparation.RevalidationCalls);
+    }
+    private sealed class ExpiringEmitterPreparation:IAcmR57NormalPreparacao,IAcmR57DynamicEmitterPreparation
+    {
+        public bool Expired;public int RevalidationCalls;private readonly AcmR57NormalPreparation inner=new(AutomaticFixture.Options());
+        public Task ValidarEmissorAsync(VersaoContratoSapToledo v,CancellationToken ct){RevalidationCalls++;ct.ThrowIfCancellationRequested();throw new AcmR57BlockedException("R171_EMITTER_LOOKUP_UNVERIFIED");}
+        public AcmR57NormalContract PrepararContrato(VersaoContratoSapToledo v){if(Expired)throw new AcmR57BlockedException("R171_EMITTER_PROOF_EXPIRED");return inner.PrepararContrato(v);}
+        public PreCadastroAcmR57 PrepararProtocolo(VersaoContratoSapToledo v,AcmR57NormalContract c)=>inner.PrepararProtocolo(v,c);
+        public AcmR57Vinculos Obter(VersaoContratoSapToledo v)=>inner.Obter(v);
+    }
+    private sealed class ExpiringEmitterGate(ExpiringEmitterPreparation p):IAcmR57RuntimeGate
+    {public string? Bloqueio(VersaoContratoSapToledo v)=>p.Expired?"R171_EMITTER_PROOF_EXPIRED":null;}
+
     private sealed class Harness : IDisposable
     {
         public static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;

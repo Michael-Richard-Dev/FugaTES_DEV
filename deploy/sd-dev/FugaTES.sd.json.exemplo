@@ -1,0 +1,33 @@
+{
+  "_comentario": [
+    "Perfil de ESCRITA do fluxo SD: PostgreSQL DEV, cluster 5433.",
+    "Copie para a pasta do executavel como FugaTES.sd.json e ajuste os caminhos.",
+    "Nao guarda senha: CredentialTarget e o ENDERECO da credencial generica no Gerenciador",
+    "de Credenciais do Windows, cujo usuario tem de ser o mesmo de Database.Username.",
+    "Atencao as barras invertidas: em JSON elas vao DOBRADAS. Um caminho com barra simples",
+    "torna o arquivo invalido e a tela recusa o perfil com DESKTOP_CONFIG_INVALID.",
+    "A porta remota tem de ser 5433: o 5432 e o cluster anterior e nao tem a tabela 007S1.",
+    "O usuario tem de ser fugates_sd_app: fugates_dev_app e NOLOGIN no 5433."
+  ],
+  "Environment": "HML",
+  "IntegrationWorkerEnabled": false,
+  "ReadinessSeconds": 20,
+  "Database": {
+    "Host": "127.0.0.1",
+    "Port": 15433,
+    "Database": "fugates_dev",
+    "Username": "fugates_sd_app",
+    "Schema": "fugates",
+    "CredentialTarget": "FugaTES/HML/PostgreSQL/SD"
+  },
+  "Ssh": {
+    "Enabled": true,
+    "Host": "192.168.17.40",
+    "Port": 22,
+    "Username": "michael",
+    "PrivateKeyPath": "C:\\Users\\TI\\AppData\\Local\\FugaTES\\Secrets\\fugates_hml_ed25519",
+    "KnownHostsPath": "C:\\Users\\TI\\.ssh\\known_hosts",
+    "RemoteDatabaseHost": "127.0.0.1",
+    "RemoteDatabasePort": 5433
+  }
+}

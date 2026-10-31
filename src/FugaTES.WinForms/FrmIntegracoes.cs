@@ -24,6 +24,8 @@ public partial class FrmIntegracoes : Form
         protocolosPreCadastro.Click += (_,_) => { if(protocolsRead is null)return;using var tela=protocolsRead();tela.ShowDialog(this); };
         // No modo demo o SAP e consulta manual por BP; abrir a varredura SD daria a impressao de
         // uma busca que essa sessao nao faz.
+        pedidosCompraMm.Enabled = demo is null;
+        pedidosCompraMm.Click += (_, _) => { using var tela = new FrmPedidosCompraMm(); tela.ShowDialog(this); };
         ordensVendaSd.Enabled = demo is null;
         ordensVendaSd.Click += (_, _) => { using var tela = Sd.OrdensVendaSdComposition.Criar(); tela.ShowDialog(this); };
         transportadoras.Click += (_, _) => { if(demo is not null){using var telaDemo=new Transportadoras.MasterdataR3.FrmCadastrosGuardianR3(demo:demo);telaDemo.ShowDialog(this);}else{using var tela = carriersRead?.Invoke()??new Transportadoras.MasterdataR3.FrmTransportadoraMasterdata(readOnly:monitorAcm is not null); tela.ShowDialog(this);} };

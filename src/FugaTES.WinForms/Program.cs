@@ -8,6 +8,17 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.Length==1&&args[0]=="--mm-monitor")
+        {
+            ApplicationConfiguration.Initialize();
+            Application.Run(new FrmPedidosCompraMm());
+            return;
+        }
+        if(args.Length>0&&args[0].StartsWith("--mm-",StringComparison.Ordinal))
+        {
+            Environment.ExitCode=Mm.MmPurchaseOrderComposition.RunCollector(args);
+            return;
+        }
         ApplicationConfiguration.Initialize();
         if (args.Length>0 && args[0]=="--local-simulation")
         {

@@ -1,0 +1,114 @@
+{
+  "ConnectionStrings": {
+    "FugaTES": "Host=127.0.0.1;Port=5433;Database=fugates_dev;Username=fugates_acm_hml_app;Search Path=fugates;Passfile=/home/michael/.fugates-acm-r165p/pgpass;SSL Mode=Require;Enlist=false"
+  },
+  "Callback": {
+    "Enabled": false
+  },
+  "Sap": {
+    "Enabled": false
+  },
+  "SapContractInbound": {
+    "ProductiveEnabled": false,
+    "AutomaticProcessingEnabled": false,
+    "OfflineEnabled": false,
+    "SecurityMode": "LoopbackBasicHttps"
+  },
+  "FUGATES_INTEGRATION_WORKER_ENABLED": false,
+  "HostIntegracao": {
+    "PersistenceMode": "PostgreSql",
+    "ExternalMode": "Guardian",
+    "PollInterval": "00:00:02",
+    "ShutdownGracePeriod": "00:00:30"
+  },
+  "MotorIntegracao": {
+    "LeaseDuration": "00:03:00",
+    "LeaseRenewInterval": "00:00:20",
+    "RetryBackoff": "1.00:00:00",
+    "AcmPilotNumeroContrato": null,
+    "AcmPilotCentro": null,
+    "AcmPilotItem": null,
+    "AcmInboundWindow": {
+      "Enabled": false,
+      "WindowId": null,
+      "AuthorizationReference": null,
+      "NotBeforeUtc": null,
+      "UntilUtc": null,
+      "Centro": "3011",
+      "Item": null,
+      "AllowedSapPartners": [],
+      "AllowedSapMaterials": [],
+      "ExcludedContractNumbers": [
+        "1031",
+        "1106",
+        "1138",
+        "1139",
+        "1140",
+        "1144",
+        "1147",
+        "1155"
+      ]
+    }
+  },
+  "TimeoutProcessamentoIntegracao": {
+    "Timeout": "00:01:00"
+  },
+  "AcmR57": {
+    "Enabled": true,
+    "Normal": {
+      "Enabled": true,
+      "ExecutionAuthorized": false,
+      "AuthorizationReference": null,
+      "GuardianEnvironment": "HML",
+      "GuardianIdentityEvidence": null,
+      "PostgreSqlIdentityEvidence": null,
+      "JournalEvidence": null,
+      "SapIdentifiersCopiedVerbatimApproved": false,
+      "SapContractAndMaterialCopiedVerbatimApproved": false,
+      "SapContractCopiedVerbatimApproved": false,
+      "ApprovedPartnerMapping": null,
+      "ApprovedMaterialMapping": null,
+      "ApprovedWindowPartnerMappings": [],
+      "ApprovedWindowMaterialMappings": [],
+      "IdentifierMappingEvidence": null,
+      "ValorProximidadeFimContrato": null,
+      "ProximityValueEvidence": null,
+      "CallbackUrl": "http://192.168.17.40/api/guardian/set26/callback/recebimento",
+      "CallbackApproved": false,
+      "CallbackEvidence": null,
+      "CallbackBinding": null,
+      "IdAgenda": 1
+    }
+  },
+  "Guardian": {
+    "BaseUrl": "https://guardian.cloudprix.com.br",
+    "TokenEndpoint": "/api/v2/CreateToken",
+    "PreCadastroEndpoint": "/api/v1/Guardian/ProtocoloPreCadastro",
+    "Timeout": "00:00:30",
+    "ContratoSoapEndpoint": "http://192.168.17.91/WS_GUARDIAN/WS_GUARDIAN_PLUS.asmx",
+    "ContratoSoapEnvironment": "HML",
+    "ContratoSoapInternalHmlHttpApproved": true
+  },
+  "AcmProtocolCommand": {
+    "Enabled": false,
+    "Environment": "HML",
+    "ExecutionAuthorized": false,
+    "IntegrationId": "00000000-0000-0000-0000-000000000000",
+    "Contract": null,
+    "UntilUtc": null
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "FugaTES.Integracao.Guardian.GuardianSet26HttpClient": "Information"
+    },
+    "Console": {
+      "FormatterName": "json",
+      "FormatterOptions": {
+        "UseUtcTimestamp": true,
+        "TimestampFormat": "O"
+      }
+    }
+  },
+  "_Candidate": "OFFLINE_ONLY_INERT: bind the EXISTING selected worker, not a second service. Credentials omitted. No approved business window."
+}

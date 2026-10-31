@@ -27,8 +27,8 @@
   </ItemGroup>
   <PropertyGroup>
     <AssemblyName>FugaTES</AssemblyName>
-    <Version>1.2.11</Version>
-    <FileVersion>1.2.11.0</FileVersion>
-    <InformationalVersion>1.2.11+toledo.sap.continuous.20261031</InformationalVersion>
+    <Version>1.2.12</Version>
+    <FileVersion>1.2.12.0</FileVersion>
+    <InformationalVersion>1.2.12+mm.purchaseorders.20261031</InformationalVersion>
   </PropertyGroup>
 </Project>
