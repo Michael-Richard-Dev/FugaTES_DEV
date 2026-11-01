@@ -179,6 +179,35 @@ public static class LeitorDevolutivaSd
         => Texto(raiz, nome) ?? throw new DevolutivaSdInvalidaException(
             "SD_DEVOLUTIVA_CAMPO_AUSENTE", $"O campo {nome} não veio preenchido.");
 
+    /// <summary>
+    /// Peso vindo como texto, aceitando ponto OU virgula como separador decimal.
+    ///
+    /// Por que nao basta decimal.TryParse com InvariantCulture, que era o que havia aqui: a
+    /// balanca Toledo manda "15000,0", e em InvariantCulture a virgula e separador de MILHAR.
+    /// O valor nao era recusado - era aceito como 150000. Dez vezes o peso, em silencio, indo
+    /// para a remessa e para a NF-e. Conferido em 01/11/2026 com o payload real do ACM.
+    ///
+    /// A regra e a MESMA ja usada no caminho do ACM com esta balanca (ToledoPesagemCallbackDto e
+    /// ToledoSapODataPayload): virgula e separador decimal, nunca de milhar; separadores
+    /// misturados sao recusados em vez de interpretados. "1.234,56" nao vira 1234,56 aqui - vira
+    /// recusa, porque adivinhar a intencao de um peso e pior do que pedir que venha sem ambiguidade.
+    /// </summary>
+    public static bool TentarNumero(string? texto, out decimal numero)
+    {
+        numero = 0;
+        if (string.IsNullOrWhiteSpace(texto)) return false;
+        var limpo = texto.Trim().Replace(',', '.');
+        if (limpo.Length > 128) return false;
+        // Um separador no maximo, so digitos, sinal apenas a frente. O negativo passa por aqui
+        // para ser recusado depois com o seu proprio codigo, e nao confundido com "nao e numero".
+        if (!FormatoDecimal.IsMatch(limpo)) return false;
+        return decimal.TryParse(limpo, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+            CultureInfo.InvariantCulture, out numero);
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex FormatoDecimal =
+        new(@"\A-?[0-9]+(?:\.[0-9]+)?\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
     private static decimal Decimal(JsonElement raiz, string nome)
     {
         var valor = Propriedade(raiz, nome);
@@ -188,7 +217,7 @@ public static class LeitorDevolutivaSd
             JsonValueKind.Number => valor.ToString(),
             _ => null
         };
-        if (!decimal.TryParse(texto, NumberStyles.Number, CultureInfo.InvariantCulture, out var numero))
+        if (!TentarNumero(texto, out var numero))
             throw new DevolutivaSdInvalidaException("SD_DEVOLUTIVA_PESO_INVALIDO",
                 $"O campo {nome} não é um número: '{texto}'.");
         if (numero < 0)

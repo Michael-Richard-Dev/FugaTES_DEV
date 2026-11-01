@@ -157,4 +157,67 @@ public sealed class DevolutivaSdTests
         var corpo = Corpo();
         Assert.Equal(corpo, LeitorDevolutivaSd.Ler(corpo).PayloadJson);
     }
+
+    // --- Separador decimal: o pior defeito encontrado em 01/11/2026 ------------------------
+    //
+    // A balanca Toledo manda "15000,0". Com decimal.TryParse em InvariantCulture, que era o que
+    // havia aqui, a virgula e separador de MILHAR: o valor nao era recusado, era aceito como
+    // 150000. Dez vezes o peso, calado, indo para a remessa e para a NF-e.
+
+    [Theory]
+    [InlineData("15000,0", 15000.0)]
+    [InlineData("5000,0", 5000.0)]
+    [InlineData("0,0", 0.0)]
+    [InlineData("1,5", 1.5)]
+    [InlineData("31240,500", 31240.5)]
+    public void Virgula_e_separador_decimal_e_nao_de_milhar(string texto, double esperado)
+    {
+        Assert.True(LeitorDevolutivaSd.TentarNumero(texto, out var numero));
+        Assert.Equal((decimal)esperado, numero);
+    }
+
+    [Theory]
+    [InlineData("15000.0", 15000.0)]
+    [InlineData("32500.0", 32500.0)]
+    public void Ponto_continua_funcionando(string texto, double esperado)
+    {
+        Assert.True(LeitorDevolutivaSd.TentarNumero(texto, out var numero));
+        Assert.Equal((decimal)esperado, numero);
+    }
+
+    // Mesma convencao ja usada no caminho do ACM com esta balanca: virgula e separador decimal,
+    // nunca de milhar, e separadores misturados sao RECUSADOS em vez de interpretados. Adivinhar
+    // a intencao de um peso e pior do que exigir que ele venha sem ambiguidade.
+    [Theory]
+    [InlineData("1.234,56")]
+    [InlineData("1,234.56")]
+    public void Separadores_misturados_sao_recusados(string texto)
+        => Assert.False(LeitorDevolutivaSd.TentarNumero(texto, out _));
+
+    [Theory]
+    // Ambiguo demais para adivinhar: falhar e melhor do que escolher um sentido.
+    [InlineData("1.234.567")]
+    [InlineData("1,234,567")]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("abc")]
+    [InlineData(null)]
+    public void Numero_ambiguo_ou_invalido_e_recusado(string? texto)
+        => Assert.False(LeitorDevolutivaSd.TentarNumero(texto, out _));
+
+    [Fact]
+    public void Peso_com_virgula_no_documento_inteiro_chega_certo()
+    {
+        // Mesma forma do payload real da balanca, com virgula em todos os pesos.
+        var corpo = """
+        {"SistemaBalanca":"Toledo","DataPesagem":"01/11/2026 11:02:22","TipoPesagem":"S",
+         "IdPesagem":"0020335","Centro":"3011","PesoBruto":"15000,0","PesoTara":"10000,0",
+         "PesoAntesDesconto":"5000,0","PesoAposDesconto":"5000,0","Placa":"TESTEVENDA1C",
+         "camposAdicionais":[{"numero":1003,"valor":"2985"},{"numero":1009,"valor":"10"}]}
+        """;
+        var lida = LeitorDevolutivaSd.Ler(corpo);
+        Assert.Equal(15000m, lida.PesoBruto);
+        Assert.Equal(10000m, lida.PesoTara);
+        Assert.Equal(5000m, lida.PesoLiquido);
+    }
 }

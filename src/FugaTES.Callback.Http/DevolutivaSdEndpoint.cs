@@ -47,7 +47,16 @@ public static class DevolutivaSdEndpoint
         try { devolutiva = LeitorDevolutivaSd.Ler(corpo); }
         // O motivo volta para o Guardian: uma recusa sem causa nao ajuda ninguem a corrigir.
         catch (DevolutivaSdInvalidaException erro)
-        { await ResponderAsync(context, 400, erro.Codigo, erro.Detalhe); return; }
+        {
+            // E tambem fica no journal. Em 01/11/2026 duas recusas chegaram e so o Guardian sabia
+            // o porque: do nosso lado havia um 400 sem causa. O CODIGO e o detalhe bastam para
+            // diagnosticar, e nenhum dos dois carrega o documento recebido.
+            context.RequestServices.GetService<ILoggerFactory>()
+                ?.CreateLogger(typeof(DevolutivaSdEndpoint))
+                .LogWarning("SD_DEVOLUTIVA_RECUSADA: {Codigo} — {Detalhe}", erro.Codigo, erro.Detalhe);
+            await ResponderAsync(context, 400, erro.Codigo, erro.Detalhe);
+            return;
+        }
 
         var repositorio = context.RequestServices.GetService<IDevolutivasSdRepositorio>();
         if (repositorio is null)
