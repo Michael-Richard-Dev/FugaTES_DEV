@@ -1,4 +1,4 @@
-using FugaTES.Aplicacao.CasosDeUso.Mvp;
+﻿using FugaTES.Aplicacao.CasosDeUso.Mvp;
 using FugaTES.Aplicacao.Contratos.ContratosSapToledo;
 using FugaTES.Aplicacao.Contratos.Gateways.SAP;
 using FugaTES.Aplicacao.Contratos.Guardian;
@@ -65,6 +65,11 @@ public static class MvpOrchestrationComposition
                 services.TryAddSingleton(normal);
                 if(normal.DynamicEmitterValidationEnabled)
                     services.TryAddScoped<AcmGuardianEmitterResolver>();
+                if(normal.DynamicMaterialValidationEnabled)
+                {
+                    if(!normal.DynamicEmitterValidationEnabled)throw new InvalidOperationException("ACM_MATERIAL_REQUIRES_DYNAMIC_EMITTER_SCOPE");
+                    services.TryAddScoped<AcmGuardianMaterialResolver>();
+                }
                 services.TryAddScoped<IAcmR57RuntimeGate,AcmR57NormalRuntimeGate>();
                 services.TryAddScoped<IAcmR57Preparacao,AcmR57NormalPreparation>();
             }

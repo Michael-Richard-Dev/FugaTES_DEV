@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using FugaTES.Aplicacao.Servicos.ManualRetry;
 
 namespace FugaTES.Callback.Http.ManualRetry;
@@ -13,6 +13,8 @@ public sealed record AcmManualRetryCommandProfile
     public string OperatorSid { get; init; } = "";
     public string WorkerIdentity { get; init; } = "";
     public string? NormalConfigurationFile { get; init; }
+    // Explicit administrative wake-up of one already committed command.
+    public Guid? ResumeCommittedCommandId { get; init; }
 
     /// <summary>
     /// R163: arquivo restrito com as credenciais Guardian (Email/Password/Signature), lido por
@@ -40,18 +42,24 @@ public sealed record AcmManualRetryCommandProfile
                 string.IsNullOrWhiteSpace(p) || !Path.IsPathFullyQualified(p) || p.Any(char.IsControl)) ||
             new[] { BaseConfigurationFile, CredentialFile, ApprovalsFile, Passfile }.Distinct(StringComparer.Ordinal).Count() != 4)
             throw new InvalidOperationException("ACM_COMMAND_PROFILE_INVALID");
-        if ((Contract is null) != (Item is null) || (Contract is not null &&
-            (Contract.Length == 0 || !Contract.All(char.IsAsciiDigit) || !AcmManualRetryPolicy.Evidence(Item))))
+        if ((Contract is null && Item is not null) || (Contract is not null &&
+            (Contract.Length == 0 || !Contract.All(char.IsAsciiDigit) || Item is not null&&!AcmManualRetryPolicy.Evidence(Item))))
             throw new InvalidOperationException("ACM_COMMAND_SCOPE_INVALID");
         if (approvals.Count > 1 || approvals.Select(a => a.IntegrationId).Distinct().Count() != approvals.Count)
             throw new InvalidOperationException("ACM_COMMAND_APPROVALS_AMBIGUOUS");
+        if(ResumeCommittedCommandId is {} resume && (resume==Guid.Empty || approvals.Count!=1 ||
+            !approvals[0].RecoverLatestPending || approvals[0].AllowedStage!=AcmRetryStage.SoapOnly))
+            throw new InvalidOperationException("ACM_COMMAND_RESUME_NOMINAL_SCOPE_REQUIRED");
         foreach (var a in approvals)
         {
+            if(!a.RecoverLatestPending&&a.AllowedStage!=AcmRetryStage.SoapOnly&&!AcmManualRetryPolicy.Evidence(Item))throw new InvalidOperationException("ACM_COMMAND_SCOPE_INVALID");
+            if((a.RecoverLatestPending||a.AllowedStage==AcmRetryStage.SoapOnly)&&(a.ExpectedVersion<=0||a.ExpectedReceivedUtc is null||a.ExpectedReceivedUtc.Value.Offset!=TimeSpan.Zero||
+                a.AllowedStage!=AcmRetryStage.SoapOnly))throw new InvalidOperationException("ACM_COMMAND_PENDING_SCOPE_INVALID");
             if (string.IsNullOrWhiteSpace(NormalConfigurationFile) || !Path.IsPathFullyQualified(NormalConfigurationFile) || NormalConfigurationFile.Any(char.IsControl) || Contract is null || a.Contract != Contract || a.Item != Item || a.OperatorSid != OperatorSid ||
                 a.IntegrationId == Guid.Empty || !a.Homologated || !a.ExecutionAuthorized || !a.ExclusiveWorker ||
                 !AcmManualRetryPolicy.Hash(a.Fingerprint) || !AcmManualRetryPolicy.Hash(a.ObservedSnapshotDigest) ||
                 !AcmManualRetryPolicy.Evidence(a.AuthorizationReference) || !AcmManualRetryPolicy.Evidence(a.BusinessOriginEvidence) ||
-                a.UntilUtc <= a.NotBeforeUtc || a.AllowedStage is not (AcmRetryStage.SoapThenRest or AcmRetryStage.RestOnly) ||
+                a.UntilUtc <= a.NotBeforeUtc || (a.RecoverLatestPending ? a.AllowedStage!=AcmRetryStage.SoapOnly : a.AllowedStage is not (AcmRetryStage.SoapThenRest or AcmRetryStage.RestOnly or AcmRetryStage.SoapOnly)) ||
                 (a.AllowedStage == AcmRetryStage.RestOnly && !AcmManualRetryPolicy.Hash(a.ContractMappingHash)))
                 throw new InvalidOperationException("ACM_COMMAND_APPROVAL_SCOPE_INVALID");
         }

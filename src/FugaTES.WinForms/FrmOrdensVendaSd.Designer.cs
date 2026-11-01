@@ -11,7 +11,7 @@ partial class FrmOrdensVendaSd
     private ComboBox centros;
     private TextBox tipos;
     private Button atualizar;
-    private CheckBox automatico;
+    private CheckBox automatico, automaticoProtocolo;
     private DataGridView grid;
     private Label status;
 
@@ -29,7 +29,7 @@ partial class FrmOrdensVendaSd
         lblOrganizacao = new Label(); organizacao = new Label();
         lblCentros = new Label(); centros = new ComboBox();
         lblTipos = new Label(); tipos = new TextBox();
-        atualizar = new Button(); automatico = new CheckBox();
+        atualizar = new Button(); automatico = new CheckBox(); automaticoProtocolo = new CheckBox();
         grid = new DataGridView(); status = new Label();
         SuspendLayout();
 
@@ -57,9 +57,11 @@ partial class FrmOrdensVendaSd
         lblTipos.Text = "Tipos de documento"; lblTipos.AutoSize = true; lblTipos.Margin = new Padding(4, 8, 2, 0);
         tipos.Width = 150; tipos.Margin = new Padding(0, 4, 12, 0);
         atualizar.Text = "Buscar agora"; atualizar.AutoSize = true; atualizar.Margin = new Padding(0, 2, 12, 0);
-        automatico.Text = "A cada 30s"; automatico.AutoSize = true; automatico.Margin = new Padding(0, 7, 0, 0);
+        automatico.Text = "Buscar a cada 30s"; automatico.AutoSize = true; automatico.Margin = new Padding(0, 7, 16, 0);
+        automaticoProtocolo.Text = "Criar protocolos automaticamente"; automaticoProtocolo.AutoSize = true;
+        automaticoProtocolo.Margin = new Padding(0, 7, 0, 0); automaticoProtocolo.Name = "automaticoProtocolo";
 
-        filtros.Controls.AddRange([lblOrganizacao, organizacao, lblCentros, centros, lblTipos, tipos, atualizar, automatico]);
+        filtros.Controls.AddRange([lblOrganizacao, organizacao, lblCentros, centros, lblTipos, tipos, atualizar, automatico, automaticoProtocolo]);
 
         grid.Dock = DockStyle.Fill;
         grid.AllowUserToAddRows = false;

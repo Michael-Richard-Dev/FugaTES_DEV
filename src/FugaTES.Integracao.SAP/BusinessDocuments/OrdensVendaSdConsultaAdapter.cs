@@ -111,7 +111,11 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
                     TipoDocumentoVendas: Texto(ordem, "SalesOrderType"),
                     EmpresaOrdem: Texto(ordem, "SalesOrganization"),
                     Emissor: emissor,
-                    SetorAtividade: Texto(item, "OrganizationDivision"),
+                    // Setor de atividade e campo de CABECALHO em A_SalesOrder. Lia-lo do item
+                    // deixava a coluna vazia - e e ele que decide o processo de remessa
+                    // (biodiesel em litro, demais em quilo). O item fica como alternativa porque
+                    // o servico V4 o expoe la.
+                    SetorAtividade: Texto(ordem, "OrganizationDivision") ?? Texto(item, "OrganizationDivision"),
                     RecebedorMercadoria: recebedor,
                     PayloadJson: Payload(ordem, item, filtro, emissor, recebedor));
             }
@@ -134,7 +138,7 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
             ["OverallSDProcessStatus"] = Texto(ordem, "OverallSDProcessStatus"),
             ["SalesOrderType"] = Texto(ordem, "SalesOrderType"),
             ["SalesOrganization"] = Texto(ordem, "SalesOrganization"),
-            ["OrganizationDivision"] = Texto(item, "OrganizationDivision"),
+            ["OrganizationDivision"] = Texto(ordem, "OrganizationDivision") ?? Texto(item, "OrganizationDivision"),
             ["Emissor"] = new Dictionary<string, object?>
             { ["PartnerFunction"] = filtro.FuncaoEmissor, ["Customer"] = emissor },
             ["RecebedorMercadoria"] = new Dictionary<string, object?>

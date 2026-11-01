@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -200,6 +200,14 @@ public sealed partial class AcmR57Pipeline
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch { return Unknown("R165U_REST_BOUNDARY_LINK_UNVERIFIED"); }
+        // A server-owned nominal SOAP-only approval never grants protocol dispatch, even
+        // if callback/global configuration would otherwise permit it. Preserve confirmed
+        // contract identity and its sequence in the same fenced durable journal.
+        if (normal.SomenteCadastroSoap(version))
+        {
+            var pending = Block("ACM_MANUAL_SOAP_ONLY_PROTOCOL_NOT_AUTHORIZED", protocolBlocked, Metadata());
+            return await Save(stage, pending) ? pending : Unknown("R165U_FENCED_COMMIT_UNPROVEN");
+        }
         PreCadastroAcmR57 request;
         try { request = normal.PrepararProtocolo(version, contract); }
         catch (AcmR57BlockedException ex)

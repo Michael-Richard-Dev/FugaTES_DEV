@@ -1,10 +1,17 @@
-using FugaTES.Aplicacao.Servicos.ManualRetry;
+﻿using FugaTES.Aplicacao.Servicos.ManualRetry;
 
 namespace FugaTES.WinForms.ManualRetry;
 
 internal sealed partial class AcmRetryConfirmation:Form
 {
     public string Justification=>reason.Text.Trim();
+    static string StageLabel(AcmRetryStage stage)=>stage switch
+    {
+        AcmRetryStage.SoapOnly=>"Somente cadastro SOAP; protocolo pendente (REST não autorizado)",
+        AcmRetryStage.SoapThenRest=>"SOAP e REST conforme autorização nominal",
+        AcmRetryStage.RestOnly=>"Somente REST; SOAP não será repetido",
+        _=>"Bloqueada: etapa não autorizada"
+    };
     public AcmRetryConfirmation(FugaTES.Aplicacao.Servicos.Recebimento.PreviaReenvioToledoSap preview,string contract)
     {
         InitializeComponent();
@@ -14,7 +21,7 @@ internal sealed partial class AcmRetryConfirmation:Form
     public AcmRetryConfirmation(AcmRetryPreview preview,string? protocolReference=null)
     {
         InitializeComponent();
-        summary.Text=$"Contrato: {preview.Contract} | Item: {preview.Item??"ausente"}\r\nIntegrationId: {preview.IntegrationId}\r\nEstado: {preview.State} | Etapa: {preview.Decision.Stage}\r\nOperador autenticado: {preview.OperatorSid}\r\nMotivo: {preview.Decision.Message}\r\nO payload SAP original será preservado. Resultado indeterminado bloqueia nova tentativa.";
+        summary.Text=$"Contrato: {preview.Contract} | Item: {preview.Item??"ausente"}\r\nIntegrationId: {preview.IntegrationId}\r\nEstado: {preview.State} | Etapa: {StageLabel(preview.Decision.Stage)}\r\nOperador autenticado: {preview.OperatorSid}\r\nMotivo: {preview.Decision.Message}\r\nO payload SAP original será preservado. Resultado indeterminado bloqueia nova tentativa.";
         if(protocolReference is not null)summary.Text+="\r\nReferência: "+protocolReference+"\r\nRecuperação exclusiva REST ProtocoloPreCadastro. SOAP e recebimento SAP não serão repetidos.";
         reason.TextChanged+=(_,_)=>confirm.Enabled=AcmManualRetryService.SafeJustification(Justification);
     }

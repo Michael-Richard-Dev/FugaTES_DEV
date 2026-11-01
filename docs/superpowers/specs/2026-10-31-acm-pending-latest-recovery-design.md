@@ -1,0 +1,22 @@
+﻿# Contract1175 latest pending recovery — approved behavior
+
+Operator chose version2 /596d033c-ae3e-4969-9c0a-07d60ed6b583, saldo3000, and approved replacing version1 only after transactional proof of no external send/unknown/active work, retaining JSON and all history. Approval is for offline preparation; no publication or business dispatch yet.
+
+Reuse existing authenticated command18763, UI Reenviar, one-shot worker, motor, SOAP/REST adapters and5433. Do not create SAP receipt, rewrite payload, change global cutoff, remove predecessor guard or run another service. Alternatives rejected: sending version1 loses latest saldo; globally moving cutoff or skipping predecessor guard enables backlog.
+
+PendingLatest is an explicit server-approved mode, defaultfalse; existing failed-attempt/REST-only recovery unchanged. Require target ID/version/receivedUTC/fingerprint/exact snapshot approval, current latest H4, original payload integrity, business scope AC3P/E or AC3S/S via existing shared policy, nullable Item as exact identity not wildcard, no target attempts/journal/worker/lease/external/pending command and statePENDENTE/fence0/NAO_INICIADO.
+
+Predecessor proof is fail-closed. Only never-started/nojournal versions or exactlyone failed first attempt with current R165U_PRE_SEND_BLOCKED/R170_PARTNER_MAPPING_REQUIRED, no requested/confirmed Guardian identity/reference/protocol/callback, no unsafeattempt/lease/pendingcommand are supported. A null attempt timestamp ALONE is not proof: generic motor marker is not an externalHTTP receipt. The known mapping code occurs before contract/link/write in the existing pipeline; unsupported historical shapes remain blocked.
+
+Admission serializable: lock H4 identity and all version integration rows in deterministic order; reread exact snapshot/latest, fingerprint and predecessor proof; append targetcommand/operator/reason; mark safe predecessors CANCELADA with eventACM_VERSION_SUPERSEDED_PRE_SEND referencing latest target and command; do not delete or edit their H4/JSON/journal/attempts; enqueue existing target atomically. No fabricated SOAP checkpoint. Start rereads latest and unchanged source/journal before dispatch. Rollback entire transaction on any conflict. Duplicate command never schedules twice.
+
+Build the manual runtime scope only from server approval, never request body: exact target/version/hash/received/contract/item/expiry and authorization. Do not retrodate global dynamicemitter cutoff; the isolated manual context must match and cannot run with automatic/window scope. Reuse fresh exact Guardian emitter GET and material mappings. Require SOAP absence lookup before CREATE; existing/ambiguous remote state blocks rather than silent adoption. Keep claim/fencing/journal and one external attempt per approved command.
+
+No deployment or DML in this phase. Package must include independent review, offline tests, baseline hashes, targeted physical READ ONLY precheck plan, controlled publication/rollback. Command runtime only (separate versioned directory), preserving motorR171/Toledo/reader/SD/MM/DEV110 unless necessity is separately demonstrated. No manual guardflag or fakeapproval.
+
+
+## Final operator decision — SOAP only
+
+The operator chose only SOAP registration of1175; protocol remains explicitly pending. New PendingLatest approvals require SoapOnly, not SoapThenRest/RestOnly. Server scope carries SoapOnly=true; pipeline commits confirmedSOAPidentity then persists R165U_PROTOCOL_BLOCKED/ACM_MANUAL_SOAP_ONLY_PROTOCOL_NOT_AUTHORIZED before protocol preparation/REST. Default existing modes remain unchanged. WinForms confirmation clearly labels SOAP-only/protocolpending. Client permits Itemnull only for exact PENDENTE/PENDING_LATEST_SAFE_ADMISSION/SoapOnly response; generic nullableItem acceptance is not introduced.
+
+Release builds PASS;645motor+104focusedcore+70UI=819finaluniquePASS; exactpackagedbinaries645motor+104core+70UI=819PASS. Four fullcore failures reproduced identically with pre1175DLLs are documented in baselineproof, not hidden. Independentreview zero materialfindings. NewSQLSELECTs passed READONLY/ROLLBACK/EXPLAIN; no recoveryDML, realPOST, deployment or unitapproval creation. Candidate has5DLLcommanddelta+3DLLDesktop, inactivebindings and controlledpublication/rollback. Latestchecked atomically atadmissionandStart; version2 immutable afterworkerStart, no silentchasing laterSAPversions. Await separate packagepublication/operationalauthorization before mutating installation or executing.

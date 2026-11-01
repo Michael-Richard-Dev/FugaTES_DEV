@@ -1,4 +1,4 @@
-using FugaTES.WinForms;
+﻿using FugaTES.WinForms;
 using FugaTES.Aplicacao.Consultas.ContratosAcm;
 using FugaTES.Aplicacao.Servicos.ManualRetry;
 using FugaTES.WinForms.ManualRetry;
@@ -17,6 +17,16 @@ public sealed class ManualRetryUiTests
         }catch(Exception e){failure=e;}});
         t.SetApartmentState(ApartmentState.STA);t.Start();t.Join();Assert.Null(failure);
     }
+    [Fact] public void Nominal_confirmation_explicitly_shows_SOAP_only_and_pending_protocol()
+    {
+        FugaTES.Testes.GuardianProtocolFormTests.OnSta(()=>{
+            var type=typeof(FrmContratosAcm).Assembly.GetType("FugaTES.WinForms.ManualRetry.AcmRetryConfirmation",true)!;
+            var preview=new AcmRetryPreview(Guid.NewGuid(),"0099999975",null,"PENDENTE",null,new string('A',64),new(true,"PENDING_LATEST_SAFE_ADMISSION","Somente SOAP",(AcmRetryStage)3),"S-1-5-21-1-2-3-1001");
+            using var form=(Form)Activator.CreateInstance(type,[preview,null])!;
+            var text=string.Join(" ",All(form).Select(x=>x.Text));Assert.Contains("somente cadastro SOAP",text,StringComparison.OrdinalIgnoreCase);Assert.Contains("protocolo pendente",text,StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
     static ContratoAcmLeitura Row()=>new("3011","OFFLINE-ONLY",1,DateTime.UtcNow,"T","FALHA_DEFINITIVA",Guid.NewGuid(),"OFFLINE",true){Item="10"};
     [Fact]public async Task Double_click_and_subsequent_click_never_create_two_commands()
     {

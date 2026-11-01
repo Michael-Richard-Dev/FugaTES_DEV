@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using FugaTES.Aplicacao.Servicos.Recebimento;
 using System.Net.Http.Json;
 using FugaTES.Aplicacao.Consultas.ContratosAcm;
@@ -41,7 +41,12 @@ public sealed class AuthenticatedAcmRetryCommandClient:IAcmManualRetryCommandCli
         if(value.IntegrationId!=row.IntegracaoId||value.OperatorSid!=binding.OperatorSid||value.Decision is null||
             (!string.IsNullOrEmpty(value.Contract)&&value.Contract!=row.NumeroContrato)||
             (value.Item is not null&&value.Item!=row.Item)||
-            (value.Decision.Eligible&&(!AcmManualRetryPolicy.Evidence(value.Contract)||!AcmManualRetryPolicy.Evidence(value.Item)||
+            (value.Decision.Eligible&&(!AcmManualRetryPolicy.Evidence(value.Contract)||
+                value.Decision.Stage is not(AcmRetryStage.SoapOnly or AcmRetryStage.SoapThenRest or AcmRetryStage.RestOnly)||
+                (!AcmManualRetryPolicy.Evidence(value.Item)&&!(value.Item is null&&row.Item is null&&
+                    value.State==row.EstadoIntegracao&&value.Decision.Stage==AcmRetryStage.SoapOnly&&
+                    (value.State=="PENDENTE"&&value.Decision.Code=="PENDING_LATEST_SAFE_ADMISSION"||
+                     value.State is "AGUARDANDO_ACAO_MANUAL" or "FALHA_DEFINITIVA"&&value.Decision.Code=="SAFE_PRE_DISPATCH")))||
                 value.Contract!=row.NumeroContrato||value.Item!=row.Item||!AcmManualRetryPolicy.Hash(value.SnapshotDigest))))
             throw new InvalidOperationException("RETRY_PREVIEW_IDENTITY_MISMATCH");return value;
     }

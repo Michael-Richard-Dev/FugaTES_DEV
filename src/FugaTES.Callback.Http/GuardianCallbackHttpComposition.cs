@@ -21,6 +21,8 @@ public static class GuardianCallbackHttpComposition
         else
             throw new InvalidOperationException("Correlation:Provider must be InMemory or PostgreSql.");
         ToledoCallbackComposition.Configure(services, configuration, options.CorrelationProvider);
+        // Receptor da devolutiva do fluxo SD. Desligado por padrao; nao toca no caminho do ACM.
+        DevolutivaSdComposition.Configure(services, configuration);
         return options;
     }
 

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+ <ItemGroup><ProjectReference Include="../../src/FugaTES.Callback.Http/FugaTES.Callback.Http.csproj"/><FrameworkReference Include="Microsoft.AspNetCore.App"/></ItemGroup>
+ <Target Name="RemoveUnusedApplicationSettings" AfterTargets="ComputeResolvedFilesToPublishList"><ItemGroup>
+ <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('appsettings'))"/>
+ </ItemGroup></Target>
+</Project>

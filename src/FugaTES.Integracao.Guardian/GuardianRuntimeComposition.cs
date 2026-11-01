@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Aplicacao.Contratos.Guardian;
 using Microsoft.Extensions.Configuration;
@@ -65,6 +65,10 @@ public static class GuardianRuntimeComposition
         services.AddSingleton<GuardianEmitterReadTransport>();
         services.AddScoped<FugaTES.Aplicacao.Contratos.Guardian.IGuardianEmitterRead>(sp=>new GuardianEmitterReadAdapter(
             sp.GetRequiredService<GuardianEmitterReadTransport>().Client,sp.GetRequiredService<GuardianHttpOptions>(),
+            sp.GetRequiredService<GuardianTokenClient>(),sp.GetRequiredService<FugaTES.Aplicacao.Servicos.Mvp.AcmR57NormalOptions>().DynamicEmitterSignatureId));
+        services.AddSingleton<GuardianMaterialReadTransport>();
+        services.AddScoped<IGuardianMaterialRead>(sp=>new GuardianMaterialReadAdapter(
+            sp.GetRequiredService<GuardianMaterialReadTransport>().Client,sp.GetRequiredService<GuardianHttpOptions>(),
             sp.GetRequiredService<GuardianTokenClient>(),sp.GetRequiredService<FugaTES.Aplicacao.Servicos.Mvp.AcmR57NormalOptions>().DynamicEmitterSignatureId));
         services.AddScoped<GuardianSet26HttpClient>();
         services.AddScoped<FugaTES.Aplicacao.Servicos.Mvp.IAcmPreCadastroMinimoGatewayR57>(sp=>sp.GetRequiredService<GuardianSet26HttpClient>());

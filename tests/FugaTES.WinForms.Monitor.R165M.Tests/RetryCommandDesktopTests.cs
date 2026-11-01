@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -34,6 +34,25 @@ public sealed class RetryCommandDesktopTests
         using var client=new AuthenticatedAcmRetryCommandClient(Binding(),new string('X',40),new FixedTime(),new MemoryTransport(_=>Preview(new(wrongId?Guid.Empty:row.IntegracaoId,"",null,"BLOCKED",null,"",new(eligible,"OFFLINE","Offline only"),wrongSid?"S-1-5-21-7-8-9-1001":Sid))));
         await Assert.ThrowsAsync<InvalidOperationException>(()=>client.PreviewAsync(row,default));
     }
+    [Theory][InlineData(3,true)][InlineData(1,false)][InlineData(2,false)][InlineData(99,false)]
+    public async Task Null_Item_is_exactly_accepted_only_for_nominal_pending_SOAP_only_preview(int stage,bool allowed)
+    {
+        var row=Row() with{Item=null,EstadoIntegracao="PENDENTE"};var value=new AcmRetryPreview(row.IntegracaoId,row.NumeroContrato,null,"PENDENTE",null,new string('A',64),new(true,"PENDING_LATEST_SAFE_ADMISSION","SOAP only nominal approval",(AcmRetryStage)stage),Sid);
+        using var client=new AuthenticatedAcmRetryCommandClient(Binding(),new string('X',40),new FixedTime(),new MemoryTransport(_=>Preview(value)));
+        if(allowed)Assert.True((await client.PreviewAsync(row,default)).Decision.Eligible);
+        else await Assert.ThrowsAsync<InvalidOperationException>(()=>client.PreviewAsync(row,default));
+    }
+
+    [Theory][InlineData("AGUARDANDO_ACAO_MANUAL",3,"SAFE_PRE_DISPATCH",true)][InlineData("FALHA_DEFINITIVA",3,"SAFE_PRE_DISPATCH",true)][InlineData("AGUARDANDO_REPROCESSAMENTO",3,"SAFE_PRE_DISPATCH",false)][InlineData("AGUARDANDO_ACAO_MANUAL",2,"SAFE_PRE_DISPATCH",false)][InlineData("AGUARDANDO_ACAO_MANUAL",3,"REST_ONLY",false)]
+    public async Task Null_item_failed_contract_accepts_only_same_state_nominal_SOAP_preview(string state,int stage,string code,bool allowed)
+    {
+        var row=Row() with{Item=null,EstadoIntegracao=state};
+        var preview=new AcmRetryPreview(row.IntegracaoId,row.NumeroContrato,null,state,"R165U_PRE_SEND_BLOCKED",new string('A',64),new(true,code,"Offline known failure",(AcmRetryStage)stage),Sid);
+        using var client=new AuthenticatedAcmRetryCommandClient(Binding(),new string('X',40),new FixedTime(),new MemoryTransport(_=>Preview(preview)));
+        if(allowed)Assert.True((await client.PreviewAsync(row,default)).Decision.Eligible);
+        else await Assert.ThrowsAsync<InvalidOperationException>(()=>client.PreviewAsync(row,default));
+    }
+
     [Fact]public async Task Failed_tunnel_preparation_never_sends_or_retries_a_command()
     {
         var calls=0;var prepares=0;

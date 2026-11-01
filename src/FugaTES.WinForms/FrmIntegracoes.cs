@@ -26,6 +26,15 @@ public partial class FrmIntegracoes : Form
         // uma busca que essa sessao nao faz.
         pedidosCompraMm.Enabled = demo is null;
         pedidosCompraMm.Click += (_, _) => { using var tela = new FrmPedidosCompraMm(); tela.ShowDialog(this); };
+        // Abertura assincrona: a conexao com o 5433 sobe um tunel SSH, e esperar por ele na
+        // thread da interface trava a janela.
+        devolutivasSd.Enabled = demo is null;
+        devolutivasSd.Click += async (_, _) =>
+        {
+            devolutivasSd.Enabled = false;
+            try { using var tela = await Sd.DevolutivasSdComposition.CriarAsync(CancellationToken.None); tela.ShowDialog(this); }
+            finally { if (!IsDisposed) devolutivasSd.Enabled = demo is null; }
+        };
         ordensVendaSd.Enabled = demo is null;
         ordensVendaSd.Click += (_, _) => { using var tela = Sd.OrdensVendaSdComposition.Criar(); tela.ShowDialog(this); };
         transportadoras.Click += (_, _) => { if(demo is not null){using var telaDemo=new Transportadoras.MasterdataR3.FrmCadastrosGuardianR3(demo:demo);telaDemo.ShowDialog(this);}else{using var tela = carriersRead?.Invoke()??new Transportadoras.MasterdataR3.FrmTransportadoraMasterdata(readOnly:monitorAcm is not null); tela.ShowDialog(this);} };

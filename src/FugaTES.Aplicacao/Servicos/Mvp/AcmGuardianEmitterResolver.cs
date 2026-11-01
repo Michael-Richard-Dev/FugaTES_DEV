@@ -1,4 +1,4 @@
-using FugaTES.Aplicacao.Contratos.ContratosSapToledo;
+﻿using FugaTES.Aplicacao.Contratos.ContratosSapToledo;
 using FugaTES.Aplicacao.Contratos.Guardian;
 namespace FugaTES.Aplicacao.Servicos.Mvp;
 
@@ -12,6 +12,12 @@ public sealed class AcmGuardianEmitterResolver(AcmR57NormalOptions options,IGuar
     private sealed record Proof(Guid IntegrationId,string Fingerprint,string SapPartner,string? Item,string Centro,string Codigo,long Sequencial,DateTimeOffset At);
     public static bool UsesDynamic(AcmR57NormalOptions o,VersaoContratoSapToledo v)
     {
+        if(o.ManualRecoveryScope is {} manual)
+        {
+            if(!o.DynamicEmitterValidationEnabled||o.AcmInboundWindow.Enabled||o.AcmAutomatico.Enabled||
+                o.DynamicEmitterSignatureId<=0||!manual.Matches(v))throw new AcmR57BlockedException("ACM_PENDING_MANUAL_SCOPE_REJECTED");
+            return true;
+        }
         if(!o.DynamicEmitterValidationEnabled||o.AcmInboundWindow.Enabled)return false;
         if(o.DynamicEmitterSignatureId<=0||o.DynamicEmitterValidationFromUtc is null||v.RecebidoEmUtc is null)
             throw new AcmR57BlockedException("R171_EMITTER_ADMISSION_IDENTITY_REQUIRED");
@@ -20,8 +26,10 @@ public sealed class AcmGuardianEmitterResolver(AcmR57NormalOptions options,IGuar
     public async Task ValidarAsync(VersaoContratoSapToledo version,CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();proof=null;
+        if(options.ManualRecoveryScope is {} manual&&!manual.IsOpen(clock.GetUtcNow()))throw new AcmR57BlockedException("ACM_PENDING_MANUAL_SCOPE_REJECTED");
         if(!UsesDynamic(options,version))throw new AcmR57BlockedException("R171_EMITTER_DYNAMIC_SCOPE_REQUIRED");
-        _=AcmR57NormalPreparation.ResolverMaterialEscopo(options,version);
+        if(AcmGuardianMaterialResolver.UsesDynamic(options,version))_=AcmGuardianMaterialResolver.Candidate(options,version);
+        else _=AcmR57NormalPreparation.ResolverMaterialEscopo(options,version);
         var sap=version.Snapshot.IdParceiro;
         if(string.IsNullOrEmpty(sap)||sap.Length>20||!sap.All(char.IsAsciiDigit)||sap.All(c=>c=='0'))throw new AcmR57BlockedException("R171_EMITTER_CODE_INVALID");
         // Candidate representation only. Identity is accepted only after the exact GET response.
@@ -41,6 +49,7 @@ public sealed class AcmGuardianEmitterResolver(AcmR57NormalOptions options,IGuar
     }
     public string Exigir(VersaoContratoSapToledo version)
     {
+        if(options.ManualRecoveryScope is {} manual&&(!manual.Matches(version)||!manual.IsOpen(clock.GetUtcNow())))throw new AcmR57BlockedException("ACM_PENDING_MANUAL_SCOPE_REJECTED");
         if(proof is null||proof.IntegrationId!=version.IntegracaoId||proof.Fingerprint!=version.FingerprintSha256||proof.SapPartner!=version.Snapshot.IdParceiro||proof.Item!=version.Snapshot.Item||proof.Centro!=version.Snapshot.Centro)
             throw new AcmR57BlockedException("R171_EMITTER_VALIDATION_REQUIRED");
         var age=clock.GetUtcNow()-proof.At;
@@ -53,12 +62,23 @@ public static class AcmR57DynamicAdmission
 {
     public static async Task<string?> BloqueioAsync(IAcmR57RuntimeGate gate,IAcmR57Preparacao preparation,VersaoContratoSapToledo version,CancellationToken ct)
     {
-        var block=gate.Bloqueio(version);
-        if(block is not("R171_EMITTER_VALIDATION_REQUIRED" or "R171_EMITTER_PROOF_EXPIRED"))return block;
-        if(preparation is not IAcmR57DynamicEmitterPreparation dynamic)return block;
-        try{await dynamic.ValidarEmissorAsync(version,ct);return gate.Bloqueio(version);}
+        var block=gate.Bloqueio(version);var materialPhase=false;
+        try
+        {
+            if(block is "ACM_MATERIAL_VALIDATION_REQUIRED" or "ACM_MATERIAL_PROOF_EXPIRED")
+            {
+                if(preparation is not IAcmR57DynamicMaterialPreparation material)return block;
+                materialPhase=true;await material.ValidarMaterialAsync(version,ct);block=gate.Bloqueio(version);
+            }
+            if(block is "R171_EMITTER_VALIDATION_REQUIRED" or "R171_EMITTER_PROOF_EXPIRED")
+            {
+                if(preparation is not IAcmR57DynamicEmitterPreparation emitter)return block;
+                materialPhase=false;await emitter.ValidarEmissorAsync(version,ct);block=gate.Bloqueio(version);
+            }
+            return block;
+        }
         catch(OperationCanceledException) when(ct.IsCancellationRequested){throw;}
-        catch(AcmR57BlockedException e){return e.Code;}
-        catch{return "R171_EMITTER_LOOKUP_UNVERIFIED";}
+        catch(AcmR57BlockedException error){return error.Code;}
+        catch{return materialPhase?"ACM_MATERIAL_LOOKUP_UNVERIFIED":"R171_EMITTER_LOOKUP_UNVERIFIED";}
     }
 }

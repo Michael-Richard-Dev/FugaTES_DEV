@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using FugaTES.Aplicacao.Contratos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.MotorIntegracao;
@@ -55,14 +55,12 @@ public static class AcmManualRetryCommandHost
             foreach (var (name, value) in LerCredenciaisGuardian(profile))
                 runtime["Guardian:" + name] = value;
             builder.Services.AddSingleton<IConfiguration>(runtime);
-            HostIntegracaoComposition.ConfigurarServicos(builder.Services, runtime);
-            builder.Services.RemoveAll<AcmR57NormalOptions>();
-            builder.Services.AddSingleton(normal);
+            ConfigureApprovedRuntime(builder.Services,runtime,normal);
             builder.Services.RemoveAll<IIdentidadeWorkerProvider>();
             builder.Services.AddSingleton<IIdentidadeWorkerProvider>(new FixedCommandWorker(profile.WorkerIdentity));
             builder.Services.AddScoped<AcmManualRetryPostgreSql>();
             builder.Services.AddScoped<IAcmManualRetryStore>(sp => new CommittedAcmRetryStore(sp.GetRequiredService<AcmManualRetryPostgreSql>(), sp.GetRequiredService<AcmRetryDispatchQueue>()));
-            builder.Services.AddSingleton<AcmRetryDispatchQueue>();
+            builder.Services.AddSingleton(_ => CreateDispatchQueue(profile, approvals));
             builder.Services.AddSingleton<IAcmApprovedRetryExecutor, AcmApprovedRetryExecutor>();
             builder.Services.AddHostedService<AcmRetryCommandWorker>();
         }
@@ -133,17 +131,46 @@ public static class AcmManualRetryCommandHost
         result["AcmR57:Normal:Enabled"] = "true";
         return result;
     }
+    // Register the approved options BEFORE composition inspects conditional dependencies.
+    // Replacing only the options afterward leaves the dynamic resolver absent.
+    public static void ConfigureApprovedRuntime(IServiceCollection services,IConfigurationRoot runtime,AcmR57NormalOptions normal)
+    {
+        runtime["AcmR57:Normal:DynamicEmitterValidationEnabled"]=normal.DynamicEmitterValidationEnabled?"true":"false";
+        runtime["AcmR57:Normal:DynamicMaterialValidationEnabled"]=normal.DynamicMaterialValidationEnabled?"true":"false";
+        services.RemoveAll<AcmR57NormalOptions>();
+        services.AddSingleton(normal);
+        HostIntegracaoComposition.ConfigurarServicos(services,runtime);
+    }
     public static AcmR57NormalOptions ApproveNormal(AcmManualRetryCommandProfile profile, AcmRetryApproval approval, AcmR57NormalOptions normal)
     {
         profile.Validate([approval]);
-        if (normal.AcmInboundWindow.Enabled || normal.ApprovedWindowPartnerMappings.Length != 0 || normal.ApprovedWindowMaterialMappings.Length != 0 ||
+        if (normal.ManualRecoveryScope is not null || normal.AcmInboundWindow.Enabled || normal.ApprovedWindowPartnerMappings.Length != 0 || normal.ApprovedWindowMaterialMappings.Length != 0 ||
             normal.GuardianEnvironment != "HML" || !AcmManualRetryPolicy.Evidence(normal.GuardianIdentityEvidence) ||
             !AcmManualRetryPolicy.Evidence(normal.PostgreSqlIdentityEvidence) || !AcmManualRetryPolicy.Evidence(normal.JournalEvidence) ||
             !AcmManualRetryPolicy.Evidence(normal.IdentifierMappingEvidence) ||
             (normal.ApprovedPartnerMapping is { } partner && (partner.NumeroContrato != profile.Contract || partner.Item != profile.Item || partner.Centro != "3011")) ||
             (normal.ApprovedMaterialMapping is { } material && (material.NumeroContrato != profile.Contract || material.Item != profile.Item || material.Centro != "3011")))
             throw new InvalidOperationException("ACM_COMMAND_NORMAL_SCOPE_EVIDENCE_INVALID");
+        if(approval.RecoverLatestPending||approval.AllowedStage==AcmRetryStage.SoapOnly)
+        {
+            if(normal.DynamicEmitterSignatureId<=0)throw new InvalidOperationException("ACM_COMMAND_EMITTER_SCOPE_REQUIRED");
+            return normal with{Enabled=true,ExecutionAuthorized=true,AuthorizationReference=approval.AuthorizationReference,
+                AcmInboundWindow=new(),AcmAutomatico=new(),DynamicEmitterValidationEnabled=true,
+                ManualRecoveryScope=new(){IntegrationId=approval.IntegrationId,Contract=approval.Contract,Item=approval.Item,
+                    Version=approval.ExpectedVersion,Fingerprint=approval.Fingerprint,ReceivedUtc=approval.ExpectedReceivedUtc!.Value,
+                    SoapOnly=approval.AllowedStage==AcmRetryStage.SoapOnly,
+                    AuthorizationReference=approval.AuthorizationReference,NotBeforeUtc=approval.NotBeforeUtc,UntilUtc=approval.UntilUtc}};
+        }
         return normal with { Enabled = true, ExecutionAuthorized = true, AuthorizationReference = approval.AuthorizationReference, AcmInboundWindow = new() };
+    }
+    public static AcmRetryDispatchQueue CreateDispatchQueue(AcmManualRetryCommandProfile profile,IReadOnlyList<AcmRetryApproval> approvals)
+    {
+        profile.Validate(approvals);
+        var queue=new AcmRetryDispatchQueue();
+        // Existing Start still proves durable admission, original actor/snapshot, open
+        // window, no prior start and no unsafe effect. No new request or backlog polling.
+        if(profile.ResumeCommittedCommandId is {} command)queue.Schedule(new(command,approvals.Single()));
+        return queue;
     }
     sealed class FixedCommandWorker(string identity) : IIdentidadeWorkerProvider
     {

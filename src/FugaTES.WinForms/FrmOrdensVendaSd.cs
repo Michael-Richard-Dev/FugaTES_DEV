@@ -46,12 +46,14 @@ public partial class FrmOrdensVendaSd : Form
     private bool buscando;
 
     /// <summary>
-    /// Quantos protocolos esta sessao pode criar. Um, por autorizacao do operador em 31/10/2026.
-    /// Protocolo criado no Guardian nao se desfaz, e um clique a mais nao pode virar um lote.
-    /// Fechar e reabrir a tela zera a contagem - a autorizacao e por sessao, e consciente.
+    /// Teto de protocolos por varredura no modo automatico. Nao e um limite de seguranca - quem
+    /// impede duplicata e o indice unico do banco, e cada linha so vira protocolo uma vez. Serve
+    /// para a primeira ativacao nao virar uma rajada; o que sobrar vai na volta seguinte.
+    ///
+    /// Substituiu o limite de um envio por sessao, que o operador autorizou em 31/10/2026 para a
+    /// primeira prova e suspendeu no mesmo dia ao liberar o modo automatico.
     /// </summary>
-    public const int EnviosPermitidosPorSessao = 1;
-    private int enviosFeitos;
+    public const int ProtocolosPorVarredura = 10;
 
     /// <summary>
     /// Url de retorno do protocolo. Editavel na tela de proposito: ela ainda vai ser trocada pelo
@@ -92,6 +94,23 @@ public partial class FrmOrdensVendaSd : Form
         relogio = new System.Windows.Forms.Timer(components) { Interval = 30_000 };
         relogio.Tick += async (_, _) => await BuscarAsync();
         automatico.CheckedChanged += (_, _) => relogio.Enabled = automatico.Checked;
+        // Ligar a criacao automatica muda o que a tela FAZ, nao o que ela mostra: a partir dai
+        // toda linha nova vira protocolo real sem ninguem clicar. Por isso a confirmacao.
+        automaticoProtocolo.CheckedChanged += (_, _) =>
+        {
+            if (!automaticoProtocolo.Checked) { status.Text = "Criação automática desligada."; return; }
+            var confirma = MessageBox.Show(this,
+                "A partir de agora, toda linha trazida pela busca que ainda não tenha protocolo "
+                + "vai gerar um protocolo REAL no Guardian, sem confirmação."
+                + "\r\n\r\nIsso inclui todos os tipos de documento, porque o recorte de balança "
+                + "ainda não foi definido. Protocolo criado não pode ser desfeito."
+                + $"\r\n\r\nNo máximo {ProtocolosPorVarredura} por varredura; o restante vai nas seguintes."
+                + "\r\n\r\nLigar a criação automática?",
+                "Confirmar criação automática", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+            if (confirma != DialogResult.Yes) { automaticoProtocolo.Checked = false; return; }
+            status.Text = "Criação automática LIGADA. A próxima busca já cria protocolos.";
+        };
 
         bloqueada = !string.IsNullOrWhiteSpace(bloqueio);
         if (bloqueada)
@@ -219,10 +238,13 @@ public partial class FrmOrdensVendaSd : Form
         var linhas = resultado.Dados;
         grid.DataSource = linhas.ToList();
         var aviso = await MarcarJaEnviadosAsync();
+        // A criacao vem DEPOIS da marcacao: e ela que diz quais linhas ja tem protocolo.
+        var criacao = await CriarProtocolosPendentesAsync();
         var ordens = linhas.Select(l => l.CodigoOrdemVenda).Distinct(StringComparer.Ordinal).Count();
         // O aviso entra DEPOIS do resumo: escrever antes seria apaga-lo nesta mesma linha.
         status.Text = $"{DateTime.Now:HH:mm:ss} — {linhas.Count} linha(s) em {ordens} ordem(ns), {decorrido} ms, "
             + "somente OverallSDProcessStatus = A. Leitura apenas: nada foi gravado nem enviado."
+            + (criacao is null ? "" : "   ➜ " + criacao)
             + (aviso is null ? "" : "   ⚠ " + aviso);
     }
 
@@ -305,7 +327,7 @@ public partial class FrmOrdensVendaSd : Form
             : jaEnviados.FirstOrDefault(p => string.Equals(p.ChaveNatural, chave, StringComparison.Ordinal));
         aviso.Text = Situacao(pedido, jaRegistrado);
         enviar.Enabled = pedido is not null && jaRegistrado is null && guardian is not null
-            && registro is not null && enviosFeitos < EnviosPermitidosPorSessao;
+            && registro is not null;
         enviar.Click += async (_, _) =>
         {
             enviar.Enabled = false;
@@ -386,8 +408,6 @@ public partial class FrmOrdensVendaSd : Form
             return "Registro de protocolos (PostgreSQL 5433) indisponível"
                 + (motivoSemRegistro is null ? "" : " — " + motivoSemRegistro)
                 + ". Envio bloqueado: não dá para conferir se esta linha já virou protocolo.";
-        if (enviosFeitos >= EnviosPermitidosPorSessao)
-            return $"Limite de {EnviosPermitidosPorSessao} envio(s) por sessão atingido. Reabra a tela para liberar.";
         return "Pronto para enviar. Cria um registro REAL no Guardian e não pode ser desfeito.";
     }
 
@@ -403,12 +423,25 @@ public partial class FrmOrdensVendaSd : Form
             MessageBoxDefaultButton.Button2);
         if (confirma != DialogResult.Yes) { aviso.Text = "Envio cancelado. Nada foi enviado."; return; }
 
+        var desfecho = await ExecutarEnvioAsync(pedido, chave, linha);
+        aviso.Text = desfecho.Resumo;
+        if (desfecho.Detalhe is not null) corpo.Text = desfecho.Detalhe + "\r\n\r\n" + corpo.Text;
+        _ = await MarcarJaEnviadosAsync();
+    }
+
+    private sealed record DesfechoEnvio(bool Criado, string Resumo, string? Detalhe);
+
+    /// <summary>
+    /// Reserva, envia e fecha o desfecho. Sem interface: e o mesmo caminho do botao e do modo
+    /// automatico, para o que acontece sozinho ser exatamente o que o operador conferiu a mao.
+    /// </summary>
+    private async Task<DesfechoEnvio> ExecutarEnvioAsync(
+        ProtocoloPreCadastroSdRequest pedido, string chave, OrdemVendaSdLeitura linha)
+    {
         // RESERVA a chave antes de enviar. Quem arbitra a corrida entre duas janelas e o indice
         // unico do banco, nao uma leitura previa que ficaria velha entre o conferir e o gravar.
         // E se o processo cair durante o POST, a linha fica ocupada como desfecho desconhecido,
         // em vez de livre para um segundo envio.
-        enviosFeitos++;
-        aviso.Text = "Reservando a linha...";
         var dados = pedido.DadosProtocoloPreCadastro;
         try
         {
@@ -427,42 +460,72 @@ public partial class FrmOrdensVendaSd : Form
                 MensagemRecusa: null), cancelamento.Token);
         }
         catch (ProtocoloSdJaRegistradoException)
-        {
-            aviso.Text = "Esta linha já tem protocolo — outra janela chegou primeiro. Nada foi enviado.";
-            _ = await MarcarJaEnviadosAsync();
-            return;
-        }
+        { return new(false, "Esta linha já tem protocolo — outra janela chegou primeiro. Nada foi enviado.", null); }
         catch (Exception ex)
-        {
-            aviso.Text = $"Não foi possível reservar a linha ({ex.GetType().Name}). Nada foi enviado.";
-            return;
-        }
+        { return new(false, $"Não foi possível reservar a linha ({ex.GetType().Name}). Nada foi enviado.", null); }
 
-        aviso.Text = "Enviando...";
         try
         {
             var resultado = await guardian!.EnviarAsync(pedido, chave, cancelamento.Token);
             await registro.AtualizarDesfechoAsync(chave, resultado.ProtocoloId,
                 resultado.Sucesso ? EstadoProtocoloSd.Criado : EstadoProtocoloSd.Recusado,
                 resultado.HttpStatus, resultado.MensagemSegura, cancelamento.Token);
-            aviso.Text = resultado.Sucesso
-                ? $"Protocolo criado. HTTP {resultado.HttpStatus}, id {resultado.ProtocoloId?.ToString() ?? "não devolvido"}."
-                : $"Guardian recusou. HTTP {resultado.HttpStatus}.";
-            corpo.Text = (resultado.Sucesso ? "// ENVIADO — protocolo criado no Guardian" : "// RECUSADO pelo Guardian")
-                + "\r\n// HTTP " + resultado.HttpStatus
-                + "\r\n// id do protocolo: " + (resultado.ProtocoloId?.ToString() ?? "não devolvido")
-                + "\r\n// sha256 do payload: " + resultado.PayloadSha256
-                + (resultado.MensagemSegura is null ? "" : "\r\n// resposta: " + resultado.MensagemSegura)
-                + "\r\n\r\n" + corpo.Text;
+            return new(resultado.Sucesso,
+                resultado.Sucesso
+                    ? $"Protocolo criado. HTTP {resultado.HttpStatus}, id {resultado.ProtocoloId?.ToString() ?? "não devolvido"}."
+                    : $"Guardian recusou. HTTP {resultado.HttpStatus}.",
+                (resultado.Sucesso ? "// ENVIADO — protocolo criado no Guardian" : "// RECUSADO pelo Guardian")
+                    + "\r\n// HTTP " + resultado.HttpStatus
+                    + "\r\n// id do protocolo: " + (resultado.ProtocoloId?.ToString() ?? "não devolvido")
+                    + "\r\n// sha256 do payload: " + resultado.PayloadSha256
+                    + (resultado.MensagemSegura is null ? "" : "\r\n// resposta: " + resultado.MensagemSegura));
         }
         catch (Exception ex)
         {
             // A reserva ja esta gravada como DESFECHO_DESCONHECIDO, que e a verdade: o POST pode
             // ter chegado. A linha segue bloqueada ate alguem conferir no Guardian.
-            aviso.Text = $"Desfecho desconhecido ({ex.GetType().Name}: {ex.Message}). "
-                + "A linha ficou bloqueada. Confira no Guardian antes de liberar.";
+            return new(false, $"Desfecho desconhecido ({ex.GetType().Name}: {ex.Message}). "
+                + "A linha ficou bloqueada. Confira no Guardian antes de liberar.", null);
         }
+    }
+
+    /// <summary>
+    /// Modo automatico: cria protocolo para as linhas que ainda nao tem, logo apos a varredura.
+    ///
+    /// O alcance e limitado pelo numero de LINHAS distintas, nao pelo tempo - cada linha so pode
+    /// virar protocolo uma vez, e quem garante isso e o indice unico do banco. O teto por varredura
+    /// existe so para a primeira ativacao nao virar uma rajada; o que sobrar vai na proxima volta.
+    /// </summary>
+    private async Task<string?> CriarProtocolosPendentesAsync()
+    {
+        if (!automaticoProtocolo.Checked || registro is null || guardian is null) return null;
+
+        var criados = 0;
+        var recusados = 0;
+        foreach (DataGridViewRow linhaGrade in grid.Rows)
+        {
+            if (criados + recusados >= ProtocolosPorVarredura) break;
+            if (cancelamento.IsCancellationRequested) return null;
+            if (linhaGrade.DataBoundItem is not OrdemVendaSdLeitura l) continue;
+
+            string chave;
+            ProtocoloPreCadastroSdRequest pedido;
+            // Linha bloqueada (item ou emissor fora do Guardian) e pulada em silencio: ela ja
+            // aparece com o motivo na previsualizacao, e insistir a cada 30 segundos so faria
+            // barulho.
+            try { chave = MapeadorProtocoloSd.ChaveNatural(l); pedido = MapeadorProtocoloSd.Montar(l, UrlRetornoInicial, cadastro); }
+            catch (ProtocoloSdBloqueadoException) { continue; }
+
+            if (jaEnviados.Any(p => string.Equals(p.ChaveNatural, chave, StringComparison.Ordinal))) continue;
+
+            var desfecho = await ExecutarEnvioAsync(pedido, chave, l);
+            if (desfecho.Criado) criados++; else recusados++;
+        }
+
+        if (criados + recusados == 0) return null;
         _ = await MarcarJaEnviadosAsync();
+        return $"automático: {criados} protocolo(s) criado(s)"
+            + (recusados > 0 ? $", {recusados} não concluído(s)" : "") + ".";
     }
 
     private static string Formatar(string json)

@@ -66,10 +66,10 @@ public sealed class ProtocoloSdEnvioTests
     public void Resposta_sem_id_nao_inventa_numero(string corpo)
         => Assert.Null(GuardianProtocoloSdClient.LerProtocoloId(corpo));
 
-    // Um clique a mais nao pode virar um lote.
+    // Teto por varredura: a primeira ativacao do modo automatico nao pode virar uma rajada.
     [Fact]
-    public void Limite_de_envios_por_sessao_e_um()
-        => Assert.Equal(1, FugaTES.WinForms.FrmOrdensVendaSd.EnviosPermitidosPorSessao);
+    public void Teto_por_varredura_e_modesto()
+        => Assert.InRange(FugaTES.WinForms.FrmOrdensVendaSd.ProtocolosPorVarredura, 1, 50);
 
     // Os estados tem de ser exatamente os que a restricao da tabela 007S1 aceita.
     [Fact]

@@ -1,9 +1,46 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace FugaTES.Aplicacao.Servicos.ManualRetry;
 
-public enum AcmRetryStage { None, SoapThenRest, RestOnly }
+public enum AcmRetryStage { None, SoapThenRest, RestOnly, SoapOnly }
+// Authoritative repository facts, included in the exact operator-approved snapshot digest.
+public sealed record AcmRetryPredecessor
+{
+    public string CorrelationId{get;init;}="";
+    public long? AttemptFence{get;init;}
+    public Guid IntegrationId{get;init;}
+    public long Version{get;init;}
+    public string Fingerprint{get;init;}="";
+    public string CanonicalFingerprint{get;init;}="";
+    public bool IdentityVerified{get;init;}
+    public string State{get;init;}="";
+    public long Fence{get;init;}
+    public int AttemptCount{get;init;}
+    public Guid? AttemptId{get;init;}
+    public string? AttemptOutcome{get;init;}
+    public string? Phase{get;init;}
+    public bool JournalPresent{get;init;}
+    public string? Stage{get;init;}
+    public string? ErrorCode{get;init;}
+    public string? JournalStatus{get;init;}
+    public bool JournalDeterminate{get;init;}
+    public bool AllAttemptsFailed{get;init;}
+    public bool HasExternal{get;init;}
+    public bool HasPendingCommand{get;init;}
+    public bool Synthetic{get;init;}
+    public string? Worker{get;init;}
+    public DateTimeOffset? LeaseUntil{get;init;}
+    public bool SafeToSupersede()=>IdentityVerified&&IntegrationId!=Guid.Empty&&Version>0&&
+        AcmManualRetryPolicy.Hash(Fingerprint)&&Fingerprint==CanonicalFingerprint&&AcmManualRetryPolicy.Evidence(CorrelationId)&&!Synthetic&&!HasExternal&&!HasPendingCommand&&
+        Worker is null&&LeaseUntil is null&&
+        (State=="PENDENTE"&&Fence==0&&AttemptCount==0&&AttemptId is null&&!JournalPresent&&Phase=="NAO_INICIADO"||
+         State is "AGUARDANDO_REPROCESSAMENTO" or "AGUARDANDO_ACAO_MANUAL" or "FALHA_DEFINITIVA"&&
+         Fence==1&&AttemptFence==Fence&&AttemptCount==1&&AttemptId is not null&&AttemptId!=Guid.Empty&&AttemptOutcome=="FALHA"&&AllAttemptsFailed&&
+         Phase=="RESULTADO_RECEBIDO"&&JournalPresent&&JournalDeterminate&&Stage=="R165U_PRE_SEND_BLOCKED"&&
+         ErrorCode=="R170_PARTNER_MAPPING_REQUIRED"&&JournalStatus is "AGUARDANDO_DEPENDENCIA_EXTERNA" or "FALHA_REPROCESSAVEL");
+}
+
 public sealed record AcmRetrySnapshot
 {
     public Guid IntegrationId{get;init;}
@@ -35,12 +72,23 @@ public sealed record AcmRetrySnapshot
     public string? Reference{get;init;}
     public bool HasProtocolOrCallback{get;init;}
     public DateTimeOffset JournalUpdatedUtc{get;init;}
+    public bool LatestVersion{get;init;}
+    public DateTimeOffset? ReceivedUtc{get;init;}
+    public string? Phase{get;init;}
+    public int AttemptCount{get;init;}
+    public bool JournalPresent{get;init;}
+    public bool ContractHasExternal{get;init;}
+    public AcmRetryPredecessor[] Predecessors{get;init;}=[];
     public string Digest()=>Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(this)));
 }
 
 // Supplied by the future homologated SERVER authorization/evidence provider, never the request body.
 public sealed record AcmRetryApproval
 {
+    public bool RecoverLatestPending{get;init;}
+    public long ExpectedVersion{get;init;}
+    public DateTimeOffset? ExpectedReceivedUtc{get;init;}
+    public bool AllowSafeSupersession{get;init;}
     public bool Homologated{get;init;}
     public bool ExecutionAuthorized{get;init;}
     public bool ExclusiveWorker{get;init;}
@@ -84,6 +132,44 @@ public interface IAcmManualRetryCommandClient
 }
 public static class AcmManualRetryPolicy
 {
+    // Only a durable local pre-dispatch failure. Generic motor "envio_iniciado" is
+    // not a SOAP receipt; the R57 checkpoint is the authoritative external boundary.
+    public static bool ExactSoapRecoveryScope(AcmRetrySnapshot s,AcmRetryApproval a)
+        =>a.AllowedStage==AcmRetryStage.SoapOnly&&s.LatestVersion&&a.ExpectedVersion==s.Version&&
+          s.ReceivedUtc is not null&&s.ReceivedUtc.Value.Offset==TimeSpan.Zero&&a.ExpectedReceivedUtc==s.ReceivedUtc;
+    public static bool IsKnownPreSendFailure(AcmRetrySnapshot s)
+        =>s.IdentityVerified&&s.LatestVersion&&!s.Synthetic&&!s.Indeterminate&&!s.UnsafeAttempt&&
+          s.IntegrationId!=Guid.Empty&&s.Version>0&&Hash(s.Fingerprint)&&s.Fingerprint==s.CanonicalFingerprint&&
+          s.State is "AGUARDANDO_REPROCESSAMENTO" or "AGUARDANDO_ACAO_MANUAL" or "FALHA_DEFINITIVA"&&
+          s.Phase=="RESULTADO_RECEBIDO"&&s.Fence>0&&s.AttemptCount>0&&s.AttemptId is {} attempt&&attempt!=Guid.Empty&&s.AttemptOutcome=="FALHA"&&
+          s.Worker is null&&s.LeaseUntil is null&&s.JournalPresent&&s.Stage=="R165U_PRE_SEND_BLOCKED"&&
+          s.JournalStatus is "AGUARDANDO_DEPENDENCIA_EXTERNA" or "FALHA_REPROCESSAVEL"&&s.Metadata is null&&
+          !s.ContractHasExternal&&!s.HasProtocolOrCallback&&s.GuardianRequestedCode is null&&s.GuardianConfirmedCode is null&&s.Reference is null&&
+          (s.ErrorCategory is null||!new[]{"TIMEOUT","INDETERMIN","OUTCOME_UNKNOWN","HTTP_400","HTTP_408","HTTP_504"}.Any(v=>s.ErrorCategory.Contains(v,StringComparison.OrdinalIgnoreCase)))&&
+          s.ErrorCode is "R171_EMITTER_RESOLVER_UNAVAILABLE" or "R170_PARTNER_MAPPING_REQUIRED" or
+            "R171_EMITTER_NOT_FOUND" or "R171_EMITTER_INACTIVE" or "R171_EMITTER_LOOKUP_UNVERIFIED" or
+            "R171_EMITTER_AUTHENTICATION_FAILED" or "R171_EMITTER_AUTHORIZATION_FAILED" or
+            "R171_EMITTER_IDENTITY_MISMATCH" or "R171_EMITTER_SCOPE_MISMATCH" or
+            "R171_EMITTER_RESPONSE_INVALID" or "R171_EMITTER_PROFILE_INVALID" or "R171_EMITTER_CODE_INVALID" or
+            "ACM_MATERIAL_NOT_FOUND" or "ACM_MATERIAL_INACTIVE" or "ACM_MATERIAL_LOOKUP_UNVERIFIED" or
+            "ACM_MATERIAL_AUTHENTICATION_FAILED" or "ACM_MATERIAL_AUTHORIZATION_FAILED" or "ACM_MATERIAL_RESPONSE_INVALID" or
+            "ACM_MATERIAL_IDENTITY_MISMATCH" or "ACM_MATERIAL_SCOPE_MISMATCH" or "ACM_MATERIAL_PROFILE_INVALID" or
+            "ACM_MATERIAL_CODE_INVALID" or "ACM_MATERIAL_MAPPING_AMBIGUOUS" or "ACM_MATERIAL_MAPPING_UNPROVEN" or
+            "ACM_MATERIAL_SCOPE_REQUIRED" or "ACM_MATERIAL_ADMISSION_IDENTITY_REQUIRED" or "ACM_MATERIAL_VALIDATION_REQUIRED" or
+            "ACM_MATERIAL_PROOF_EXPIRED" or "ACM_MATERIAL_RESOLVER_UNAVAILABLE";
+    public static bool IsKnownSoapOnlyProtocolPending(AcmRetrySnapshot s,AcmRetryStage approvedStage)
+    {
+        var parts=s.Metadata?.Split(':');
+        return approvedStage==AcmRetryStage.SoapOnly&&s.IdentityVerified&&!s.Synthetic&&!s.Indeterminate&&!s.UnsafeAttempt&&
+            s.State is "AGUARDANDO_REPROCESSAMENTO" or "AGUARDANDO_ACAO_MANUAL"&&s.Phase=="RESULTADO_RECEBIDO"&&
+            s.Fence>0&&s.AttemptId is {} attempt&&attempt!=Guid.Empty&&s.AttemptOutcome=="FALHA"&&
+            s.Worker is null&&s.LeaseUntil is null&&s.JournalPresent&&s.JournalStatus=="AGUARDANDO_DEPENDENCIA_EXTERNA"&&
+            s.Stage=="R165U_PROTOCOL_BLOCKED"&&s.ErrorCode=="ACM_MANUAL_SOAP_ONLY_PROTOCOL_NOT_AUTHORIZED"&&
+            !s.ContractHasExternal&&!s.HasProtocolOrCallback&&Evidence(s.GuardianConfirmedCode)&&
+            s.GuardianConfirmedCode==s.GuardianRequestedCode&&Evidence(s.Reference)&&parts is {Length:4}&&
+            parts[0]=="U"&&Hash(parts[1])&&parts[2].Length==0&&
+            long.TryParse(parts[3],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var sequence)&&sequence>0;
+    }
     public static bool AuthorizationOpen(AcmRetryApproval? a,Guid id,AcmRetryActor actor,DateTimeOffset now)
         =>actor.Authenticated&&a is{Homologated:true,ExecutionAuthorized:true,ExclusiveWorker:true}&&a.IntegrationId==id&&
             a.OperatorSid==actor.Sid&&actor.Sid.StartsWith("S-1-5-21-",StringComparison.Ordinal)&&Evidence(a.AuthorizationReference)&&
@@ -100,9 +186,13 @@ public static class AcmManualRetryPolicy
              v.Contains("OUTCOME_UNKNOWN",StringComparison.OrdinalIgnoreCase)||v is "GUARDIAN_REST_HTTP_408" or "GUARDIAN_REST_HTTP_504"));
         if(s.Indeterminate||s.UnsafeAttempt||unknownMarker||s.State=="RESULTADO_INDETERMINADO"||s.Stage is "R165U_SOAP_ARMED" or "R165U_REST_ARMED" or "R165U_RECONCILIATION_REQUIRED")
             return Block("RECONCILIATION_REQUIRED","Resultado externo indeterminado ou histórico inseguro; exige reconciliação, sem reenvio.");
+        if(approval?.RecoverLatestPending==true)return PendingLatest(s,approval,actor,now);
         if(s.HasPendingCommand||s.State is "PENDENTE" or "EM_PROCESSAMENTO" or "AGUARDANDO_REPROCESSAMENTO"||s.Worker is not null||s.LeaseUntil is not null)
             return Block("BUSY","Integração ativa, enfileirada ou com lease. Nenhuma nova tentativa será criada.");
-        if(!s.IdentityVerified||s.IntegrationId==Guid.Empty||s.Version<=0||!Evidence(s.Contract)||!Evidence(s.Item)||!Evidence(s.CorrelationId)||
+        var soapOnly=approval?.AllowedStage==AcmRetryStage.SoapOnly;
+        var exactSoapScope=soapOnly&&ExactSoapRecoveryScope(s,approval!);
+        if(soapOnly&&(!exactSoapScope||!IsKnownPreSendFailure(s)))return Block("SOAP_ONLY_PRE_SEND_PROOF_REQUIRED","Recuperação SOAP exige versão e falha pré-envio comprovadas, sem efeito externo.");
+        if(!s.IdentityVerified||s.IntegrationId==Guid.Empty||s.Version<=0||!Evidence(s.Contract)||(!Evidence(s.Item)&&!(exactSoapScope&&s.Item is null))||!Evidence(s.CorrelationId)||
             !Hash(s.Fingerprint)||s.Fingerprint!=s.CanonicalFingerprint||s.Fence<=0||s.AttemptId is null||s.AttemptId==Guid.Empty||s.AttemptOutcome!="FALHA")
             return Block("IDENTITY_OR_HISTORY_UNPROVEN","Identidade H4, item, tentativa ou payload original não comprovado.");
         if(s.State is not("AGUARDANDO_ACAO_MANUAL" or "FALHA_DEFINITIVA"))return Block("NOT_RECOVERABLE","Estado persistido não permite recuperação manual.");
@@ -120,8 +210,8 @@ public static class AcmManualRetryPolicy
         if(s.Stage=="R165U_PRE_SEND_BLOCKED"&&s.JournalStatus is "AGUARDANDO_DEPENDENCIA_EXTERNA" or "FALHA_REPROCESSAVEL")
         {
             if(s.GuardianConfirmedCode is not null)return Block("SOAP_HISTORY_CONFLICT","Há identidade Guardian sem checkpoint SOAP correspondente; reconciliar.");
-            if(approval.AllowedStage!=AcmRetryStage.SoapThenRest)return Block("STAGE_SCOPE_MISMATCH","A autorização não abrange a etapa pendente.");
-            return new(true,"SAFE_PRE_DISPATCH","Falha conhecida antes do envio; o motor repetirá o preflight de ausência antes de qualquer SOAP.",AcmRetryStage.SoapThenRest);
+            if(approval.AllowedStage is not(AcmRetryStage.SoapThenRest or AcmRetryStage.SoapOnly))return Block("STAGE_SCOPE_MISMATCH","A autorização não abrange a etapa pendente.");
+            return new(true,"SAFE_PRE_DISPATCH","Falha conhecida antes do envio; o motor repetirá o preflight de ausência antes de qualquer SOAP.",approval.AllowedStage);
         }
         if(s.Stage is "R165U_SOAP_CONFIRMED" or "R165U_PROTOCOL_BLOCKED" or "R165Y_REST_REJECTED")
         {
@@ -135,6 +225,29 @@ public static class AcmManualRetryPolicy
             return new(true,"REST_ONLY","SOAP confirmado. Recuperação exclusivamente REST, mantendo código, referência e H4 originais.",AcmRetryStage.RestOnly,"U:"+parts[1]+"::"+parts[3]);
         }
         return Block("STAGE_UNPROVEN","Etapa persistida não possui recuperação segura implementada.");
+    }
+    static AcmRetryDecision PendingLatest(AcmRetrySnapshot s,AcmRetryApproval a,AcmRetryActor actor,DateTimeOffset now)
+    {
+        AcmRetryDecision Block(string code,string message)=>new(false,code,message);
+        if(!AuthorizationOpen(a,s.IntegrationId,actor,now)||a.Contract!=s.Contract||a.Item!=s.Item||
+            a.Fingerprint!=s.Fingerprint||a.ObservedSnapshotDigest!=s.Digest()||!Evidence(a.BusinessOriginEvidence)||
+            a.AllowedStage!=AcmRetryStage.SoapOnly||a.ExpectedVersion!=s.Version||a.ExpectedReceivedUtc!=s.ReceivedUtc)
+            return Block("PENDING_APPROVAL_MISMATCH","Autorização nominal, versão, origem ou snapshot não comprovado.");
+        if(!s.IdentityVerified||!s.LatestVersion||s.IntegrationId==Guid.Empty||s.Version<1||
+            !Evidence(s.Contract)||!s.Contract.All(char.IsAsciiDigit)||(s.Item is not null&&!Evidence(s.Item))||
+            !Evidence(s.CorrelationId)||!Hash(s.Fingerprint)||s.Fingerprint!=s.CanonicalFingerprint||
+            s.ReceivedUtc is null||s.ReceivedUtc.Value.Offset!=TimeSpan.Zero||s.State!="PENDENTE"||s.Phase!="NAO_INICIADO"||
+            s.Fence!=0||s.AttemptCount!=0||s.AttemptId is not null||s.AttemptOutcome is not null||s.JournalPresent||
+            s.JournalStatus is not null||s.Stage is not null||s.Metadata is not null||s.HasPendingCommand||s.ContractHasExternal||
+            s.Worker is not null||s.LeaseUntil is not null||s.GuardianRequestedCode is not null||
+            s.GuardianConfirmedCode is not null||s.Reference is not null)
+            return Block("PENDING_LATEST_NOT_PRISTINE","A integração deve ser a versão mais recente, sem tentativa, journal de envio, vínculo externo ou processamento ativo.");
+        if(s.Predecessors.Length!=s.Version-1||s.Predecessors.Select(p=>p.IntegrationId).Distinct().Count()!=s.Predecessors.Length||
+            !s.Predecessors.Select(p=>p.Version).Order().SequenceEqual(Enumerable.Range(1,s.Predecessors.Length).Select(v=>(long)v))||
+            s.Predecessors.Any(p=>p.IntegrationId==s.IntegrationId||!p.SafeToSupersede())||
+            s.Predecessors.Length>0&&!a.AllowSafeSupersession)
+            return Block("PREDECESSOR_SUPERSESSION_UNPROVEN","A versão anterior não pode ser substituída sem prova de ausência de envio externo, incerteza e concorrência.");
+        return new(true,"PENDING_LATEST_SAFE_ADMISSION","Somente cadastro SOAP da versão aprovada; protocolo REST pendente e não autorizado. Versão(ões) anterior(es) sem envio comprovado serão encerradas como substituídas, com histórico preservado.",AcmRetryStage.SoapOnly);
     }
     public static bool Hash(string? value)=>value is {Length:64}&&value.All(c=>char.IsAsciiHexDigit(c)&&!char.IsLower(c));
     public static bool Evidence(string? text)=>!string.IsNullOrWhiteSpace(text)&&text.Length<=200&&!text.Any(char.IsControl);
