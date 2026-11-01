@@ -7,10 +7,8 @@ public static class UnifiedCallbackRoutes
     {
         MasterdataCallbackEndpoint.Map(app);
         if(legacy is not null)GuardianCallbackEndpoint.MapDual(app,legacy.Route);
-        // Fluxo SD: rota propria. So e exposta quando a composicao do receptor esta ligada -
-        // publicar o endereco sem ter onde gravar faria o Guardian receber 503 por POST.
-        if(app.Services.GetService<FugaTES.Aplicacao.Contratos.Sd.IDevolutivasSdRepositorio>() is not null
-           || app.Configuration[DevolutivaSdComposition.Flag] == "true")
-            DevolutivaSdEndpoint.Map(app);
+        // A rota do fluxo SD NAO e registrada aqui: este metodo nao e chamado pelo Program atual,
+        // e registrar nos dois lugares arriscaria mapear a mesma rota duas vezes se um dia passar
+        // a ser. O registro vive em Program.cs, junto com os demais.
     }
 }

@@ -32,6 +32,11 @@ if (routes.Callback is { } callback)
 {
     GuardianCallbackEndpoint.MapDual(app, callback.Route);
 }
+// Fluxo SD: rota propria, publicada somente quando o receptor foi de fato montado. Condicionar
+// a PRESENCA DO SERVICO, e nao a uma chave de configuracao, evita o caso em que a rota existe e
+// responde 503 por nao ter onde gravar.
+if (app.Services.GetService<FugaTES.Aplicacao.Contratos.Sd.IDevolutivasSdRepositorio>() is not null)
+    DevolutivaSdEndpoint.Map(app);
 if (routes.SapProductive)
     SapContractInboundEndpoint.MapDurable(app);
 if (routes.SapOffline)

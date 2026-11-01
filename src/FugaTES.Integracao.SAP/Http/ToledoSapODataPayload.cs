@@ -30,7 +30,7 @@ public static partial class ToledoSapODataPayload
  }
  public static ToledoSapPreparedPayload Prepare(string original,ToledoSapPayloadOptions options)
   =>PrepareCore(original,options,Projection.Current,true);
- private enum Projection {Current,BeforeDecimalAndUserNormalization,DirectionOnly,LegacyNumeric}
+ private enum Projection {Current,BeforeNameTruncation,BeforeDecimalAndUserNormalization,DirectionOnly,LegacyNumeric}
  private static ToledoSapPreparedPayload PrepareCore(string original,ToledoSapPayloadOptions options,Projection projection,bool validateEntry,IReadOnlyList<FugaTES.Aplicacao.Servicos.Recebimento.ToledoSapParceiroAuditado>? partners=null)
  {
   if(Encoding.UTF8.GetByteCount(original)>1048576)throw Bad("SAP_PAYLOAD_TOO_LARGE");
@@ -38,12 +38,13 @@ public static partial class ToledoSapODataPayload
   Names(root,["SistemaBalanca","DataPesagem","TipoPesagem","IdPesagem","UsuarioPesagem","UsuarioClassificacao","IdPlanejamento","Centro","IdAgendamento","IdTransportadora","PesoBruto","PesoTara","Material","PesoAntesDesconto","PesoAposDesconto","NomeMotorista","CpfMotorista","Placa","Observacao","to_QualidPes","to_Pesagem"]);
   foreach(var name in new[]{"IdPesagem","Centro","IdPlanejamento","IdAgendamento","IdTransportadora","Material"})
    if(root.ContainsKey(name))root[name]=Identifier(root[name],name,name is "IdPesagem" or "Centro");
-  if(projection is Projection.Current or Projection.BeforeDecimalAndUserNormalization)root["IdPesagem"]=SapWeighingId(root["IdPesagem"]);
-  if(projection==Projection.Current)
+  if(projection is Projection.Current or Projection.BeforeNameTruncation or Projection.BeforeDecimalAndUserNormalization)root["IdPesagem"]=SapWeighingId(root["IdPesagem"]);
+  if(projection is Projection.Current or Projection.BeforeNameTruncation)
   {
    if(root.ContainsKey("UsuarioPesagem"))root["UsuarioPesagem"]=SapWeighingUser(Text(root["UsuarioPesagem"]));
    foreach(var name in new[]{"PesoBruto","PesoTara","PesoAntesDesconto","PesoAposDesconto"})NormalizeDecimalField(root,name);
   }
+  if(projection==Projection.Current)LimitSapName(root,"NomeMotorista",20);
   var direction=SapWeighingType(root["TipoPesagem"]);
   root["TipoPesagem"]=projection==Projection.LegacyNumeric?(direction=="E"?"1":"2"):direction;
   var id=Identifier(root["IdPesagem"],"IdPesagem",true);var center=Identifier(root["Centro"],"Centro",true);
@@ -56,7 +57,7 @@ public static partial class ToledoSapODataPayload
   {
    if(item is not JsonObject q)throw Bad("SAP_QUALITY_OBJECT_REQUIRED");
    Names(q,["Tipo","Grupo","ValorAferido"]);var type=Text(q["Tipo"]);var value=Scalar(q["ValorAferido"]);
-   if(projection==Projection.Current&&!string.IsNullOrWhiteSpace(value))value=NormalizeDecimalText(value);
+   if(projection is Projection.Current or Projection.BeforeNameTruncation&&!string.IsNullOrWhiteSpace(value))value=NormalizeDecimalText(value);
    if(string.IsNullOrWhiteSpace(type)&&(string.IsNullOrWhiteSpace(value)||Decimal(value)==0m))continue;
    if(string.IsNullOrWhiteSpace(type)||string.IsNullOrWhiteSpace(value)||Decimal(value)<0)throw Bad("SAP_MEASURED_QUALITY_REQUIRED");
    // Proven Guardian aliases from the operator's working SAP contract; never invent a measurement.
@@ -84,7 +85,8 @@ public static partial class ToledoSapODataPayload
     w["IdParceiro"]=partner.IdParceiroSap; // Only the owner is projected; Guardian delivery partner stays original.
    }
    if(validateEntry)ValidateEntryNfe(w,direction);
-   if(projection==Projection.Current)foreach(var name in new[]{"PercentualDesdobro","PesoAntesDesconto","PesoAposDesconto"})NormalizeDecimalField(w,name);
+   if(projection is Projection.Current or Projection.BeforeNameTruncation)foreach(var name in new[]{"PercentualDesdobro","PesoAntesDesconto","PesoAposDesconto"})NormalizeDecimalField(w,name);
+   if(projection==Projection.Current){LimitSapName(w,"ParceiroNome",35);LimitSapName(w,"ParceiroEntregaNome",50);}
    foreach(var name in new[]{"ContratoACM","IdParceiro","IdParceiroEntrega"})if(w.ContainsKey(name))w[name]=Identifier(w[name],name,name is "ContratoACM" or "IdParceiro");
    foreach(var name in new[]{"Indice","NrIndiceTotal"}){if(!int.TryParse(Scalar(w[name]),NumberStyles.None,CultureInfo.InvariantCulture,out var n)||n<0)throw Bad("SAP_WEIGHING_INDEX_INVALID");w[name]=n;}
    if(!indexes.Add(w["Indice"]!.GetValue<int>())||w["NrIndiceTotal"]!.GetValue<int>()!=weights.Count)throw Bad("SAP_WEIGHING_INDEX_INVALID");
@@ -116,8 +118,13 @@ public static partial class ToledoSapODataPayload
  static string Identifier(JsonNode? node,string field,bool required)
  {var text=Scalar(node);if((required&&text.Length==0)||text.Length>30||!text.All(char.IsAsciiDigit))throw Bad("SAP_IDENTIFIER_INVALID_"+field.ToUpperInvariant());return text;}
  // SAP-only projection; never shorten or edit the stored Guardian user/document.
- static string SapWeighingUser(string value)
- {if(value.Length<=15)return value;return value[..(char.IsHighSurrogate(value[14])?14:15)];}
+ static string SapWeighingUser(string value)=>SapTextPrefix(value,15);
+ // SAP CHAR limits apply only after supplier enrichment, on the outbound projection.
+ // Preserve spacing/case and never split a UTF-16 surrogate pair at the boundary.
+ static string SapTextPrefix(string value,int limit)
+ {if(value.Length<=limit)return value;return value[..(char.IsHighSurrogate(value[limit-1])?limit-1:limit)];}
+ static void LimitSapName(JsonObject record,string field,int limit)
+ {if(record.TryGetPropertyValue(field,out var node)&&node is not null){var value=Text(node);if(value.Length>limit)record[field]=SapTextPrefix(value,limit);}}
  static void NormalizeDecimalField(JsonObject value,string field)
  {
   if(!value.TryGetPropertyValue(field,out var node))return;

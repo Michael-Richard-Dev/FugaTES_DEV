@@ -1,0 +1,210 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0/linux-x64",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {},
+    ".NETCoreApp,Version=v10.0/linux-x64": {
+      "FugaTES.HostIntegracao/1.0.0": {
+        "dependencies": {
+          "FugaTES.Aplicacao": "1.0.0",
+          "FugaTES.Infraestrutura": "1.0.0",
+          "FugaTES.Integracao.Guardian": "1.0.0",
+          "FugaTES.Integracao.SAP": "1.0.0",
+          "FugaTES.Integracao.Toledo": "1.0.0",
+          "FugaTES.Persistencia": "1.0.0",
+          "Microsoft.Extensions.Hosting.Systemd": "10.0.9",
+          "Microsoft.Extensions.Hosting.WindowsServices": "10.0.9"
+        },
+        "runtime": {
+          "FugaTES.HostIntegracao.dll": {}
+        }
+      },
+      "Microsoft.Extensions.Hosting.Systemd/10.0.9": {
+        "runtime": {
+          "lib/net10.0/Microsoft.Extensions.Hosting.Systemd.dll": {
+            "assemblyVersion": "10.0.0.9",
+            "fileVersion": "10.0.926.27113"
+          }
+        }
+      },
+      "Microsoft.Extensions.Hosting.WindowsServices/10.0.9": {
+        "dependencies": {
+          "System.ServiceProcess.ServiceController": "10.0.9"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.Extensions.Hosting.WindowsServices.dll": {
+            "assemblyVersion": "10.0.0.9",
+            "fileVersion": "10.0.926.27113"
+          }
+        }
+      },
+      "Npgsql/10.0.3": {
+        "runtime": {
+          "lib/net10.0/Npgsql.dll": {
+            "assemblyVersion": "10.0.3.0",
+            "fileVersion": "10.0.3.0"
+          }
+        }
+      },
+      "System.ServiceProcess.ServiceController/10.0.9": {
+        "runtime": {
+          "lib/net10.0/System.ServiceProcess.ServiceController.dll": {
+            "assemblyVersion": "10.0.0.9",
+            "fileVersion": "10.0.926.27113"
+          }
+        }
+      },
+      "FugaTES.Aplicacao/1.0.0": {
+        "dependencies": {
+          "FugaTES.Dominio": "1.0.0"
+        },
+        "runtime": {
+          "FugaTES.Aplicacao.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "FugaTES.Dominio/1.0.0": {
+        "runtime": {
+          "FugaTES.Dominio.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "FugaTES.Infraestrutura/1.0.0": {
+        "dependencies": {
+          "FugaTES.Aplicacao": "1.0.0"
+        },
+        "runtime": {
+          "FugaTES.Infraestrutura.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "FugaTES.Integracao.Guardian/1.0.0": {
+        "dependencies": {
+          "FugaTES.Aplicacao": "1.0.0"
+        },
+        "runtime": {
+          "FugaTES.Integracao.Guardian.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "FugaTES.Integracao.SAP/1.0.0": {
+        "dependencies": {
+          "FugaTES.Aplicacao": "1.0.0",
+          "FugaTES.Dominio": "1.0.0"
+        },
+        "runtime": {
+          "FugaTES.Integracao.SAP.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "FugaTES.Integracao.Toledo/1.0.0": {
+        "dependencies": {
+          "FugaTES.Aplicacao": "1.0.0",
+          "FugaTES.Dominio": "1.0.0"
+        },
+        "runtime": {
+          "FugaTES.Integracao.Toledo.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "FugaTES.Persistencia/1.0.0": {
+        "dependencies": {
+          "FugaTES.Aplicacao": "1.0.0",
+          "FugaTES.Dominio": "1.0.0",
+          "Npgsql": "10.0.3"
+        },
+        "runtime": {
+          "FugaTES.Persistencia.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "FugaTES.HostIntegracao/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Extensions.Hosting.Systemd/10.0.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7poW164VJBqphfdUI5pz/2h9L38zyJP8Gk7yHhnNBSgw5QWuBnpZ5RTDrsY3JiwKa4eXOEJKTVNnnBqE7cafRw==",
+      "path": "microsoft.extensions.hosting.systemd/10.0.9",
+      "hashPath": "microsoft.extensions.hosting.systemd.10.0.9.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Hosting.WindowsServices/10.0.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-o4pwquIOdvTwj/VBq/KXmE4/JBVuuemmdy80PqAsnzeBmkWiukQ4YrtaTtqhP+BkdHsIYtmYyTrM6Q6RedfbQw==",
+      "path": "microsoft.extensions.hosting.windowsservices/10.0.9",
+      "hashPath": "microsoft.extensions.hosting.windowsservices.10.0.9.nupkg.sha512"
+    },
+    "Npgsql/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w==",
+      "path": "npgsql/10.0.3",
+      "hashPath": "npgsql.10.0.3.nupkg.sha512"
+    },
+    "System.ServiceProcess.ServiceController/10.0.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-VaYklIT689DthcRzbqt3S8z3GkymiD+US+RLzMFfoPxNIyUxMpXT116cO6rVrKHSuwgdvb35HRKN/PmDmbL+3g==",
+      "path": "system.serviceprocess.servicecontroller/10.0.9",
+      "hashPath": "system.serviceprocess.servicecontroller.10.0.9.nupkg.sha512"
+    },
+    "FugaTES.Aplicacao/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FugaTES.Dominio/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FugaTES.Infraestrutura/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FugaTES.Integracao.Guardian/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FugaTES.Integracao.SAP/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FugaTES.Integracao.Toledo/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FugaTES.Persistencia/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

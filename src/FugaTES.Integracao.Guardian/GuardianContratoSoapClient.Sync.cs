@@ -41,8 +41,22 @@ public sealed partial class GuardianContratoSoapClient
             var node = Child(contract, name);
             return node is null ? null : node.HasElements ? Child(node, "Codigo")?.Value : node.Value;
         }
+        // VOContratoOut exposes EmissorIntegracao/ItemIntegracao with their own Codigo.
+        // Keep legacy direct fields compatible, but never choose between conflicting identities.
+        string? IntegrationCode(string legacyName, string outputName)
+        {
+            var legacy = contract.Elements(ContractNamespace + legacyName).ToArray();
+            var output = contract.Elements(ContractNamespace + outputName).ToArray();
+            if (legacy.Length > 1 || output.Length > 1) return null;
+            var directCode = legacy.Length == 1 ? Value(legacyName) : null;
+            var nestedCode = output.Length == 1 ? Child(output[0], "Codigo")?.Value : null;
+            if ((legacy.Length == 1 && string.IsNullOrWhiteSpace(directCode)) ||
+                (output.Length == 1 && string.IsNullOrWhiteSpace(nestedCode)) ||
+                (directCode is not null && nestedCode is not null && directCode != nestedCode)) return null;
+            return directCode ?? nestedCode;
+        }
         var fields = new[] { Value("Codigo"), Value("Descricao"), Value("Estado"), Value("TipoLancamento"),
-            Value("CodigoEmissor"), Value("CodigoItem") };
+            IntegrationCode("CodigoEmissor", "EmissorIntegracao"), IntegrationCode("CodigoItem", "ItemIntegracao") };
         if (fields.Any(string.IsNullOrWhiteSpace) || fields[0] != codigo ||
             !decimal.TryParse(Value("ValorContrato"), NumberStyles.Number, CultureInfo.InvariantCulture, out var valor) ||
             !decimal.TryParse(Value("ValorProximidadeFimContrato"), NumberStyles.Number, CultureInfo.InvariantCulture, out var proximidade))

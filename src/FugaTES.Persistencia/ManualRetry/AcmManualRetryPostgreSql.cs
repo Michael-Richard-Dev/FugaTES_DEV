@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Text.Json;
 using FugaTES.Aplicacao.Modelos.ContratosSapToledo;
 using FugaTES.Aplicacao.Servicos.ContratosSapToledo;
@@ -11,7 +11,7 @@ namespace FugaTES.Persistencia.ManualRetry;
 
 // Candidate only. Not registered in the GET-only DEV API or any running host.
 // Existing tables, parameterized commands, one transaction for admission/audit/queue.
-public sealed class AcmManualRetryPostgreSql(NpgsqlDataSource source):IAcmManualRetryStore
+public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IAcmManualRetryStore
 {
     const string Requested="ACM_MANUAL_RETRY_REQUESTED",Started="ACM_MANUAL_RETRY_STARTED",Finished="ACM_MANUAL_RETRY_FINISHED";
     static readonly JsonSerializerOptions Json=new(){PropertyNameCaseInsensitive=true};
@@ -113,14 +113,16 @@ public sealed class AcmManualRetryPostgreSql(NpgsqlDataSource source):IAcmManual
             Predecessors=await Predecessors(c,tx,facts,ct)};
     }
     // Same contract identity lock as inbound admission; all integration rows precede H4/journal/attempt locks.
-    static async Task LockVersions(NpgsqlConnection c,NpgsqlTransaction tx,AcmRetryApproval a,CancellationToken ct)
+    static Task LockVersions(NpgsqlConnection c,NpgsqlTransaction tx,AcmRetryApproval a,CancellationToken ct)
+        => LockVersions(c,tx,a.IntegrationId,a.Contract,ct);
+    static async Task LockVersions(NpgsqlConnection c,NpgsqlTransaction tx,Guid targetId,string targetContract,CancellationToken ct)
     {
-        await using(var identity=Cmd(c,tx,"select numero_contrato from fugates.contrato_sap_toledo_identidade where numero_contrato=@contract for update",a.IntegrationId))
-        {identity.Parameters.AddWithValue("contract",a.Contract);if(await identity.ExecuteScalarAsync(ct) is not string contract||contract!=a.Contract)throw new InvalidOperationException("ACM_PENDING_IDENTITY_MISSING");}
+        await using(var identity=Cmd(c,tx,"select numero_contrato from fugates.contrato_sap_toledo_identidade where numero_contrato=@contract for update",targetId))
+        {identity.Parameters.AddWithValue("contract",targetContract);if(await identity.ExecuteScalarAsync(ct) is not string contract||contract!=targetContract)throw new InvalidOperationException("ACM_PENDING_IDENTITY_MISSING");}
         var ids=new List<Guid>();
-        await using(var rows=Cmd(c,tx,"select i.id from fugates.integracao i join fugates.contrato_sap_toledo_versao v on v.integracao_id=i.id where v.numero_contrato=@contract order by i.id for update of i",a.IntegrationId))
-        {rows.Parameters.AddWithValue("contract",a.Contract);await using var read=await rows.ExecuteReaderAsync(ct);while(await read.ReadAsync(ct))ids.Add(read.GetGuid(0));}
-        if(!ids.Contains(a.IntegrationId))throw new InvalidOperationException("ACM_PENDING_TARGET_MISSING");
+        await using(var rows=Cmd(c,tx,"select i.id from fugates.integracao i join fugates.contrato_sap_toledo_versao v on v.integracao_id=i.id where v.numero_contrato=@contract order by i.id for update of i",targetId))
+        {rows.Parameters.AddWithValue("contract",targetContract);await using var read=await rows.ExecuteReaderAsync(ct);while(await read.ReadAsync(ct))ids.Add(read.GetGuid(0));}
+        if(!ids.Contains(targetId))throw new InvalidOperationException("ACM_PENDING_TARGET_MISSING");
         foreach(var id in ids)await Lock(c,tx,id,ct);
     }
     static async Task<AcmRetryPredecessor[]> Predecessors(NpgsqlConnection c,NpgsqlTransaction tx,AcmRetrySnapshot target,CancellationToken ct)
