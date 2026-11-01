@@ -15,3 +15,6 @@ appsettings.*.json
 *.env
 .env*
 secrets.json
+
+# Pacotes de publicacao para a VM: artefato de build, nao fonte.
+*.tgz

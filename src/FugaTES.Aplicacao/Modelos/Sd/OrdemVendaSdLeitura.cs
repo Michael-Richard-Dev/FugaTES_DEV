@@ -32,7 +32,17 @@ public sealed record OrdemVendaSdLeitura(
     // Projecao dos campos desta linha, com os nomes OData de origem, para conferencia na tela.
     // NAO e a resposta bruta: a ordem inteira trazia todos os itens, todos os parceiros e os
     // metadados do servico, o que escondia o que interessa. Nada aqui e interpretado.
-    string PayloadJson);
+    string PayloadJson)
+{
+    /// <summary>
+    /// A_SalesOrder.CreationDate. E o que separa o acervo antigo do que entrou depois do corte:
+    /// o motor automatico so cria protocolo para ordens criadas a partir da data combinada.
+    ///
+    /// Nula quando o servico nao devolveu a data. Nula NAO passa no corte - deixar passar seria
+    /// tratar "nao sei quando foi criada" como "foi criada hoje".
+    /// </summary>
+    public DateTime? DataCriacao { get; init; }
+}
 
 /// <summary>
 /// Recorte da varredura. Sem valores aqui a busca nao acontece: uma varredura a cada 30 segundos
@@ -63,6 +73,25 @@ public sealed record OrdensVendaSdFiltro(
 
     /// <summary>Unicos centros do fluxo SD. A tela escolhe entre eles; nenhum outro e aceito.</summary>
     public static readonly string[] CentrosPermitidos = ["3011", "3008"];
+
+    /// <summary>
+    /// Corte do motor automatico: so ordens criadas a partir daqui viram protocolo sozinhas.
+    ///
+    /// Decisao do operador em 01/11/2026. E data FIXA, nao "hoje": com "hoje" movel, amanha o
+    /// motor deixaria de ver as ordens criadas hoje que ainda nao foram pesadas. O acervo antigo
+    /// (268 ordens em situacao A, muitas de anos atras) fica de fora para sempre - elas nao vao
+    /// a balanca, e protocolo criado nao se desfaz.
+    ///
+    /// Vale so para o que acontece SOZINHO. O envio manual pela tela continua alcancando
+    /// qualquer linha.
+    /// </summary>
+    public static readonly DateOnly CorteAutomatico = new(2026, 11, 1);
+
+    /// <summary>
+    /// Data minima de criacao da ordem. Nula traz todas - e o que a tela usa, para o operador
+    /// enxergar tambem o que o motor nao vai tocar.
+    /// </summary>
+    public DateOnly? DataCriacaoMinima { get; init; }
 
     // A regra mora aqui, e nao so na tela: um filtro montado em codigo com outro centro ou outra
     // organizacao tambem tem de ser recusado, senao a tela seria a unica garantia.

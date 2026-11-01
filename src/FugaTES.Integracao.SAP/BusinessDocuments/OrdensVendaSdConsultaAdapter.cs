@@ -71,6 +71,13 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
             }
             sb.Append(')');
         }
+        // Corte por data de criacao. Vai no $filter, e nao numa conferencia local, para o SAP nao
+        // mandar o que seria descartado: com o corte a varredura do motor sai de 268 ordens para
+        // as poucas criadas depois dele.
+        if (filtro.DataCriacaoMinima is DateOnly corte)
+            sb.Append(" and CreationDate ge datetime'")
+              .Append(corte.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
+              .Append("T00:00:00'");
         sb.Append("&$expand=to_Item,to_Partner");
         // Mais recentes primeiro. Sem isto o SAP devolve pela chave, do menor para o maior, e o
         // $top passa a ser uma janela sobre as ordens MAIS ANTIGAS: em 01/11/2026 havia 268
@@ -79,6 +86,29 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
         sb.Append("&$orderby=SalesOrder desc");
         sb.Append("&$top=").Append(filtro.MaximoPorVarredura.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Data no formato do OData V2 em JSON: "/Date(1793491200000)/", milissegundos desde a epoca,
+    /// em UTC. Qualquer outra forma devolve nulo, e nulo nao passa no corte por data - tratar
+    /// "nao sei quando foi criada" como "foi criada hoje" criaria protocolo no acervo antigo.
+    /// </summary>
+    public static DateTime? DataOData(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        var texto = valor.Trim();
+        if (!texto.StartsWith("/Date(", StringComparison.Ordinal)
+            || !texto.EndsWith(")/", StringComparison.Ordinal)) return null;
+        var miolo = texto[6..^2];
+        if (miolo.Length == 0) return null;
+        // Algumas respostas trazem deslocamento de fuso ("/Date(123+0200)/"): o instante e o
+        // numero antes do sinal, ja em UTC.
+        var sinal = miolo.IndexOfAny(['+', '-'], 1);
+        if (sinal > 0) miolo = miolo[..sinal];
+        return long.TryParse(miolo, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out var ms)
+            ? DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime
+            : null;
     }
 
     // Aspas simples em OData V2 sao escapadas dobrando. Sem isto, um valor com apostrofo
@@ -122,7 +152,10 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
                     // o servico V4 o expoe la.
                     SetorAtividade: Texto(ordem, "OrganizationDivision") ?? Texto(item, "OrganizationDivision"),
                     RecebedorMercadoria: recebedor,
-                    PayloadJson: Payload(ordem, item, filtro, emissor, recebedor));
+                    PayloadJson: Payload(ordem, item, filtro, emissor, recebedor))
+                {
+                    DataCriacao = DataOData(Texto(ordem, "CreationDate"))
+                };
             }
         }
     }

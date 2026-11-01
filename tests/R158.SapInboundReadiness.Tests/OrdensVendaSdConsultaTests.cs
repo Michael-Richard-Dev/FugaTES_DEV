@@ -26,6 +26,42 @@ public sealed class OrdensVendaSdConsultaTests
         Assert.DoesNotContain("SalesOrderType", query, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Corte por data de criacao: e o que impede o motor automatico de varrer o acervo antigo.
+    /// Vai no $filter para o SAP nao mandar o que seria descartado.
+    /// </summary>
+    [Fact]
+    public void Corte_por_data_entra_no_filtro()
+        => Assert.Contains("and CreationDate ge datetime'2026-11-01T00:00:00'",
+            OrdensVendaSdConsultaAdapter.MontarQuery(
+                Filtro() with { DataCriacaoMinima = new DateOnly(2026, 11, 1) }),
+            StringComparison.Ordinal);
+
+    [Fact]
+    public void Sem_corte_a_query_nao_menciona_data()
+        => Assert.DoesNotContain("CreationDate", OrdensVendaSdConsultaAdapter.MontarQuery(Filtro()),
+            StringComparison.Ordinal);
+
+    [Theory]
+    [InlineData("/Date(1793491200000)/", 2026, 11, 1)]
+    // Com deslocamento de fuso o instante continua sendo o numero antes do sinal, ja em UTC.
+    [InlineData("/Date(1793491200000+0200)/", 2026, 11, 1)]
+    public void Data_do_odata_v2_e_lida(string valor, int ano, int mes, int dia)
+    {
+        var data = OrdensVendaSdConsultaAdapter.DataOData(valor);
+        Assert.NotNull(data);
+        Assert.Equal(new DateOnly(ano, mes, dia), DateOnly.FromDateTime(data!.Value));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("2026-11-01")]
+    [InlineData("/Date(abc)/")]
+    [InlineData("/Date()/")]
+    public void Data_fora_do_formato_vira_nulo(string? valor)
+        => Assert.Null(OrdensVendaSdConsultaAdapter.DataOData(valor));
+
     [Fact]
     public void Filtro_sem_centro_e_invalido()
         => Assert.False(Filtro(centros: []).EhValido());
