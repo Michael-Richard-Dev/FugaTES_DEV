@@ -22,7 +22,7 @@ public sealed class OrdensVendaSdConsultaTests
         Assert.True(Filtro(tipos: []).EhValido());
         var query = OrdensVendaSdConsultaAdapter.MontarQuery(Filtro(tipos: []));
         Assert.Equal("$filter=SalesOrganization eq '3000' and OverallSDProcessStatus eq 'A'"
-            + "&$expand=to_Item,to_Partner&$top=200", query);
+            + "&$expand=to_Item,to_Partner&$orderby=SalesOrder desc&$top=200", query);
         Assert.DoesNotContain("SalesOrderType", query, StringComparison.Ordinal);
     }
 
@@ -92,6 +92,21 @@ public sealed class OrdensVendaSdConsultaTests
         Assert.Contains("$expand=to_Item,to_Partner", query, StringComparison.Ordinal);
         Assert.Contains("$top=200", query, StringComparison.Ordinal);
         Assert.DoesNotContain("ShippingPoint", query, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Sem ordenacao explicita o SAP devolve pela chave, crescente, e o $top vira uma janela
+    /// sobre as ordens MAIS ANTIGAS. Em 01/11/2026 havia 268 ordens elegiveis: a 4232, criada no
+    /// dia, ficava fora das 200 trazidas e nao aparecia na tela.
+    /// </summary>
+    [Fact]
+    public void Varredura_pede_as_ordens_mais_recentes_primeiro()
+    {
+        var query = OrdensVendaSdConsultaAdapter.MontarQuery(Filtro());
+        Assert.Contains("$orderby=SalesOrder desc", query, StringComparison.Ordinal);
+        // A ordenacao tem de vir antes do $top para descrever a janela, nao o contrario.
+        Assert.True(query.IndexOf("$orderby", StringComparison.Ordinal)
+                  < query.IndexOf("$top", StringComparison.Ordinal));
     }
 
     // Apostrofo em literal OData V2 se escapa dobrando; sem isso o filtro mudaria de significado.

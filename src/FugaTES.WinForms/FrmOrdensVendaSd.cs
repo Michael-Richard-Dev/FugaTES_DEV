@@ -206,7 +206,7 @@ public partial class FrmOrdensVendaSd : Form
         {
             var resultado = await consulta.ConsultarAsync(filtro, cancelamento.Token);
             if (cancelamento.IsCancellationRequested) return;
-            await ApresentarAsync(resultado, inicio);
+            await ApresentarAsync(resultado, inicio, filtro.MaximoPorVarredura);
         }
         catch (OperationCanceledException) when (cancelamento.IsCancellationRequested) { }
         // O timer dispara por um handler async void: uma excecao nao tratada aqui derrubaria o
@@ -224,7 +224,8 @@ public partial class FrmOrdensVendaSd : Form
         }
     }
 
-    private async Task ApresentarAsync(ResultadoConsultaSap<IReadOnlyList<OrdemVendaSdLeitura>> resultado, DateTime inicio)
+    private async Task ApresentarAsync(ResultadoConsultaSap<IReadOnlyList<OrdemVendaSdLeitura>> resultado,
+        DateTime inicio, int janela)
     {
         var decorrido = (DateTime.Now - inicio).TotalMilliseconds.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
         if (resultado.Status != StatusConsultaSap.Sucesso || resultado.Dados is null)
@@ -242,9 +243,17 @@ public partial class FrmOrdensVendaSd : Form
         var criacao = await CriarProtocolosPendentesAsync();
         var ordens = linhas.Select(l => l.CodigoOrdemVenda).Distinct(StringComparer.Ordinal).Count();
         // O aviso entra DEPOIS do resumo: escrever antes seria apaga-lo nesta mesma linha.
+        // Janela cheia significa que o SAP tinha mais ordens do que coube no $top. Com a ordem
+        // decrescente as que ficam de fora sao as mais antigas - mas dizer isso e melhor do que
+        // truncar calado, que foi o que escondeu a ordem 4232 em 01/11/2026.
+        var truncou = ordens >= janela
+            ? $"janela cheia: {janela} ordens mais recentes. Ordens mais antigas ficaram de fora."
+            : null;
         status.Text = $"{DateTime.Now:HH:mm:ss} — {linhas.Count} linha(s) em {ordens} ordem(ns), {decorrido} ms, "
-            + "somente OverallSDProcessStatus = A. Leitura apenas: nada foi gravado nem enviado."
+            + "somente OverallSDProcessStatus = A, mais recentes primeiro. "
+            + "Leitura apenas: nada foi gravado nem enviado."
             + (criacao is null ? "" : "   ➜ " + criacao)
+            + (truncou is null ? "" : "   ⚠ " + truncou)
             + (aviso is null ? "" : "   ⚠ " + aviso);
     }
 

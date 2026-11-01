@@ -72,6 +72,11 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
             sb.Append(')');
         }
         sb.Append("&$expand=to_Item,to_Partner");
+        // Mais recentes primeiro. Sem isto o SAP devolve pela chave, do menor para o maior, e o
+        // $top passa a ser uma janela sobre as ordens MAIS ANTIGAS: em 01/11/2026 havia 268
+        // ordens elegiveis e a 4232, criada no dia, nao aparecia na tela.
+        // Confirmado no servico que a ordenacao e numerica (4232, 4221, 4214...), e nao textual.
+        sb.Append("&$orderby=SalesOrder desc");
         sb.Append("&$top=").Append(filtro.MaximoPorVarredura.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return sb.ToString();
     }
