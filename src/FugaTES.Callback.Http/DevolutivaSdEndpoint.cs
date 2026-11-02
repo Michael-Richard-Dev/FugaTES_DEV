@@ -83,6 +83,32 @@ public static class DevolutivaSdEndpoint
             }, context.RequestAborted);
             return;
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { throw; }
+        // Qualquer outra falha ao gravar. Sem isto a excecao escapava e virava um 500 nu: sem
+        // linha no journal, sem campo "mensagem" para o Guardian, sem causa para ninguem. Foi o
+        // que aconteceu com a pesagem 0020341 em 02/11/2026, quando a correlacao pela metade
+        // violou a regra da tabela. O tipo da excecao basta para diagnosticar e nao carrega o
+        // documento recebido. Nao registrar a excecao inteira: detalhes do banco podem conter dados.
+        catch (Exception erro)
+        {
+            context.RequestServices.GetService<ILoggerFactory>()
+                ?.CreateLogger(typeof(DevolutivaSdEndpoint))
+                .LogError("SD_DEVOLUTIVA_NAO_GRAVADA: {Pesagem} — {Tipo}",
+                    devolutiva.IdPesagem, erro.GetType().Name);
+            // A conexao pode falhar depois do commit. Sem confirmacao, nao afirmar que o
+            // documento nao foi gravado nem autorizar reenvio sem consulta. A chave idempotente
+            // continua protegendo o mesmo evento; o JSON original nunca e reescrito.
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                mensagem = "SD_DEVOLUTIVA_NAO_GRAVADA",
+                status = "RESULTADO_INDETERMINADO",
+                codigo = "SD_DEVOLUTIVA_NAO_GRAVADA",
+                detalhe = "Não foi possível confirmar a gravação. Consulte o recebimento antes de reenviar.",
+                persisted = (bool?)null
+            }, context.RequestAborted);
+            return;
+        }
 
         await context.Response.WriteAsJsonAsync(new
         {

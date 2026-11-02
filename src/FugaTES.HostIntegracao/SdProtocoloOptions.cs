@@ -28,6 +28,15 @@ public sealed class SdProtocoloOptions
     /// <summary>Teto de protocolos por varredura. O que sobrar vai na volta seguinte.</summary>
     public int ProtocolosPorVarredura { get; set; } = 10;
 
+    /// <summary>
+    /// Liga o motor que leva a pesagem ao SAP sozinha: cria a remessa, ajusta e grava o texto.
+    /// Desligado por padrao - ele escreve documento no SAP, e ligar por engano e caro.
+    /// </summary>
+    public bool RemessaAutomatica { get; set; }
+
+    /// <summary>Teto de pesagens levadas ao SAP por varredura.</summary>
+    public int RemessasPorVarredura { get; set; } = 5;
+
     /// <summary>Quantas ORDENS a varredura traz do SAP por volta.</summary>
     public int OrdensPorVarredura { get; set; } = 200;
 

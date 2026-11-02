@@ -14,18 +14,18 @@ public interface IExpedirRemessaSdSap
 {
     Task<ExpedicaoSd> ConfirmarPickingAsync(string numeroRemessa, CancellationToken ct);
 
-    Task<ExpedicaoSd> PostarSaidaAsync(string numeroRemessa, CancellationToken ct);
 }
 
 /// <summary>
-/// Passo 6: picking de todos os itens e saida de mercadoria.
+/// Separacao de todos os itens da remessa - o picking de casca e fibra.
 ///
-/// Sao duas acoes do servico (function imports), nao entidades: a remessa vai na QUERY, nao na
-/// chave. Nenhuma das duas tem corpo.
+/// E uma acao do servico (function import), nao uma entidade: a remessa vai na QUERY, nao na
+/// chave, e nao ha corpo.
 ///
-/// A saida de mercadoria move estoque e gera documento de material. Este cliente nao decide
-/// quando faze-la - so a executa quando mandam, uma vez por chamada. Quem controla a unicidade e
-/// o registro em remessa_sd, antes de chegar aqui.
+/// A SAIDA DE MERCADORIA nao esta aqui, de proposito. Ela e feita dentro do SAP, por quem confere
+/// o carregamento (ver EscopoExpedicaoSd), e chegou a existir neste arquivo enquanto eu supunha
+/// que fosse nossa. Codigo que nao pode rodar nao deve existir: ele passa a impressao de que a
+/// capacidade esta disponivel, e um dia alguem a liga sem perceber o que isso significa.
 ///
 /// O documento da Fuga escreve a rota do picking com duas barras (";v=2//ConfirmPicking...").
 /// Aqui vai uma so: barra dupla no caminho e aceita por alguns servidores e recusada por outros,
@@ -35,13 +35,8 @@ public sealed class ExpedicaoSdSapClient(SapODataHttpExecutor executor) : IExped
 {
     public const string Servico = "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/";
     public const string RotaPicking = Servico + "ConfirmPickingAllItems";
-    public const string RotaSaida = Servico + "PostGoodsIssue";
-
     public Task<ExpedicaoSd> ConfirmarPickingAsync(string numeroRemessa, CancellationToken ct)
         => ExecutarAsync(RotaPicking, numeroRemessa, ct);
-
-    public Task<ExpedicaoSd> PostarSaidaAsync(string numeroRemessa, CancellationToken ct)
-        => ExecutarAsync(RotaSaida, numeroRemessa, ct);
 
     private async Task<ExpedicaoSd> ExecutarAsync(string rota, string numeroRemessa, CancellationToken ct)
     {

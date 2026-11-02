@@ -259,4 +259,46 @@ public sealed class DevolutivaSdTests
         Assert.Equal(new DateTime(2026, 4, 3, 10, 0, 0),
             LeitorDevolutivaSd.Ler(ComData("03/04/2026 10:00:00")).DataPesagem);
     }
+
+    // --- Correlacao pela metade --------------------------------------------------------------
+    //
+    // Em 02/11/2026 a pesagem 0020341 chegou com o campo 1009 vazio: ordem "4233", linha "". O
+    // leitor devolvia ordem sem linha, e gravar isso violava a regra da tabela - que exige
+    // correlacao tudo-ou-nada. A excecao escapava e virava HTTP 500 nu, sem log e sem causa.
+
+    [Theory]
+    // Linha vazia, so espaco, ou ausente: em todos, nao ha chave a montar.
+    [InlineData("\"valor\": \"4233\"", "\"valor\": \"\"")]
+    [InlineData("\"valor\": \"4233\"", "\"valor\": \"   \"")]
+    // E o inverso: linha sem ordem tambem nao da chave.
+    [InlineData("\"valor\": \"\"", "\"valor\": \"10\"")]
+    public void Meia_correlacao_nao_e_correlacao(string ordem, string linha)
+    {
+        var corpo = $$"""
+        {"SistemaBalanca":"Toledo","DataPesagem":"11/2/2026 2:17:37 PM","TipoPesagem":"S",
+         "IdPesagem":"0020341","Centro":"3011","PesoBruto":"1200.0","PesoTara":"500.0",
+         "PesoAposDesconto":"700.0",
+         "CamposAdicionais":[{"numero":1003,{{ordem}}},{"numero":1009,{{linha}}}]}
+        """;
+        var lida = LeitorDevolutivaSd.Ler(corpo);
+        Assert.False(lida.TemCorrelacao);
+        Assert.Null(lida.OrdemVenda);
+        Assert.Null(lida.LinhaOrdem);
+        // Nada se perde: o documento vai inteiro para o banco, exatamente como chegou.
+        Assert.Equal(corpo, lida.PayloadJson);
+    }
+
+    [Fact]
+    public void Correlacao_completa_continua_valendo()
+    {
+        var corpo = """
+        {"SistemaBalanca":"Toledo","DataPesagem":"11/2/2026 2:17:37 PM","TipoPesagem":"S",
+         "IdPesagem":"X","Centro":"3011","PesoBruto":"1200.0","PesoTara":"500.0",
+         "PesoAposDesconto":"700.0",
+         "CamposAdicionais":[{"numero":1003,"valor":"4233"},{"numero":1009,"valor":"10"}]}
+        """;
+        var lida = LeitorDevolutivaSd.Ler(corpo);
+        Assert.True(lida.TemCorrelacao);
+        Assert.Equal("4233/10", lida.ChaveNatural);
+    }
 }

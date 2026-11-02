@@ -42,17 +42,25 @@ public sealed class RemessaSdSapClient(SapODataHttpExecutor executor) : ICriarRe
         var digital = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
 
         var token = await executor.ObterTokenCsrfAsync(uri, ct).ConfigureAwait(false);
-        using var conteudo = new ByteArrayContent(bytes);
-        conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-        var resposta = await executor
-            .EnviarComCsrfAsync(HttpMethod.Post, uri, conteudo, token, ifMatch: null, ct)
-            .ConfigureAwait(false);
+        // A ordem de venda tambem pode estar travada por uma gravacao anterior - nossa ou de
+        // outro usuario. A trava e transitoria e a recusa garante que nada foi criado, entao
+        // insistir aqui nao arrisca uma segunda remessa. Ver TravaSapOData.
+        var resposta = await TravaSapOData.InsistirSeTravadoAsync(async cancelamento =>
+        {
+            using var conteudo = new ByteArrayContent(bytes);
+            conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            var r = await executor
+                .EnviarComCsrfAsync(HttpMethod.Post, uri, conteudo, token, ifMatch: null, cancelamento)
+                .ConfigureAwait(false);
+            var ok = r.Status is HttpStatusCode.Created or HttpStatusCode.OK;
+            return (Resposta: r, Ok: ok, Mensagens: ok ? [] : LeitorErroSapOData.Ler(r.Body));
+        }, x => x.Ok, x => x.Mensagens, ct).ConfigureAwait(false);
 
-        var status = (int)resposta.Status;
-        var criada = resposta.Status is HttpStatusCode.Created or HttpStatusCode.OK;
-        var numero = criada ? MapeadorRemessaSd.LerNumeroRemessa(resposta.Body) : null;
-        var mensagens = criada ? [] : LeitorErroSapOData.Ler(resposta.Body);
+        var status = (int)resposta.Resposta.Status;
+        var criada = resposta.Ok;
+        var numero = criada ? MapeadorRemessaSd.LerNumeroRemessa(resposta.Resposta.Body) : null;
+        var mensagens = resposta.Mensagens;
 
         // Criada sem numero e pior do que falha: a remessa existe no SAP e nos nao sabemos qual.
         if (criada && numero is null)

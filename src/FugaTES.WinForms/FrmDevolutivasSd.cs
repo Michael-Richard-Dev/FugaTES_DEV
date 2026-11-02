@@ -118,7 +118,7 @@ public partial class FrmDevolutivasSd : Form
         // Passo 6: duas acoes separadas de proposito. Picking se refaz; saida de mercadoria nao.
         grid.Columns.Add(new DataGridViewButtonColumn
         {
-            Name = "picking", HeaderText = "Picking (no SAP)", Text = "Confirmar", UseColumnTextForButtonValue = true,
+            Name = "picking", HeaderText = "Picking", Text = "Confirmar", UseColumnTextForButtonValue = true,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None, Width = 85
         });
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -254,8 +254,8 @@ public partial class FrmDevolutivasSd : Form
 
         using var janela = new Form
         {
-            Text = $"Pesagem {linha.IdPesagem} — documento recebido do Guardian",
-            ClientSize = new Size(820, 600),
+            Text = $"Pesagem {linha.IdPesagem} — documento recebido e o que foi enviado ao SAP",
+            ClientSize = new Size(900, 650),
             StartPosition = FormStartPosition.CenterParent
         };
         janela.Controls.Add(new TextBox
@@ -263,9 +263,73 @@ public partial class FrmDevolutivasSd : Form
             Multiline = true, ReadOnly = true, Dock = DockStyle.Fill,
             ScrollBars = ScrollBars.Both, WordWrap = false,
             Font = new Font(FontFamily.GenericMonospace, 9F),
-            Text = Formatar(linha.PayloadJson)
+            Text = Dossie(linha)
         });
         janela.ShowDialog(this);
+    }
+
+    /// <summary>
+    /// Tudo o que se sabe sobre uma pesagem, em um texto so: o documento que o Guardian mandou e
+    /// o corpo exato enviado ao SAP em cada passo.
+    ///
+    /// Existe porque o fluxo passou a rodar SOZINHO. Enquanto cada passo tinha previa, o operador
+    /// via o que seria mandado antes de confirmar; agora ninguem ve. Sem isto, descobrir o que o
+    /// motor enviou exigiria consultar o banco a mao.
+    /// </summary>
+    private string Dossie(DevolutivaSdLinha linha)
+    {
+        var remessa = remessasConhecidas.FirstOrDefault(
+            x => string.Equals(x.IdPesagem, linha.IdPesagem, StringComparison.Ordinal));
+
+        var partes = new List<string>
+        {
+            "===== DOCUMENTO RECEBIDO DO GUARDIAN =====",
+            Formatar(linha.PayloadJson)
+        };
+
+        void Passo(string titulo, string? estado, string? json, string? mensagens)
+        {
+            partes.Add("");
+            partes.Add($"===== {titulo} =====");
+            if (estado is null) { partes.Add("(ainda não executado)"); return; }
+            partes.Add($"Situação: {estado}");
+            if (!string.IsNullOrWhiteSpace(mensagens)) partes.Add($"SAP: {mensagens}");
+            // Nulo em remessa anterior a 007S7, quando so se guardava a impressao digital.
+            partes.Add(json is null ? "(corpo não registrado)" : Formatar(json));
+        }
+
+        if (remessa is null)
+        {
+            partes.Add("");
+            partes.Add("===== REMESSA =====");
+            partes.Add("(ainda não criada)");
+            return string.Join("\r\n", partes);
+        }
+
+        Passo($"PASSO 3 — CRIAR REMESSA {remessa.NumeroRemessa ?? "(sem número)"}",
+            remessa.Estado, remessa.PayloadJson, remessa.MensagensSap);
+        Passo("PASSO 4 — AJUSTE DO CABEÇALHO E DOS ITENS",
+            remessa.AjusteEstado, remessa.AjustePayloadJson, remessa.AjusteMensagens);
+        Passo("PASSO 5 — TEXTO DA NF-e (ZNFE)",
+            remessa.TextoEstado, remessa.TextoPayloadJson, null);
+
+        // A separacao so aparece onde existe: casca e fibra. Mostrar um passo vazio nos demais
+        // sugeriria que algo ficou por fazer.
+        if (EscopoExpedicaoSd.PickingNoFugaTES(remessa.SetorAtividade))
+        {
+            partes.Add("");
+            partes.Add("===== PASSO 6 — SEPARAÇÃO =====");
+            partes.Add(remessa.PickingEstado is null
+                ? "(ainda não confirmada)"
+                : $"Situação: {remessa.PickingEstado}");
+            // A acao nao tem corpo: a remessa vai na query, e nao no JSON.
+            partes.Add("POST ConfirmPickingAllItems?DeliveryDocument='"
+                + (remessa.NumeroRemessa ?? "") + "'  (sem corpo)");
+        }
+
+        partes.Add("");
+        partes.Add("A saída de mercadoria é feita dentro do SAP.");
+        return string.Join("\r\n", partes);
     }
 
     /// <summary>
@@ -511,7 +575,7 @@ public partial class FrmDevolutivasSd : Form
         var digital = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(json)));
 
-        try { await remessas!.ReservarAjusteAsync(linha.IdPesagem, digital, cancelamento.Token); }
+        try { await remessas!.ReservarAjusteAsync(linha.IdPesagem, digital, json, cancelamento.Token); }
         catch (AjusteRemessaSdJaFeitoException)
         {
             status.Text = $"{DateTime.Now:HH:mm:ss} — a remessa {numero} já tinha ajuste registrado; "
@@ -678,19 +742,19 @@ public partial class FrmDevolutivasSd : Form
 
         string? Impedimento()
         {
-            // Primeiro de tudo: isto nao e trabalho nosso. Dizer "indisponivel" sugeriria falha
-            // de configuracao, quando na verdade e limite de escopo.
-            if (!EscopoExpedicaoSd.ExecutadaPeloFugaTES) return EscopoExpedicaoSd.Motivo;
+            // Escopo primeiro, e por ETAPA. Dizer "indisponivel" sugeriria falha de configuracao,
+            // quando e limite de responsabilidade: a saida nunca e nossa; a separacao e nossa so
+            // em casca e fibra.
+            if (saida && !EscopoExpedicaoSd.SaidaNoFugaTES) return EscopoExpedicaoSd.MotivoSaida;
             if (remessas is null || expedicao is null)
                 return $"A {nome} está indisponível nesta sessão"
                     + (motivoIndisponivel is null ? "" : " — " + motivoIndisponivel) + ".";
             if (registrada is null || registrada.NumeroRemessa is null)
                 return $"A pesagem {linha.IdPesagem} ainda não tem remessa criada.";
-            // Picking so existe em casca e fibra. Fora deles o botao nao deve nem poder ser usado:
-            // nao e "desaconselhado", e um passo que nao pertence ao fluxo.
-            if (!saida && !SetorAtividadeSd.ExigePicking(registrada.SetorAtividade))
-                return $"O setor {registrada.SetorAtividade} não passa por separação. "
-                    + "O picking é apenas de casca (62) e fibra (66); siga direto para a saída.";
+            // Fora de casca e fibra o botao nao deve nem poder ser usado: nao e "desaconselhado",
+            // e um passo que nao pertence ao fluxo.
+            if (!saida && !EscopoExpedicaoSd.PickingNoFugaTES(registrada.SetorAtividade))
+                return EscopoExpedicaoSd.MotivoPicking(registrada.SetorAtividade);
             // Recusa explicita nao bloqueia: o SAP respondeu que nao fez nada. Os demais sim -
             // e no caso da saida, "desconhecido" bloqueia para sempre, porque ela pode ter
             // acontecido e repetir duplicaria o movimento de estoque.
@@ -763,15 +827,10 @@ public partial class FrmDevolutivasSd : Form
                 + $"{erro.GetType().Name}: {erro.Message}. Nada foi enviado ao SAP.";
             return;
         }
-
+        // So o picking chega aqui: a saida e barrada no impedimento, antes de qualquer envio.
         var saida = etapa == EtapaExpedicaoSd.Saida;
         ExpedicaoSd desfecho;
-        try
-        {
-            desfecho = saida
-                ? await expedicao!.PostarSaidaAsync(numero, cancelamento.Token)
-                : await expedicao!.ConfirmarPickingAsync(numero, cancelamento.Token);
-        }
+        try { desfecho = await expedicao!.ConfirmarPickingAsync(numero, cancelamento.Token); }
         catch (Exception erro)
         {
             // Fica DESFECHO_DESCONHECIDO. Na saida isso e proposital: o POST pode ter chegado, e
@@ -863,7 +922,7 @@ public partial class FrmDevolutivasSd : Form
         var digital = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(final)));
 
-        try { await remessas!.ReservarTextoAsync(linha.IdPesagem, digital, cancelamento.Token); }
+        try { await remessas!.ReservarTextoAsync(linha.IdPesagem, digital, final, cancelamento.Token); }
         catch (TextoNfeSdJaGravadoException)
         {
             status.Text = $"{DateTime.Now:HH:mm:ss} — o texto da remessa {numero} já tinha gravação "
@@ -976,7 +1035,8 @@ public partial class FrmDevolutivasSd : Form
                 OrdemVenda: linha.OrdemVenda!, LinhaOrdem: linha.LinhaOrdem!,
                 SetorAtividade: setor, Quantidade: fluxo.Quantidade, Unidade: fluxo.Unidade,
                 NumeroRemessa: null, Estado: EstadoRemessaSd.DesfechoDesconhecido,
-                HttpStatus: 0, PayloadSha256: digital, MensagensSap: null), cancelamento.Token);
+                HttpStatus: 0, PayloadSha256: digital, MensagensSap: null)
+                { PayloadJson = json }, cancelamento.Token);
         }
         catch (RemessaSdJaCriadaException)
         {

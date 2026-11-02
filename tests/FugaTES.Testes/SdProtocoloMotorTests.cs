@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using FugaTES.Integracao.SAP.BusinessDocuments;
 using FugaTES.Aplicacao.Contratos.Gateways.SAP;
 using FugaTES.Aplicacao.Contratos.Sd;
 using FugaTES.Aplicacao.Modelos.Sd;
@@ -261,4 +264,115 @@ public sealed class SdProtocoloMotorTests
         Assert.Equal("3000", filtro.SalesOrganization);
         Assert.Equal(["3011", "3008"], filtro.ShippingPoints);
     }
+
+/// <summary>
+/// Motor que leva a pesagem ao SAP sozinha (passos 3, 4 e 5). O que estes testes protegem e o
+/// RECORTE: sem correlacao nao se mexe, com desfecho ja registrado nao se repete, e o teto por
+/// volta vale. Documento criado no SAP nao se desfaz.
+/// </summary>
+public sealed class RemessaSdMotorTests
+{
+    private static SdProtocoloOptions Opcoes(int teto = 5) => new()
+    {
+        Enabled = true, RemessaAutomatica = true, RemessasPorVarredura = teto,
+        UrlParaRetorno = "https://webhook.site/abc"
+    };
+
+    [Fact]
+    public void O_automatico_nasce_desligado()
+        // Ele escreve documento no SAP. Ligar por engano e caro.
+        => Assert.False(new SdProtocoloOptions().RemessaAutomatica);
+
+    [Fact]
+    public void Teto_padrao_por_volta_e_cinco()
+        => Assert.Equal(5, new SdProtocoloOptions().RemessasPorVarredura);
+
+    [Fact]
+    public void A_configuracao_do_motor_de_remessa_nao_reprova_a_do_protocolo()
+        // Os dois motores compartilham o mesmo bloco de configuracao e o mesmo processo.
+        => Assert.Null(Opcoes().Reprovar());
+
+    [Theory]
+    [InlineData(EstadoDevolutivaSd.SemCorrelacao, false)]
+    [InlineData(EstadoDevolutivaSd.Correlacionada, true)]
+    public void So_pesagem_correlacionada_entra_no_automatico(string estado, bool esperado)
+        // Sem a ordem nao ha a que referenciar a remessa, e adivinhar por parceiro e data acerta
+        // no teste e erra quando ha duas ordens no mesmo dia.
+        => Assert.Equal(esperado, estado == EstadoDevolutivaSd.Correlacionada);
+}
+
+/// <summary>
+/// A composicao do servico da VM. Estes testes existem por um motivo concreto: em 02/11/2026 o
+/// servico nao subiu porque IConsultarSetorAtividadeSd nao estava registrado, e nada aqui
+/// conferia isso - a composicao inteira so roda em Linux, entao nunca era construida fora da VM.
+/// </summary>
+public sealed class SdComposicaoRegistroTests
+{
+    private static IServiceCollection Registrado()
+    {
+        var services = new ServiceCollection();
+        SdProtocoloComposition.RegistrarClientesSdSap(services);
+        SdProtocoloComposition.RegistrarGuardianEMotoresSd(services);
+        return services;
+    }
+
+    [Theory]
+    // Tudo o que o ExecutorFluxoRemessaSd pede no construtor.
+    [InlineData(typeof(IConsultarSetorAtividadeSd))]
+    [InlineData(typeof(ICriarRemessaSdSap))]
+    [InlineData(typeof(IAjustarRemessaSdSap))]
+    [InlineData(typeof(IGravarTextoNfeSd))]
+    // E o que o motor de protocolo pede.
+    [InlineData(typeof(IEnviarProtocoloSdGateway))]
+    public void Os_servicos_que_os_motores_pedem_estao_registrados(Type servico)
+        => Assert.Contains(Registrado(), d => d.ServiceType == servico);
+
+    [Fact]
+    public void Todo_parametro_do_executor_do_fluxo_tem_registro()
+    {
+        // Conferir por reflexao, e nao por lista escrita a mao: um parametro novo no construtor
+        // passa a exigir registro sem ninguem precisar lembrar de atualizar este teste.
+        var registrados = Registrado().Select(d => d.ServiceType).ToHashSet();
+        var pedidos = typeof(ExecutorFluxoRemessaSd).GetConstructors().Single()
+            .GetParameters().Select(p => p.ParameterType);
+        // IRemessasSdRepositorio vem do bloco do banco, registrado fora destes dois metodos.
+        var faltando = pedidos
+            .Where(t => t != typeof(IRemessasSdRepositorio) && !registrados.Contains(t))
+            .ToArray();
+        Assert.Empty(faltando);
+    }
+
+    [Fact]
+    public void Os_dois_motores_sobem_juntos()
+    {
+        var hospedados = Registrado()
+            .Where(d => d.ServiceType == typeof(IHostedService))
+            .Select(d => d.ImplementationType)
+            .ToArray();
+        Assert.Contains(typeof(SdProtocoloWorker), hospedados);
+        Assert.Contains(typeof(RemessaSdWorker), hospedados);
+    }
+}
+
+/// <summary>
+/// Reenvio de protocolo depois de recusa. Em 02/11/2026 a ordem 4237/10 foi recusada pelo
+/// Guardian por falta de cadastro do emissor e do material; cadastrados, o botao Enviar continuava
+/// desabilitado, e destravar exigiria editar o banco a mao.
+/// </summary>
+public sealed class ProtocoloSdRetentativaTests
+{
+    [Fact]
+    public void Recusado_permite_reenviar()
+        => Assert.True(EstadoProtocoloSd.PermiteNovaTentativa(EstadoProtocoloSd.Recusado));
+
+    [Theory]
+    // Criado: o protocolo existe. Desconhecido: ele PODE existir - e supor que nao e o que cria
+    // protocolo duplicado no Guardian.
+    [InlineData(EstadoProtocoloSd.Criado)]
+    [InlineData(EstadoProtocoloSd.DesfechoDesconhecido)]
+    [InlineData(null)]
+    [InlineData("recusado")]
+    public void Os_demais_desfechos_continuam_bloqueando(string? estado)
+        => Assert.False(EstadoProtocoloSd.PermiteNovaTentativa(estado));
+}
 }

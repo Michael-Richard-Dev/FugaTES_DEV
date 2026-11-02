@@ -129,10 +129,10 @@ public sealed class RemessaSdHttpGuard(HttpMessageHandler inner) : DelegatingHan
         var entidadeTexto = Entidade(caminho, TextoNfeSdSapClient.Entidade);
         var ordem = origemOk
             && caminho.StartsWith(OrdensVendaSdComposition.RotaAprovada, StringComparison.Ordinal);
-        // Passo 6: duas acoes do servico, pelo caminho exato. A remessa vai na query.
+        // Passo 6: SO o picking. A saida de mercadoria e feita dentro do SAP e nao sai daqui -
+        // ela move estoque e nao se desfaz por API neste fluxo.
         var expedicao = origemOk
-            && (caminho.Equals(ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal)
-                || caminho.Equals(ExpedicaoSdSapClient.RotaSaida, StringComparison.Ordinal));
+            && caminho.Equals(ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal);
 
         var liberado =
             request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || expedicao

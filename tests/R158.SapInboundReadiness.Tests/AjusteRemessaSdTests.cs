@@ -1,3 +1,4 @@
+using FugaTES.Integracao.SAP.Http;
 using FugaTES.Aplicacao.Contratos.Sd;
 using System.Net;
 using FugaTES.Aplicacao.Modelos.Sd;
@@ -257,4 +258,85 @@ public sealed class AjusteRemessaSdTests
         // A saida pode ter acontecido. Repetir duplicaria o movimento de estoque - e estoque
         // movimentado nao volta por API neste fluxo.
         => Assert.False(EstadoSaidaSd.PermiteNovaTentativa(EstadoSaidaSd.DesfechoDesconhecido));
+
+    // --- Trava do SAP entre as nossas proprias gravacoes ------------------------------------
+    //
+    // Em 02/11/2026, na remessa 80003864: o PATCH do item passou (204) e o do cabecalho veio
+    // logo atras, antes de o SAP soltar a trava do documento — "MC/601 Requested object EVVBLKE
+    // is currently locked by user FUGATES". E corrida de tempo, nao erro de logica: a mesma
+    // sequencia passou na 80003859 no dia anterior.
+
+    [Fact]
+    public void A_mensagem_de_trava_e_reconhecida_pelo_codigo()
+    {
+        var corpo = """
+        {"error":{"code":"MC/601","message":{"value":"Requested object EVVBLKE is currently locked by user FUGATES"},
+         "innererror":{"errordetails":[
+           {"code":"MC/601","severity":"error","message":"Requested object EVVBLKE is currently locked by user FUGATES"},
+           {"code":"LE_SHP_ODATA_API_OD/026","severity":"error","message":"Error while updating delivery 80003864"}]}}}
+        """;
+        var mensagens = LeitorErroSapOData.Ler(corpo);
+        Assert.Contains(mensagens, m => m.Codigo == "MC/601");
+        // A lista inteira e preservada: o segundo codigo diz a consequencia, o primeiro a causa.
+        Assert.Contains(mensagens, m => m.Codigo == "LE_SHP_ODATA_API_OD/026");
+    }
+
+    [Fact]
+    public void Erro_de_negocio_nao_se_parece_com_trava()
+    {
+        // Insistir numa recusa de negocio so repetiria a recusa; a distincao tem de ser pelo
+        // codigo, e nao por "deu 400".
+        var corpo = """
+        {"error":{"code":"VL/096","message":{"value":"Order is incomplete - maintain the order"}}}
+        """;
+        var mensagens = LeitorErroSapOData.Ler(corpo);
+        Assert.DoesNotContain(mensagens, m => m.Codigo == "MC/601");
+        Assert.DoesNotContain(mensagens, m => m.Texto.Contains("currently locked", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // --- A retentativa de trava, agora compartilhada pelos tres clientes --------------------
+
+    [Fact]
+    public async Task Insiste_enquanto_a_recusa_for_trava_e_devolve_o_sucesso()
+    {
+        var travas = new[] { new MensagemSap("MC/601", "error", "Requested object EVVBLKE is currently locked by user FUGATES") };
+        var chamadas = 0;
+        var resultado = await TravaSapOData.InsistirSeTravadoAsync(
+            _ => { chamadas++; return Task.FromResult((Ok: chamadas >= 2, Mensagens: (IReadOnlyList<MensagemSap>)travas)); },
+            x => x.Ok, x => x.Mensagens, CancellationToken.None);
+        Assert.True(resultado.Ok);
+        Assert.Equal(2, chamadas);
+    }
+
+    [Fact]
+    public async Task Para_no_teto_quando_a_trava_nao_solta()
+    {
+        var travas = new[] { new MensagemSap("MC/601", "error", "currently locked") };
+        var chamadas = 0;
+        var resultado = await TravaSapOData.InsistirSeTravadoAsync(
+            _ => { chamadas++; return Task.FromResult((Ok: false, Mensagens: (IReadOnlyList<MensagemSap>)travas)); },
+            x => x.Ok, x => x.Mensagens, CancellationToken.None);
+        Assert.False(resultado.Ok);
+        Assert.Equal(TravaSapOData.Tentativas, chamadas);
+    }
+
+    [Fact]
+    public async Task Erro_de_negocio_nao_e_repetido()
+    {
+        // Insistir num "VL/096 ordem incompleta" so repetiria a recusa e marteria o SAP.
+        var negocio = new[] { new MensagemSap("VL/096", "error", "Order is incomplete - maintain the order") };
+        var chamadas = 0;
+        _ = await TravaSapOData.InsistirSeTravadoAsync(
+            _ => { chamadas++; return Task.FromResult((Ok: false, Mensagens: (IReadOnlyList<MensagemSap>)negocio)); },
+            x => x.Ok, x => x.Mensagens, CancellationToken.None);
+        Assert.Equal(1, chamadas);
+    }
+
+    [Theory]
+    [InlineData("MC/601", "qualquer texto", true)]
+    [InlineData("OUTRO", "Requested object EVVBLKE is currently locked by user FUGATES", true)]
+    [InlineData("VL/096", "Order is incomplete", false)]
+    [InlineData("VL/150", "Only 0,000 L available", false)]
+    public void A_trava_e_reconhecida_pelo_codigo_ou_pelo_texto(string codigo, string texto, bool esperado)
+        => Assert.Equal(esperado, TravaSapOData.EhTrava([new MensagemSap(codigo, "error", texto)]));
 }

@@ -16,6 +16,20 @@ namespace FugaTES.Testes;
 
 public sealed class SapBusinessPartnerReadOnlyTests
 {
+    /// <summary>
+    /// Clientes de escrita no SAP do fluxo SD, autorizados sob o mesmo portao do
+    /// MvpSapEscritaAdapters (Outbound Delivery CREATE/PATCH). Acrescentar um arquivo aqui e uma
+    /// decisao, nao um ajuste: este teste existe para que capacidade de escrita nova nao entre
+    /// no codigo sem alguem dizer sim.
+    /// </summary>
+    private static readonly string[] EscritaSdAutorizada =
+    [
+        "RemessaSdSapClient.cs",        // POST: cria a remessa
+        "AjusteRemessaSdSapClient.cs",  // PATCH: itens e cabecalho
+        "TextoNfeSdSapClient.cs",       // POST e PATCH: texto da NF-e
+        "ExpedicaoSdSapClient.cs"       // POST: separacao de casca e fibra
+    ];
+
     private static readonly DateTimeOffset Referencia = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -516,6 +530,18 @@ public sealed class SapBusinessPartnerReadOnlyTests
             // (Outbound Delivery CREATE/PATCH, Material Document 101). Verbos de escrita liberados apenas
             // neste arquivo de adapters; nenhum endpoint operacional literal ou segredo e permitido.
             if (Path.GetFileName(arquivo).Equals("MvpSapEscritaAdapters.cs", StringComparison.OrdinalIgnoreCase))
+                achados = achados.Where(achado =>
+                    !achado.Equals("HttpMethod.Post", StringComparison.OrdinalIgnoreCase) &&
+                    !achado.Equals("HttpMethod.Patch", StringComparison.OrdinalIgnoreCase)).ToArray();
+            // Mesmo portao, mesma capacidade (Outbound Delivery CREATE/PATCH), em clientes
+            // separados do fluxo SD. Autorizado pelo operador em 02/11/2026, depois que este
+            // controle acusou a escrita nova - que era o seu proposito.
+            //
+            // Cada arquivo faz UMA coisa: criar a remessa, ajustar cabecalho e itens, gravar o
+            // texto da NF-e, confirmar a separacao. A saida de mercadoria NAO esta em nenhum
+            // deles: e feita dentro do SAP, e o codigo que existia para ela foi removido em vez
+            // de ficar desligado.
+            if (EscritaSdAutorizada.Contains(Path.GetFileName(arquivo), StringComparer.OrdinalIgnoreCase))
                 achados = achados.Where(achado =>
                     !achado.Equals("HttpMethod.Post", StringComparison.OrdinalIgnoreCase) &&
                     !achado.Equals("HttpMethod.Patch", StringComparison.OrdinalIgnoreCase)).ToArray();

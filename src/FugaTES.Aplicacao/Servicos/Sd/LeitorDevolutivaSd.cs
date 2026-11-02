@@ -107,7 +107,17 @@ public static class LeitorDevolutivaSd
         var campos = CamposAdicionais(raiz).ToArray();
         var ordem = PorNumero(campos, CampoOrdemVenda) ?? PorNome(campos, NomesOrdem) ?? Primeiro(raiz, NomesOrdem);
         var linha = PorNumero(campos, CampoLinhaOrdem) ?? PorNome(campos, NomesLinha) ?? Primeiro(raiz, NomesLinha);
-        return (Normalizar(ordem), Normalizar(linha));
+
+        var ordemLimpa = Normalizar(ordem);
+        var linhaLimpa = Normalizar(linha);
+        // Meia correlacao nao e correlacao: com a ordem e sem a linha nao da para montar a chave,
+        // e nada pode ser feito com ela. Em 02/11/2026 a pesagem 0020341 chegou com o campo 1009
+        // vazio; guardar "ordem 4233, linha nenhuma" violava a regra da tabela - que exige tudo
+        // ou nada - e derrubava o receptor com 500.
+        //
+        // Nada se perde: o documento inteiro e guardado como veio, e a tela o mostra. Quem olhar
+        // ve a ordem ali, e decide.
+        return ordemLimpa is null || linhaLimpa is null ? (null, null) : (ordemLimpa, linhaLimpa);
     }
 
     // Aceita camposAdicionais na raiz ou dentro do primeiro item de to_Pesagem, que e onde o

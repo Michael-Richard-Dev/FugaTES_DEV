@@ -15,7 +15,8 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
     private const string Colunas =
         "id_pesagem, chave_natural, numero_remessa, estado, quantidade, unidade, " +
         "setor_atividade, http_status, mensagens_sap, criado_em, ajuste_estado, ajuste_mensagens, " +
-        "texto_estado, texto_mensagens, picking_estado, saida_estado, saida_mensagens";
+        "texto_estado, texto_mensagens, picking_estado, saida_estado, saida_mensagens, " +
+        "payload_json, ajuste_payload_json, texto_payload_json";
 
     public async Task<IReadOnlyList<RemessaSdLinha>> ListarAsync(int limite, CancellationToken ct)
     {
@@ -49,8 +50,8 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
             insert into fugates.remessa_sd
                 (id, id_pesagem, chave_natural, ordem_venda, linha_ordem, setor_atividade,
                  quantidade, unidade, numero_remessa, estado, http_status, payload_sha256,
-                 mensagens_sap, criado_em, atualizado_em)
-            values (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
+                 mensagens_sap, payload_json, criado_em, atualizado_em)
+            values (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), now())
             on conflict (id_pesagem) do update set
                  chave_natural = excluded.chave_natural,
                  ordem_venda = excluded.ordem_venda,
@@ -64,6 +65,7 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
                  payload_sha256 = excluded.payload_sha256,
                  -- A mensagem da recusa anterior sai: ela descrevia a tentativa que passou.
                  mensagens_sap = null,
+                 payload_json = excluded.payload_json,
                  atualizado_em = now()
              where fugates.remessa_sd.estado = 'RECUSADA'
             """);
@@ -79,6 +81,7 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
         comando.Parameters.AddWithValue((short)r.HttpStatus);
         comando.Parameters.AddWithValue(r.PayloadSha256);
         comando.Parameters.AddWithValue((object?)r.MensagensSap ?? DBNull.Value);
+        comando.Parameters.AddWithValue((object?)r.PayloadJson ?? DBNull.Value);
 
         int afetadas;
         try { afetadas = await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false); }
@@ -116,18 +119,19 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
     /// tambem o estado RECUSADA: o SAP recusou e nao criou nada, entao nova tentativa e o
     /// caminho esperado. Em 02/11/2026 isso travou a remessa 80003859 depois de um 412 no item.
     /// </summary>
-    public async Task ReservarAjusteAsync(string idPesagem, string payloadSha256, CancellationToken ct)
+    public async Task ReservarAjusteAsync(string idPesagem, string payloadSha256, string? payloadJson, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(idPesagem);
         ArgumentException.ThrowIfNullOrWhiteSpace(payloadSha256);
         await using var comando = fonte.CreateCommand("""
             update fugates.remessa_sd
-               set ajuste_estado = 'DESFECHO_DESCONHECIDO', ajuste_payload_sha256 = $2,
+               set ajuste_estado = 'DESFECHO_DESCONHECIDO', ajuste_payload_sha256 = $2, ajuste_payload_json = $3,
                    ajuste_em = now(), atualizado_em = now()
              where id_pesagem = $1 and (ajuste_estado is null or ajuste_estado = 'RECUSADA')
             """);
         comando.Parameters.AddWithValue(idPesagem);
         comando.Parameters.AddWithValue(payloadSha256);
+        comando.Parameters.AddWithValue((object?)payloadJson ?? DBNull.Value);
         if (await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false) == 1) return;
 
         // Zero linhas tem duas causas bem diferentes; dizer qual poupa uma investigacao.
@@ -157,18 +161,19 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
     }
 
     /// <summary>Mesma forma do ajuste: a condicao no UPDATE e o arbitro, nao uma leitura previa.</summary>
-    public async Task ReservarTextoAsync(string idPesagem, string textoSha256, CancellationToken ct)
+    public async Task ReservarTextoAsync(string idPesagem, string textoSha256, string? textoJson, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(idPesagem);
         ArgumentException.ThrowIfNullOrWhiteSpace(textoSha256);
         await using var comando = fonte.CreateCommand("""
             update fugates.remessa_sd
-               set texto_estado = 'DESFECHO_DESCONHECIDO', texto_sha256 = $2,
+               set texto_estado = 'DESFECHO_DESCONHECIDO', texto_sha256 = $2, texto_payload_json = $3,
                    texto_em = now(), atualizado_em = now()
              where id_pesagem = $1 and (texto_estado is null or texto_estado = 'RECUSADO')
             """);
         comando.Parameters.AddWithValue(idPesagem);
         comando.Parameters.AddWithValue(textoSha256);
+        comando.Parameters.AddWithValue((object?)textoJson ?? DBNull.Value);
         if (await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false) == 1) return;
 
         var linha = await ProcurarPorPesagemAsync(idPesagem, ct).ConfigureAwait(false);
@@ -281,6 +286,9 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
         TextoMensagens = l.IsDBNull(13) ? null : l.GetString(13),
         PickingEstado = l.IsDBNull(14) ? null : l.GetString(14),
         SaidaEstado = l.IsDBNull(15) ? null : l.GetString(15),
-        SaidaMensagens = l.IsDBNull(16) ? null : l.GetString(16)
+        SaidaMensagens = l.IsDBNull(16) ? null : l.GetString(16),
+        PayloadJson = l.IsDBNull(17) ? null : l.GetString(17),
+        AjustePayloadJson = l.IsDBNull(18) ? null : l.GetString(18),
+        TextoPayloadJson = l.IsDBNull(19) ? null : l.GetString(19)
     };
 }

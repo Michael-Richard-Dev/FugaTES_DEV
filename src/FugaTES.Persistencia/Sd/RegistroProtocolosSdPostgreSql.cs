@@ -47,6 +47,19 @@ public sealed class RegistroProtocolosSdPostgreSql(NpgsqlDataSource fonte) : IRe
                  codigo_emissor_guardian, protocolo_id, estado, http_status, payload_sha256,
                  url_retorno, mensagem_recusa, criado_em, atualizado_em)
             values (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
+            on conflict (chave_natural) do update set
+                 centro = excluded.centro,
+                 codigo_item_guardian = excluded.codigo_item_guardian,
+                 codigo_emissor_guardian = excluded.codigo_emissor_guardian,
+                 protocolo_id = excluded.protocolo_id,
+                 estado = excluded.estado,
+                 http_status = excluded.http_status,
+                 payload_sha256 = excluded.payload_sha256,
+                 url_retorno = excluded.url_retorno,
+                 -- A mensagem da recusa anterior sai: ela descrevia a tentativa que passou.
+                 mensagem_recusa = null,
+                 atualizado_em = now()
+             where fugates.protocolo_sd_ordem_venda.estado = 'RECUSADO'
             """);
         comando.Parameters.AddWithValue(envio.ChaveNatural);
         comando.Parameters.AddWithValue(envio.OrdemVenda);
@@ -61,10 +74,14 @@ public sealed class RegistroProtocolosSdPostgreSql(NpgsqlDataSource fonte) : IRe
         comando.Parameters.AddWithValue(envio.UrlRetorno);
         comando.Parameters.AddWithValue((object?)envio.MensagemRecusa ?? DBNull.Value);
 
-        try { await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false); }
-        // 23505 = unique_violation. A corrida termina aqui, no banco.
+        int afetadas;
+        try { afetadas = await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false); }
+        // 23505 = unique_violation, agora so por protocolo_id repetido; chave_natural cai no
+        // "on conflict". A corrida termina aqui, no banco.
         catch (PostgresException erro) when (erro.SqlState == "23505")
         { throw new ProtocoloSdJaRegistradoException(envio.ChaveNatural); }
+        // Zero linhas = a chave ja tem desfecho que NAO autoriza nova tentativa.
+        if (afetadas != 1) throw new ProtocoloSdJaRegistradoException(envio.ChaveNatural);
     }
 
     public async Task AtualizarDesfechoAsync(string chaveNatural, long? protocoloId, string estado,

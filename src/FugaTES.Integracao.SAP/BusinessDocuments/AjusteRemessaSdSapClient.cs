@@ -115,20 +115,21 @@ public sealed class AjusteRemessaSdSapClient(SapODataHttpExecutor executor) : IA
         return etapas;
     }
 
-    private async Task<EtapaAjusteRemessaSd> EnviarAsync(string etapa, Uri uri, string json,
+    private Task<EtapaAjusteRemessaSd> EnviarAsync(string etapa, Uri uri, string json,
         string token, string? etag, CancellationToken ct)
-    {
-        using var conteudo = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
-        conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        var resposta = await executor
-            .EnviarComCsrfAsync(HttpMethod.Patch, uri, conteudo, token, etag ?? "*", ct)
-            .ConfigureAwait(false);
+        => TravaSapOData.InsistirSeTravadoAsync(async cancelamento =>
+        {
+            using var conteudo = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
+            conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            var resposta = await executor
+                .EnviarComCsrfAsync(HttpMethod.Patch, uri, conteudo, token, etag ?? "*", cancelamento)
+                .ConfigureAwait(false);
 
-        var status = (int)resposta.Status;
-        // PATCH bem-sucedido no OData V2 devolve 204 sem corpo; 200 tambem ocorre.
-        var ok = resposta.Status is HttpStatusCode.NoContent or HttpStatusCode.OK;
-        return new(etapa, ok, status, ok ? [] : LeitorErroSapOData.Ler(resposta.Body));
-    }
+            // PATCH bem-sucedido no OData V2 devolve 204 sem corpo; 200 tambem ocorre.
+            var ok = resposta.Status is HttpStatusCode.NoContent or HttpStatusCode.OK;
+            return new EtapaAjusteRemessaSd(etapa, ok, (int)resposta.Status,
+                ok ? [] : LeitorErroSapOData.Ler(resposta.Body));
+        }, e => e.Ok, e => e.MensagensSap, ct);
 
     /// <summary>
     /// Chave do cabecalho. O numero e conferido antes de entrar na URL: a chave do OData e texto

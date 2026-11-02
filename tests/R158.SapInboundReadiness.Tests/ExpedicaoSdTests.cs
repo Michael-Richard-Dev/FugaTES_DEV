@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Modelos.Sd;
 using FugaTES.Aplicacao.Contratos.Sd;
 using System.Net;
 using FugaTES.Integracao.SAP.BusinessDocuments;
@@ -30,7 +31,8 @@ public sealed class ExpedicaoSdTests
         // aceita por alguns servidores e recusada por outros.
         Assert.DoesNotContain("//", ExpedicaoSdSapClient.RotaPicking[8..], StringComparison.Ordinal);
         Assert.EndsWith("/ConfirmPickingAllItems", ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal);
-        Assert.EndsWith("/PostGoodsIssue", ExpedicaoSdSapClient.RotaSaida, StringComparison.Ordinal);
+        // A saida de mercadoria nao tem mais rota neste cliente: o codigo foi removido, e o que
+        // sobra e a guarda HTTP, testada abaixo.
     }
 
     // --- Guarda HTTP ---------------------------------------------------------------------------
@@ -62,15 +64,6 @@ public sealed class ExpedicaoSdTests
         { return (false, contador.Chamadas); }
     }
 
-    [Fact]
-    public async Task Post_nas_duas_acoes_e_liberado()
-    {
-        Assert.True((await Enviar(HttpMethod.Post,
-            ExpedicaoSdSapClient.RotaPicking + "?DeliveryDocument='80001997'")).Passou);
-        Assert.True((await Enviar(HttpMethod.Post,
-            ExpedicaoSdSapClient.RotaSaida + "?DeliveryDocument='80001997'")).Passou);
-    }
-
     [Theory]
     // Outras acoes do mesmo servico nao fazem parte do fluxo.
     [InlineData("POST", "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/ReverseGoodsIssue")]
@@ -93,28 +86,65 @@ public sealed class ExpedicaoSdTests
         var contador = new Contador();
         using var client = new HttpClient(new RemessaSdHttpGuard(contador));
         using var pedido = new HttpRequestMessage(HttpMethod.Post,
-            "https://exemplo.invalido" + ExpedicaoSdSapClient.RotaSaida);
+            "https://exemplo.invalido" + "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/PostGoodsIssue");
         await Assert.ThrowsAnyAsync<Exception>(() => client.SendAsync(pedido, CancellationToken.None));
         Assert.Equal(0, contador.Chamadas);
     }
 
     // --- Escopo: ate onde vai o FugaTES -----------------------------------------------------
+    // --- Escopo, por ETAPA ------------------------------------------------------------------
     //
-    // Decisao do operador em 02/11/2026, conferida com o negocio: o FugaTES vai ate o texto da
-    // NF-e. Separacao e saida de mercadoria sao feitas dentro do SAP, por quem confere o
-    // carregamento. O documento "APIS SD para FUGATES" lista as duas APIs, mas enumerar a API nao
-    // diz quem a chama - foi uma suposicao minha ao construir o passo 6.
+    // Decisao do operador em 02/11/2026, em duas partes: a SAIDA de mercadoria e feita dentro do
+    // SAP, por quem confere o carregamento, e nunca e nossa. A SEPARACAO e nossa, mas so em casca
+    // (62) e fibra (66) - nos demais setores ela nao existe no processo.
+    //
+    // Eu tinha desligado as duas por escopo, de uma vez; o operador corrigiu: picking de casca e
+    // fibra e parte do fluxo e acontece depois do texto da NF-e.
 
     [Fact]
-    public void Expedicao_nao_e_executada_pelo_fugates()
-        => Assert.False(EscopoExpedicaoSd.ExecutadaPeloFugaTES);
+    public void A_saida_nunca_e_do_fugates()
+        => Assert.False(EscopoExpedicaoSd.SaidaNoFugaTES);
+
+    [Theory]
+    [InlineData(SetorAtividadeSd.Casca)]
+    [InlineData(SetorAtividadeSd.Fibra)]
+    public void O_picking_de_casca_e_fibra_e_do_fugates(string setor)
+        => Assert.True(EscopoExpedicaoSd.PickingNoFugaTES(setor));
+
+    [Theory]
+    [InlineData(SetorAtividadeSd.Biodiesel)]
+    [InlineData(SetorAtividadeSd.Graos)]
+    [InlineData(SetorAtividadeSd.Retrovenda)]
+    [InlineData(null)]
+    public void Nos_demais_setores_nao_ha_separacao(string? setor)
+        => Assert.False(EscopoExpedicaoSd.PickingNoFugaTES(setor));
 
     [Fact]
-    public void O_motivo_diz_onde_a_expedicao_acontece()
+    public void As_mensagens_dizem_o_motivo_e_nao_sugerem_defeito()
     {
-        // A mensagem precisa dizer que e limite de ESCOPO, e nao falha de configuracao: quem le
-        // "indisponivel" vai procurar defeito onde nao ha.
-        Assert.Contains("dentro do SAP", EscopoExpedicaoSd.Motivo, StringComparison.Ordinal);
-        Assert.DoesNotContain("indisponível", EscopoExpedicaoSd.Motivo, StringComparison.Ordinal);
+        // Quem le "indisponivel" vai procurar falha de configuracao onde ha limite de processo.
+        Assert.Contains("dentro do SAP", EscopoExpedicaoSd.MotivoSaida, StringComparison.Ordinal);
+        Assert.DoesNotContain("indisponível", EscopoExpedicaoSd.MotivoSaida, StringComparison.Ordinal);
+        var picking = EscopoExpedicaoSd.MotivoPicking(SetorAtividadeSd.Biodiesel);
+        Assert.Contains("casca (62) e fibra (66)", picking, StringComparison.Ordinal);
+        Assert.DoesNotContain("indisponível", picking, StringComparison.Ordinal);
+    }
+
+    // --- A guarda HTTP acompanha a decisao ---------------------------------------------------
+
+    [Fact]
+    public async Task O_picking_sai_pela_tela()
+        => Assert.True((await Enviar(HttpMethod.Post,
+            ExpedicaoSdSapClient.RotaPicking + "?DeliveryDocument='80001997'")).Passou);
+
+    [Fact]
+    public async Task A_saida_de_mercadoria_nao_sai_nem_pela_tela()
+    {
+        // Mesmo com o botao fora de escopo, a guarda recusa: duas travas para o passo que move
+        // estoque e nao se desfaz.
+        var (passou, chamadas) = await Enviar(HttpMethod.Post,
+            "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/PostGoodsIssue" + "?DeliveryDocument='80001997'");
+        Assert.False(passou);
+        Assert.Equal(0, chamadas);
     }
 }

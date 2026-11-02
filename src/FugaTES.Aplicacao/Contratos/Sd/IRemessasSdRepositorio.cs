@@ -46,7 +46,14 @@ public static class EstadoAjusteRemessaSd
 public sealed record RemessaSdRegistro(
     string IdPesagem, string ChaveNatural, string OrdemVenda, string LinhaOrdem,
     string SetorAtividade, string Quantidade, string Unidade,
-    string? NumeroRemessa, string Estado, int HttpStatus, string PayloadSha256, string? MensagensSap);
+    string? NumeroRemessa, string Estado, int HttpStatus, string PayloadSha256, string? MensagensSap)
+{
+    /// <summary>
+    /// O corpo enviado ao SAP. Guardado alem do sha256 porque, com o fluxo rodando sozinho,
+    /// ninguem ve a previa - e a tela precisa poder mostrar o que foi mandado.
+    /// </summary>
+    public string? PayloadJson { get; init; }
+}
 
 /// <summary>
 /// Passo 5: gravacao do texto ZNFE. Nulo significa "texto ainda nao tocado por nos" - o texto da
@@ -88,11 +95,27 @@ public static class EtapaExpedicaoSd
 /// </summary>
 public static class EscopoExpedicaoSd
 {
-    public const bool ExecutadaPeloFugaTES = false;
+    /// <summary>
+    /// A separacao e nossa APENAS em casca e fibra. Decisao do operador em 02/11/2026: naqueles
+    /// dois fluxos ela e parte do processo e acontece depois do texto da NF-e; nos demais ela
+    /// simplesmente nao existe.
+    /// </summary>
+    public static bool PickingNoFugaTES(string? setorAtividade)
+        => Modelos.Sd.SetorAtividadeSd.ExigePicking(setorAtividade);
 
-    public const string Motivo =
-        "A separação e a saída de mercadoria são feitas dentro do SAP, não pelo FugaTES. "
-        + "O nosso fluxo termina no texto da NF-e.";
+    /// <summary>
+    /// A saida de mercadoria NUNCA e nossa - e feita dentro do SAP, por quem confere o
+    /// carregamento. Ela move estoque e gera documento de material, e nao se desfaz por API
+    /// neste fluxo; manter a decisao fora daqui e deliberado.
+    /// </summary>
+    public const bool SaidaNoFugaTES = false;
+
+    public const string MotivoSaida =
+        "A saída de mercadoria é feita dentro do SAP, não pelo FugaTES.";
+
+    public static string MotivoPicking(string? setorAtividade)
+        => $"O setor {setorAtividade} não passa por separação. "
+            + "O picking é apenas de casca (62) e fibra (66).";
 }
 
 /// <summary>Passo 6, parte 1: confirmacao do picking de todos os itens.</summary>
@@ -131,6 +154,16 @@ public sealed record RemessaSdLinha(
     string Quantidade, string Unidade, string SetorAtividade,
     int HttpStatus, string? MensagensSap, DateTimeOffset CriadoEm)
 {
+    /// <summary>
+    /// Corpos enviados ao SAP em cada passo, como foram enviados. Nulos nas remessas anteriores a
+    /// 007S7, quando so se guardava a impressao digital.
+    /// </summary>
+    public string? PayloadJson { get; init; }
+
+    public string? AjustePayloadJson { get; init; }
+
+    public string? TextoPayloadJson { get; init; }
+
     /// <summary>Passo 4. Nulo quando a remessa ainda nao foi ajustada.</summary>
     public string? AjusteEstado { get; init; }
 
@@ -169,7 +202,7 @@ public interface IRemessasSdRepositorio
     /// Lanca <see cref="AjusteRemessaSdJaFeitoException"/> quando a remessa ja tem ajuste: o
     /// cabecalho so recebe o peso de UMA pesagem.
     /// </summary>
-    Task ReservarAjusteAsync(string idPesagem, string payloadSha256, CancellationToken ct);
+    Task ReservarAjusteAsync(string idPesagem, string payloadSha256, string? payloadJson, CancellationToken ct);
 
     Task FecharAjusteAsync(string idPesagem, string estado, int httpStatus,
         string? mensagens, CancellationToken ct);
@@ -179,7 +212,7 @@ public interface IRemessasSdRepositorio
     /// quando a remessa ja teve o texto gravado por nos: regravar correria o risco de empurrar de
     /// novo o que ja entrou.
     /// </summary>
-    Task ReservarTextoAsync(string idPesagem, string textoSha256, CancellationToken ct);
+    Task ReservarTextoAsync(string idPesagem, string textoSha256, string? textoJson, CancellationToken ct);
 
     Task FecharTextoAsync(string idPesagem, string estado, int httpStatus, bool criou,
         string? mensagens, CancellationToken ct);

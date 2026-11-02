@@ -61,6 +61,10 @@ public static class SdProtocoloComposition
         services.AddSingleton(_ => new NpgsqlDataSourceBuilder(conexao).Build());
         services.AddSingleton<IRegistroProtocolosSd>(sp =>
             new RegistroProtocolosSdPostgreSql(sp.GetRequiredService<NpgsqlDataSource>()));
+        services.AddSingleton<IDevolutivasSdRepositorio>(sp =>
+            new DevolutivasSdPostgreSql(sp.GetRequiredService<NpgsqlDataSource>()));
+        services.AddSingleton<IRemessasSdRepositorio>(sp =>
+            new RemessasSdPostgreSql(sp.GetRequiredService<NpgsqlDataSource>()));
 
         // Um HttpClient por destino, cada um com a sua guarda: a do SAP so deixa passar GET na
         // colecao de ordens; a do Guardian so POST em token e protocolo.
@@ -91,7 +95,35 @@ public static class SdProtocoloComposition
             new CookieContainer()));
         services.AddSingleton<IConsultaOrdensVendaSdSap>(sp =>
             new OrdensVendaSdConsultaAdapter(sp.GetRequiredService<SapODataHttpExecutor>()));
+        RegistrarClientesSdSap(services);
+        RegistrarGuardianEMotoresSd(services);
+    }
 
+    /// <summary>
+    /// Os clientes dos passos 3, 4 e 5. Separado para poder ser conferido em teste: a composicao
+    /// inteira so roda em Linux, e por isso nunca era construida fora da VM - foi assim que a
+    /// falta de IConsultarSetorAtividadeSd so apareceu ao subir o servico, em 02/11/2026.
+    /// </summary>
+    public static void RegistrarClientesSdSap(IServiceCollection services)
+    {
+        // Os quatro clientes dos passos 3, 4 e 5. Faltavam: a composicao tinha sido escrita so
+        // para o motor de protocolo, e o servico nao subia por nao achar IConsultarSetorAtividadeSd.
+        services.AddSingleton<IConsultarSetorAtividadeSd>(sp =>
+            new SetorAtividadeSdConsulta(sp.GetRequiredService<SapODataHttpExecutor>()));
+        services.AddSingleton<ICriarRemessaSdSap>(sp =>
+            new RemessaSdSapClient(sp.GetRequiredService<SapODataHttpExecutor>()));
+        services.AddSingleton<IAjustarRemessaSdSap>(sp =>
+            new AjusteRemessaSdSapClient(sp.GetRequiredService<SapODataHttpExecutor>()));
+        services.AddSingleton<IGravarTextoNfeSd>(sp =>
+            new TextoNfeSdSapClient(sp.GetRequiredService<SapODataHttpExecutor>()));
+        // Expedicao: so o picking de casca e fibra sai daqui. A saida de mercadoria e do SAP.
+        services.AddSingleton<IExpedirRemessaSdSap>(sp =>
+            new ExpedicaoSdSapClient(sp.GetRequiredService<SapODataHttpExecutor>()));
+    }
+
+    /// <summary>O envio ao Guardian e os dois motores que rodam no mesmo processo.</summary>
+    public static void RegistrarGuardianEMotoresSd(IServiceCollection services)
+    {
         services.AddSingleton(_ => new GuardianHttpOptions
         {
             BaseUrl = new Uri(GuardianAprovado),
@@ -109,7 +141,16 @@ public static class SdProtocoloComposition
                     sp.GetRequiredService<ICredenciaisGuardianSet26Provider>()));
         });
 
+        // O mesmo processo leva os dois motores: varrem o mesmo SAP, com as mesmas credenciais e
+        // o mesmo banco. Separar em dois servicos duplicaria credencial e unidade sem ganho.
+        services.AddSingleton(sp => new ExecutorFluxoRemessaSd(
+            sp.GetRequiredService<IRemessasSdRepositorio>(),
+            sp.GetRequiredService<IConsultarSetorAtividadeSd>(),
+            sp.GetRequiredService<ICriarRemessaSdSap>(),
+            sp.GetRequiredService<IAjustarRemessaSdSap>(),
+            sp.GetRequiredService<IGravarTextoNfeSd>()));
         services.AddHostedService<SdProtocoloWorker>();
+        services.AddHostedService<RemessaSdWorker>();
     }
 }
 
@@ -120,11 +161,37 @@ public sealed class MotorSdSapGuard(HttpMessageHandler inner) : DelegatingHandle
     {
         ArgumentNullException.ThrowIfNull(request);
         var uri = request.RequestUri;
-        var liberado = uri is not null
+        var origemOk = uri is not null
             && uri.Scheme == "https" && uri.UserInfo.Length == 0 && uri.Fragment.Length == 0
-            && uri.GetLeftPart(UriPartial.Authority) == SdProtocoloComposition.OrigemSapAprovada
-            && request.Method == HttpMethod.Get
-            && uri.AbsolutePath.StartsWith(SdProtocoloComposition.RotaSapAprovada, StringComparison.Ordinal);
+            && uri.GetLeftPart(UriPartial.Authority) == SdProtocoloComposition.OrigemSapAprovada;
+        var caminho = origemOk ? uri!.AbsolutePath : "";
+
+        // Colecao: a rota exata. Entidade: a rota seguida da chave entre parenteses. A distincao
+        // importa no PATCH: PATCH na colecao nao tem alvo definido.
+        static bool Entidade(string caminho, string colecao)
+            => caminho.StartsWith(colecao + "(", StringComparison.Ordinal)
+               && caminho.EndsWith(")", StringComparison.Ordinal);
+
+        var ordem = origemOk
+            && caminho.StartsWith(SdProtocoloComposition.RotaSapAprovada, StringComparison.Ordinal);
+        var colecaoRemessa = caminho.Equals(RemessaSdSapClient.Rota, StringComparison.Ordinal);
+        var entidadeRemessa = Entidade(caminho, AjusteRemessaSdSapClient.Cabecalho)
+                              || Entidade(caminho, AjusteRemessaSdSapClient.Item);
+        var navegacaoTexto = origemOk
+            && caminho.StartsWith(AjusteRemessaSdSapClient.Cabecalho + "(", StringComparison.Ordinal)
+            && caminho.EndsWith(TextoNfeSdSapClient.Navegacao, StringComparison.Ordinal);
+        var entidadeTexto = Entidade(caminho, TextoNfeSdSapClient.Entidade);
+
+        // Separacao de casca e fibra. A SAIDA de mercadoria nao sai daqui em hipotese alguma.
+        var picking = origemOk
+            && caminho.Equals(ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal);
+        // Os mesmos limites da tela do operador. Em especial: a saida de mercadoria NAO sai
+        // daqui - e feita dentro do SAP (ver EscopoExpedicaoSd).
+        var liberado =
+            request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || picking
+            : request.Method == HttpMethod.Patch ? entidadeRemessa || entidadeTexto
+            : request.Method == HttpMethod.Get
+                && (ordem || colecaoRemessa || entidadeRemessa || navegacaoTexto);
         if (!liberado) throw new InvalidOperationException("SD_MOTOR_SAP_ROTA_OU_METODO_PROIBIDO");
         return base.SendAsync(request, ct);
     }

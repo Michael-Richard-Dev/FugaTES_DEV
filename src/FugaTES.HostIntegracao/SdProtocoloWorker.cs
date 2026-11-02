@@ -128,6 +128,9 @@ public sealed class SdProtocoloWorker(
             // encheria o log. Ela continua visivel na tela, com o motivo.
             catch (ProtocoloSdBloqueadoException) { pulados++; continue; }
 
+            // Desfecho ja registrado tira a linha do automatico, INCLUSIVE recusa: a causa de uma
+            // recusa do Guardian (cadastro faltando) demora para ser resolvida, e insistir a cada
+            // volta encheria o journal sem adiantar. O reenvio continua sendo por clique, na tela.
             if (conhecidos.Any(p => string.Equals(p.ChaveNatural, chave, StringComparison.Ordinal)))
                 continue;
 

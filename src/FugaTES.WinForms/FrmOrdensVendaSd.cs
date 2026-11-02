@@ -324,7 +324,13 @@ public partial class FrmOrdensVendaSd : Form
             ? null
             : jaEnviados.FirstOrDefault(p => string.Equals(p.ChaveNatural, chave, StringComparison.Ordinal));
         aviso.Text = Situacao(pedido, jaRegistrado);
-        enviar.Enabled = pedido is not null && jaRegistrado is null && guardian is not null
+        // Recusa nao bloqueia: o Guardian respondeu que nao criou nada, e a causa costuma estar
+        // fora de nos - em 02/11/2026, falta de cadastro do emissor e do material da ordem
+        // 4237/10. Cadastrados, reenviar e o caminho esperado. Criado e desfecho desconhecido
+        // continuam bloqueando, porque ali o protocolo existe ou pode existir.
+        var podeReenviar = jaRegistrado is null
+            || EstadoProtocoloSd.PermiteNovaTentativa(jaRegistrado.Estado);
+        enviar.Enabled = pedido is not null && podeReenviar && guardian is not null
             && registro is not null;
         enviar.Click += async (_, _) =>
         {
@@ -474,6 +480,11 @@ public partial class FrmOrdensVendaSd : Form
             try { chave = MapeadorProtocoloSd.ChaveNatural(l); pedido = MapeadorProtocoloSd.Montar(l, UrlRetornoInicial, cadastro); }
             catch (ProtocoloSdBloqueadoException) { continue; }
 
+            // Qualquer desfecho ja registrado tira a linha do automatico, INCLUSIVE recusa - ao
+            // contrario do botao Enviar, que permite reenviar depois de recusada. A assimetria e
+            // de proposito: a causa de uma recusa do Guardian (cadastro faltando) demora para ser
+            // resolvida, e insistir a cada 30 segundos encheria o log sem adiantar nada. Quem
+            // corrigiu o cadastro sabe disso, e clica.
             if (jaEnviados.Any(p => string.Equals(p.ChaveNatural, chave, StringComparison.Ordinal))) continue;
 
             var desfecho = await ExecutarEnvioAsync(pedido, chave, l);

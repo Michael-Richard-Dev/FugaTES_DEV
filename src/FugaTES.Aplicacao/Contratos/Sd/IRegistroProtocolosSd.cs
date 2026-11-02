@@ -11,6 +11,21 @@ public static class EstadoProtocoloSd
     /// chegou e o que cria protocolo duplicado no Guardian.
     /// </summary>
     public const string DesfechoDesconhecido = "DESFECHO_DESCONHECIDO";
+
+    /// <summary>
+    /// Se a linha pode ser enviada DE NOVO depois de um desfecho.
+    ///
+    /// So <see cref="Recusado"/> permite. A causa de uma recusa do Guardian costuma estar fora de
+    /// nos e ser corrigivel: em 02/11/2026 a ordem 4237/10 foi recusada por falta de cadastro do
+    /// emissor e do material. Cadastrados, reenviar e o caminho esperado - e, sem isto, destravar
+    /// exigia editar o banco a mao.
+    ///
+    /// <see cref="Criado"/> e <see cref="DesfechoDesconhecido"/> continuam bloqueando: no primeiro
+    /// o protocolo existe; no segundo ele PODE existir, e supor que nao existe e o que cria
+    /// protocolo duplicado no Guardian.
+    /// </summary>
+    public static bool PermiteNovaTentativa(string? estado)
+        => string.Equals(estado, Recusado, StringComparison.Ordinal);
 }
 
 /// <summary>O que se grava depois de um envio, com ou sem sucesso.</summary>

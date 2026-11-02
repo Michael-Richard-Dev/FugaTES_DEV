@@ -63,17 +63,22 @@ public sealed class TextoNfeSdSapClient(SapODataHttpExecutor executor) : IGravar
         var token = await executor.ObterTokenCsrfAsync(
             executor.ConstruirUri(RotaNavegacao(numeroRemessa)), ct).ConfigureAwait(false);
 
-        using var conteudo = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
-        conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        var resposta = await executor.EnviarComCsrfAsync(
-            criar ? HttpMethod.Post : HttpMethod.Patch, uri, conteudo, token,
-            criar ? null : atual.ETag ?? "*", ct).ConfigureAwait(false);
+        // O texto pertence a remessa, e a remessa pode estar travada pela gravacao anterior - o
+        // ajuste acaba de escrever nela quando o fluxo roda sozinho. Ver TravaSapOData.
+        return await TravaSapOData.InsistirSeTravadoAsync(async cancelamento =>
+        {
+            using var conteudo = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
+            conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            var resposta = await executor.EnviarComCsrfAsync(
+                criar ? HttpMethod.Post : HttpMethod.Patch, uri, conteudo, token,
+                criar ? null : atual.ETag ?? "*", cancelamento).ConfigureAwait(false);
 
-        var status = (int)resposta.Status;
-        var ok = criar
-            ? resposta.Status is HttpStatusCode.Created or HttpStatusCode.OK
-            : resposta.Status is HttpStatusCode.NoContent or HttpStatusCode.OK;
-        return new(ok, status, criar, ok ? [] : LeitorErroSapOData.Ler(resposta.Body));
+            var ok = criar
+                ? resposta.Status is HttpStatusCode.Created or HttpStatusCode.OK
+                : resposta.Status is HttpStatusCode.NoContent or HttpStatusCode.OK;
+            return new GravacaoTextoNfeSd(ok, (int)resposta.Status, criar,
+                ok ? [] : LeitorErroSapOData.Ler(resposta.Body));
+        }, g => g.Ok, g => g.MensagensSap, ct).ConfigureAwait(false);
     }
 
     public static string RotaNavegacao(string numeroRemessa)
