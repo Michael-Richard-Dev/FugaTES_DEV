@@ -27,7 +27,9 @@ public static class DevolutivaSdEndpoint
         // GET/HEAD respondem para quem precisa so confirmar que a rota existe, sem gravar nada.
         endpoints.MapMethods(Route, ["GET", "HEAD"], (HttpContext context) =>
             context.Response.WriteAsJsonAsync(
-                new { status = "RECEIVER_READY", probe = true, persisted = false, method = "POST", endpoint = Route },
+                // "mensagem" tambem aqui: quem testa a rota pelo Guardian ve OK em vez de erro.
+                new { mensagem = MensagemSucesso, status = "RECEIVER_READY", probe = true,
+                      persisted = false, method = "POST", endpoint = Route },
                 context.RequestAborted));
     }
 
@@ -73,6 +75,8 @@ public static class DevolutivaSdEndpoint
             // parecer falha. Nada e gravado de novo.
             await context.Response.WriteAsJsonAsync(new
             {
+                // Reenvio e sucesso do ponto de vista do Guardian: nao ha o que reenviar de novo.
+                mensagem = MensagemSucesso,
                 status = "JA_RECEBIDA",
                 idPesagem = devolutiva.IdPesagem,
                 persisted = false
@@ -82,6 +86,12 @@ public static class DevolutivaSdEndpoint
 
         await context.Response.WriteAsJsonAsync(new
         {
+            // Primeiro campo de proposito: e o unico que o Guardian le. A integracao dele tem
+            // "Campo de Retorno do Metodo = mensagem" e "Valor em Caso de Sucesso = OK"
+            // (conferido na tela de configuracao em 02/11/2026). Sem ele, o Guardian marca falha
+            // mesmo com HTTP 200 e corpo valido - erro 309087, "o campo configurado como result
+            // nao foi encontrado" - e fica reenviando para sempre.
+            mensagem = MensagemSucesso,
             status = "RECEBIDA",
             idPesagem = devolutiva.IdPesagem,
             persisted = true,
@@ -113,10 +123,20 @@ public static class DevolutivaSdEndpoint
         return Encoding.UTF8.GetString(destino.ToArray());
     }
 
+    /// <summary>
+    /// O que o Guardian exige no campo "mensagem" para considerar a chamada bem-sucedida. Nao e
+    /// escolha nossa: esta na configuracao da integracao dele, em "Valor do Retorno do Metodo em
+    /// Caso de Sucesso".
+    /// </summary>
+    public const string MensagemSucesso = "OK";
+
     private static Task ResponderAsync(HttpContext context, int status, string codigo, string? detalhe = null)
     {
         context.Response.StatusCode = status;
         return context.Response.WriteAsJsonAsync(
-            new { status = "RECUSADA", codigo, detalhe, persisted = false }, context.RequestAborted);
+            // Na recusa, "mensagem" leva o CODIGO - diferente de "OK", que e o que faz o Guardian
+            // marcar falha, e com a causa visivel no painel dele em vez de um erro generico.
+            new { mensagem = codigo, status = "RECUSADA", codigo, detalhe, persisted = false },
+            context.RequestAborted);
     }
 }

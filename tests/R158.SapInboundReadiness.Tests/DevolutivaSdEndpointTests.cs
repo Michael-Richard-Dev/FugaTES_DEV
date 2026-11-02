@@ -162,4 +162,42 @@ public sealed class DevolutivaSdEndpointTests
         Assert.Equal("/api/guardian/set26/callback/venda", DevolutivaSdEndpoint.Route);
         Assert.NotEqual(ToledoCallbackProbeEndpoint.ReceiptRoute, DevolutivaSdEndpoint.Route);
     }
+
+    // --- O contrato de resposta que o Guardian exige --------------------------------------
+    //
+    // A integracao do Guardian tem "Campo de Retorno do Metodo = mensagem" e "Valor em Caso de
+    // Sucesso = OK". Sem o campo "mensagem", ele marca falha mesmo recebendo HTTP 200 e corpo
+    // valido (erro 309087, "o campo configurado como result nao foi encontrado") e fica
+    // reenviando. Conferido na tela de configuracao em 02/11/2026, com a pesagem 0020338.
+
+    [Fact]
+    public async Task Sucesso_devolve_mensagem_OK_para_o_guardian()
+    {
+        var (status, corpo) = await Postar(Venda, repositorio: new RepositorioFalso());
+        Assert.Equal(200, status);
+        Assert.Equal("OK", corpo.GetProperty("mensagem").GetString());
+    }
+
+    [Fact]
+    public async Task Reenvio_tambem_devolve_mensagem_OK()
+    {
+        // Reenvio e sucesso para o Guardian: nao ha o que reenviar de novo.
+        var repositorio = new RepositorioFalso();
+        _ = await Postar(Venda, repositorio: repositorio);
+        var segunda = await Postar(Venda, repositorio: repositorio);
+        Assert.Equal("OK", segunda.Corpo.GetProperty("mensagem").GetString());
+    }
+
+    [Fact]
+    public async Task Recusa_devolve_mensagem_diferente_de_OK_com_a_causa()
+    {
+        // Tipo "E" e recebimento, nao venda.
+        var entrada = Venda.Replace("\"TipoPesagem\":\"S\"", "\"TipoPesagem\":\"E\"", StringComparison.Ordinal);
+        var (status, corpo) = await Postar(entrada, repositorio: new RepositorioFalso());
+        Assert.Equal(400, status);
+        var mensagem = corpo.GetProperty("mensagem").GetString();
+        Assert.NotEqual("OK", mensagem);
+        // A causa vai no proprio campo que ele le, e nao so num campo que ele ignora.
+        Assert.Equal(corpo.GetProperty("codigo").GetString(), mensagem);
+    }
 }
