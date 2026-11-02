@@ -220,4 +220,43 @@ public sealed class DevolutivaSdTests
         Assert.Equal(10000m, lida.PesoTara);
         Assert.Equal(5000m, lida.PesoLiquido);
     }
+
+    // --- Os dois formatos de data do Guardian -----------------------------------------------
+    //
+    // O caminho AUTOMATICO manda "11/2/2026 1:03:39 PM" (mes/dia, sem zero a esquerda, AM/PM);
+    // o MANUAL manda "02/11/2026 09:12:39" (dia/mes, com zero, 24 horas). Sao a mesma data.
+    // Em 02/11/2026 a pesagem 0020340 foi recusada porque os formatos exigiam dois digitos.
+
+    private static string ComData(string data)
+        => $$"""
+        {"SistemaBalanca":"Toledo","DataPesagem":"{{data}}","TipoPesagem":"S","IdPesagem":"X1",
+         "Centro":"3008","PesoBruto":"5000.0","PesoTara":"2000.0","PesoAposDesconto":"3000.0"}
+        """;
+
+    [Theory]
+    // Automatico: mes/dia com AM/PM, com e sem zero a esquerda.
+    [InlineData("11/2/2026 1:03:39 PM", 2026, 11, 2, 13, 3, 39)]
+    [InlineData("11/02/2026 01:03:39 PM", 2026, 11, 2, 13, 3, 39)]
+    [InlineData("10/31/2026 11:40:18 AM", 2026, 10, 31, 11, 40, 18)]
+    // Manual: dia/mes em 24 horas.
+    [InlineData("02/11/2026 09:12:39", 2026, 11, 2, 9, 12, 39)]
+    [InlineData("2/11/2026 9:12:39", 2026, 11, 2, 9, 12, 39)]
+    // ISO, que o contrato tambem promete.
+    [InlineData("2026-11-02T13:03:39", 2026, 11, 2, 13, 3, 39)]
+    public void Os_formatos_dos_dois_caminhos_sao_lidos(
+        string data, int ano, int mes, int dia, int hora, int minuto, int segundo)
+        => Assert.Equal(new DateTime(ano, mes, dia, hora, minuto, segundo),
+            LeitorDevolutivaSd.Ler(ComData(data)).DataPesagem);
+
+    [Fact]
+    public void O_relogio_e_que_decide_a_ordem_entre_mes_e_dia()
+    {
+        // "03/04/2026" e ambiguo sozinho. Com AM/PM vale mes/dia (3 de abril); em 24 horas vale
+        // dia/mes (4 de marco). Sem esse criterio, a ordem da lista de formatos decidiria em
+        // silencio - e uma pesagem entraria com a data trocada sem ninguem perceber.
+        Assert.Equal(new DateTime(2026, 3, 4, 10, 0, 0),
+            LeitorDevolutivaSd.Ler(ComData("03/04/2026 10:00:00 AM")).DataPesagem);
+        Assert.Equal(new DateTime(2026, 4, 3, 10, 0, 0),
+            LeitorDevolutivaSd.Ler(ComData("03/04/2026 10:00:00")).DataPesagem);
+    }
 }

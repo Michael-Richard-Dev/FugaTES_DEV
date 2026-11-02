@@ -28,8 +28,27 @@ public static class LeitorDevolutivaSd
     private static readonly string[] NomesLinha =
         ["SD_ItDocV", "ItemDocV", "LinhaOrdem", "LinhaDaOrdem", "ReferenceSDDocumentItem"];
 
+    /// <summary>
+    /// Formatos de data aceitos. O Guardian manda em DOIS deles, conforme o caminho:
+    ///
+    ///   automatico : "11/2/2026 1:03:39 PM"   - mes/dia, sem zero a esquerda, com AM/PM
+    ///   manual     : "02/11/2026 09:12:39"    - dia/mes, com zero a esquerda, 24 horas
+    ///
+    /// "11/2/2026" e "02/11/2026" sao a MESMA data (2 de novembro) escritas em convencoes opostas.
+    /// O que desfaz a ambiguidade e o relogio: onde ha AM/PM, a ordem e mes/dia; onde o relogio e
+    /// de 24 horas, a ordem e dia/mes. Por isso cada forma aparece so com o seu tipo de hora, e
+    /// nao em todas as combinacoes - juntar as duas faria "03/04/2026 10:00:00" virar 3 de abril
+    /// ou 4 de marco conforme a ordem da lista, em silencio.
+    ///
+    /// "M" e "d" aceitam um ou dois digitos na leitura; "MM" e "dd" exigem dois. Era essa a falha
+    /// de 02/11/2026: a pesagem 0020340 veio com dia "2" e nenhum formato casava.
+    /// </summary>
     private static readonly string[] FormatosData =
-        ["MM/dd/yyyy h:mm:ss tt", "MM/dd/yyyy hh:mm:ss tt", "dd/MM/yyyy HH:mm:ss", "yyyy-MM-ddTHH:mm:ss"];
+    [
+        "M/d/yyyy h:mm:ss tt", "M/d/yyyy hh:mm:ss tt",
+        "d/M/yyyy H:mm:ss", "d/M/yyyy HH:mm:ss",
+        "yyyy-MM-ddTHH:mm:ss"
+    ];
 
     public static DevolutivaPesagemSd Ler(string corpoJson)
     {
