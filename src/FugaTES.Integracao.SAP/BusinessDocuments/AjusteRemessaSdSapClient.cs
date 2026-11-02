@@ -31,8 +31,11 @@ public interface IAjustarRemessaSdSap
 /// mas sobrescreve mesmo que alguem tenha mexido na remessa entre a leitura e a escrita - e aqui
 /// o que esta sendo escrito e o peso que vai para a NF-e.
 ///
-/// Para na primeira etapa que falha. Com o cabecalho recusado, zerar os itens deixaria a remessa
-/// pior do que estava: itens sem peso e cabecalho sem o peso da balanca.
+/// A ordem e ITENS e depois CABECALHO, e isso importa: alterar um item faz o SAP recalcular o
+/// peso do cabecalho a partir dos itens. O peso da balanca tem de ser a ultima gravacao.
+///
+/// Para na primeira etapa que falha. Com um item recusado, gravar o cabecalho deixaria a remessa
+/// meio ajustada - e o peso ainda seria recalculado adiante.
 /// </summary>
 public sealed class AjusteRemessaSdSapClient(SapODataHttpExecutor executor) : IAjustarRemessaSdSap
 {
@@ -61,29 +64,54 @@ public sealed class AjusteRemessaSdSapClient(SapODataHttpExecutor executor) : IA
         var uriCabecalho = executor.ConstruirUri(ChaveCabecalho(remessa.DeliveryDocument));
         var token = await executor.ObterTokenCsrfAsync(uriCabecalho, ct).ConfigureAwait(false);
 
-        var passo = await EnviarAsync("cabeçalho", uriCabecalho,
-            MapeadorAjusteRemessaSd.Serializar(cabecalho), token, remessa.ETag, ct).ConfigureAwait(false);
-        etapas.Add(passo);
-        if (!passo.Ok || !zerarItens) return etapas;
-
-        if (remessa.Itens.Count == 0)
+        // ITENS PRIMEIRO, cabecalho depois. A ordem nao e detalhe: alterar um item faz o SAP
+        // RECALCULAR o peso do cabecalho a partir dos itens. Na remessa 80003859, em 02/11/2026,
+        // gravamos o cabecalho com 1200/700 e zeramos o item em seguida - o SAP descontou o 1 kg
+        // do item e o cabecalho ficou 1199/699. O peso do cabecalho tem de ser a ULTIMA gravacao,
+        // para nada o recalcular depois.
+        if (zerarItens)
         {
-            etapas.Add(new("itens", false, 0,
-                [new MensagemSap("SD_AJUSTE_SEM_ITENS", "error",
-                    "A remessa foi lida sem itens; não há o que zerar. Confira no SAP.")]));
-            return etapas;
+            if (remessa.Itens.Count == 0)
+            {
+                etapas.Add(new("itens", false, 0,
+                    [new MensagemSap("SD_AJUSTE_SEM_ITENS", "error",
+                        "A remessa foi lida sem itens; não há o que zerar. Confira no SAP.")]));
+                return etapas;
+            }
+
+            var corpoItem = MapeadorAjusteRemessaSd.Serializar(MapeadorAjusteRemessaSd.MontarItemZerado());
+            foreach (var item in remessa.Itens)
+            {
+                var uriItem = executor.ConstruirUri(ChaveItem(item.DeliveryDocument, item.DeliveryDocumentItem));
+                var etapa = await EnviarAsync($"item {item.DeliveryDocumentItem}", uriItem, corpoItem,
+                    token, item.ETag, ct).ConfigureAwait(false);
+                etapas.Add(etapa);
+                // Para no primeiro item recusado: seguir deixaria a remessa com parte dos itens
+                // zerada e parte nao, e o cabecalho sem o peso da balanca.
+                if (!etapa.Ok) return etapas;
+            }
+
+            // Zerar os itens muda a VERSAO do documento, e com ela o ETag do cabecalho. Mandar o
+            // cabecalho com o ETag lido antes devolveria 412 "State of the resource was already
+            // changed" - o mesmo 412 que recebemos ao fazer na ordem inversa. Por isso a releitura:
+            // a precondicao passa a ser a do estado ATUAL, e nao a de antes de nos mesmos
+            // alterarmos a remessa.
+            var atual = await LerAsync(remessa.DeliveryDocument, ct).ConfigureAwait(false);
+            if (atual is null)
+            {
+                // Sem releitura nao da para gravar o cabecalho com seguranca. O ETag velho daria
+                // 412, e "*" passaria por cima de uma alteracao de terceiro sem perceber.
+                etapas.Add(new("cabeçalho", false, 0,
+                    [new MensagemSap("SD_AJUSTE_RELEITURA_FALHOU", "error",
+                        "Os itens foram zerados, mas a remessa não pôde ser lida de novo para "
+                        + "gravar o peso no cabeçalho. Tente o ajuste outra vez.")]));
+                return etapas;
+            }
+            remessa = atual;
         }
 
-        var corpoItem = MapeadorAjusteRemessaSd.Serializar(MapeadorAjusteRemessaSd.MontarItemZerado());
-        foreach (var item in remessa.Itens)
-        {
-            var uriItem = executor.ConstruirUri(ChaveItem(item.DeliveryDocument, item.DeliveryDocumentItem));
-            var etapa = await EnviarAsync($"item {item.DeliveryDocumentItem}", uriItem, corpoItem,
-                token, item.ETag, ct).ConfigureAwait(false);
-            etapas.Add(etapa);
-            if (!etapa.Ok) break;
-        }
-
+        etapas.Add(await EnviarAsync("cabeçalho", uriCabecalho,
+            MapeadorAjusteRemessaSd.Serializar(cabecalho), token, remessa.ETag, ct).ConfigureAwait(false));
         return etapas;
     }
 

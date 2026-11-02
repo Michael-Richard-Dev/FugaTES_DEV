@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Contratos.Sd;
 using System.Net;
 using FugaTES.Aplicacao.Modelos.Sd;
 using FugaTES.Aplicacao.Servicos.Sd;
@@ -28,7 +29,7 @@ public sealed class AjusteRemessaSdTests
 
     [Theory]
     [InlineData(SetorAtividadeSd.Graos)]
-    [InlineData(SetorAtividadeSd.FareloDeSoja)]
+    [InlineData(SetorAtividadeSd.Casca)]
     [InlineData(SetorAtividadeSd.Retrovenda)]
     public void Fora_do_biodiesel_o_peso_nao_vai_ao_cabecalho(string setor)
     {
@@ -91,7 +92,7 @@ public sealed class AjusteRemessaSdTests
     [Theory]
     [InlineData(SetorAtividadeSd.Biodiesel, true)]
     [InlineData(SetorAtividadeSd.Graos, false)]
-    [InlineData(SetorAtividadeSd.FareloDeSoja, false)]
+    [InlineData(SetorAtividadeSd.Casca, false)]
     public void So_o_biodiesel_zera_itens(string setor, bool esperado)
         => Assert.Equal(esperado, AjusteRemessaSd.AjustaPeso(setor));
 
@@ -208,4 +209,52 @@ public sealed class AjusteRemessaSdTests
         => Assert.True((await Enviar(HttpMethod.Get, Origem
             + "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/A_OutbDeliveryHeader('80003858')"
             + "?$expand=to_DeliveryDocumentItem")).Passou);
+
+    // --- ETag depois do cabecalho ---------------------------------------------------------
+    //
+    // Em 02/11/2026, na remessa 80003859: o cabecalho gravou (204) e o item recusou com 412,
+    // "State of the resource (entity) was already changed (If-Match)". O PATCH do cabecalho muda
+    // a versao do documento inteiro, e com ela o ETag de cada item - o que foi lido antes do
+    // cabecalho ja nao vale depois dele.
+
+    [Fact]
+    public void Itens_lidos_antes_do_cabecalho_tem_etag_proprio()
+    {
+        // O ETag do item e diferente do ETag do cabecalho; e por isso que ele precisa ser relido
+        // depois da gravacao, e nao reaproveitado.
+        var lida = MapeadorAjusteRemessaSd.LerRemessa(RespostaReal, etagHttp: null);
+        var item = Assert.Single(lida!.Itens);
+        Assert.NotEqual(lida.ETag, item.ETag);
+    }
+
+    // --- Nova tentativa depois de recusa ----------------------------------------------------
+
+    [Fact]
+    public void Ajuste_recusado_permite_tentar_de_novo()
+        => Assert.True(EstadoAjusteRemessaSd.PermiteNovaTentativa(EstadoAjusteRemessaSd.Recusada));
+
+    [Theory]
+    [InlineData(EstadoAjusteRemessaSd.Ajustada)]
+    [InlineData(EstadoAjusteRemessaSd.DesfechoDesconhecido)]
+    [InlineData(null)]
+    public void Ajuste_concluido_ou_sem_desfecho_continua_bloqueando(string? estado)
+        => Assert.False(EstadoAjusteRemessaSd.PermiteNovaTentativa(estado));
+
+    [Fact]
+    public void Texto_recusado_permite_tentar_de_novo()
+        => Assert.True(EstadoTextoNfeSd.PermiteNovaTentativa(EstadoTextoNfeSd.Recusado));
+
+    [Fact]
+    public void Picking_recusado_permite_tentar_de_novo()
+        => Assert.True(EstadoPickingSd.PermiteNovaTentativa(EstadoPickingSd.Recusado));
+
+    [Fact]
+    public void Saida_recusada_permite_tentar_de_novo()
+        => Assert.True(EstadoSaidaSd.PermiteNovaTentativa(EstadoSaidaSd.Recusada));
+
+    [Fact]
+    public void Saida_com_desfecho_desconhecido_nunca_libera()
+        // A saida pode ter acontecido. Repetir duplicaria o movimento de estoque - e estoque
+        // movimentado nao volta por API neste fluxo.
+        => Assert.False(EstadoSaidaSd.PermiteNovaTentativa(EstadoSaidaSd.DesfechoDesconhecido));
 }

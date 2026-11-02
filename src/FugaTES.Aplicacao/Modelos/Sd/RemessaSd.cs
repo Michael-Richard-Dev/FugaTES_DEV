@@ -10,15 +10,38 @@ public static class SetorAtividadeSd
 {
     public const string Graos = "60";
     public const string OleoDeSoja = "61";
-    public const string FareloDeSoja = "62";
+
+    /// <summary>
+    /// Casca. A planilha chamava o 62 de "farelo de soja", mas o cadastro do SAP mostra o material
+    /// de casca neste setor (conferido em 02/11/2026). O operador confirmou que o nome da planilha
+    /// e que estava errado.
+    /// </summary>
+    public const string Casca = "62";
+
     public const string Biodiesel = "63";
     public const string AcidoGraxo = "64";
     public const string Glicerina = "65";
-    public const string Borra = "66";
+
+    /// <summary>Fibra. Mesma correcao do 62: o cadastro traz "FIBRA VEGETAL" neste setor.</summary>
+    public const string Fibra = "66";
+
     public const string Retrovenda = "67";
 
     public static readonly string[] Conhecidos =
-        [Graos, OleoDeSoja, FareloDeSoja, Biodiesel, AcidoGraxo, Glicerina, Borra, Retrovenda];
+        [Graos, OleoDeSoja, Casca, Biodiesel, AcidoGraxo, Glicerina, Fibra, Retrovenda];
+
+    /// <summary>
+    /// Setores em que a remessa passa por SEPARACAO antes da saida de mercadoria. Decisao do
+    /// operador em 02/11/2026: picking e so de casca e fibra.
+    ///
+    /// Nos demais o botao de picking fica desabilitado, e nao apenas "desaconselhado": um clique
+    /// que nao cabe no fluxo e barato de dar e caro de desfazer.
+    /// </summary>
+    public static readonly string[] ComPicking = [Casca, Fibra];
+
+    public static bool ExigePicking(string? setorAtividade)
+        => setorAtividade is not null
+           && ComPicking.Contains(setorAtividade.Trim(), StringComparer.Ordinal);
 }
 
 /// <summary>Como a quantidade da remessa e determinada. Dois comportamentos, nao tres.</summary>

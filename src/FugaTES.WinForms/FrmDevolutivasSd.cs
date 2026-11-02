@@ -118,7 +118,7 @@ public partial class FrmDevolutivasSd : Form
         // Passo 6: duas acoes separadas de proposito. Picking se refaz; saida de mercadoria nao.
         grid.Columns.Add(new DataGridViewButtonColumn
         {
-            Name = "picking", HeaderText = "Picking", Text = "Confirmar", UseColumnTextForButtonValue = true,
+            Name = "picking", HeaderText = "Picking (no SAP)", Text = "Confirmar", UseColumnTextForButtonValue = true,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None, Width = 85
         });
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -128,7 +128,7 @@ public partial class FrmDevolutivasSd : Form
         });
         grid.Columns.Add(new DataGridViewButtonColumn
         {
-            Name = "saida", HeaderText = "Saída", Text = "Postar", UseColumnTextForButtonValue = true,
+            Name = "saida", HeaderText = "Saída (no SAP)", Text = "Postar", UseColumnTextForButtonValue = true,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None, Width = 75
         });
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -286,7 +286,10 @@ public partial class FrmDevolutivasSd : Form
                     + "Sem a ordem não há a que referenciar a remessa.";
             var ja = remessasConhecidas.FirstOrDefault(
                 x => string.Equals(x.IdPesagem, linha.IdPesagem, StringComparison.Ordinal));
-            if (ja is not null)
+            // Recusada nao impede: o SAP disse que nao criou nada, e a causa costuma estar fora
+            // de nos - ordem incompleta, sem saldo. Corrigida a causa, tentar de novo e o
+            // caminho esperado. Os outros desfechos continuam bloqueando.
+            if (ja is not null && !EstadoRemessaSd.PermiteNovaTentativa(ja.Estado))
                 return $"Pesagem {linha.IdPesagem} já foi usada: {ja.Estado}"
                     + (ja.NumeroRemessa is null ? "" : $", remessa {ja.NumeroRemessa}") + ".";
             return null;
@@ -341,8 +344,16 @@ public partial class FrmDevolutivasSd : Form
             return;
         }
 
+        // Se ja houve recusa, a previa diz - para a segunda tentativa ser consciente, e nao uma
+        // repeticao distraida do mesmo clique.
+        var recusaAnterior = remessasConhecidas.FirstOrDefault(
+            x => string.Equals(x.IdPesagem, linha.IdPesagem, StringComparison.Ordinal));
+
         var cabecalho =
             $"Pesagem {linha.IdPesagem}   —   ordem {linha.OrdemVenda} / linha {linha.LinhaOrdem}\r\n"
+            + (recusaAnterior is null ? "" :
+                $"⚠ NOVA TENTATIVA. O SAP já recusou esta pesagem antes (HTTP {recusaAnterior.HttpStatus}):\r\n"
+                + $"   {recusaAnterior.MensagensSap}\r\n")
             + $"Setor de atividade {setor}"
             + (setor == SetorAtividadeSd.Biodiesel
                 ? "  (biodiesel: remessa nasce com 1 L e o peso real vai depois no cabeçalho)"
@@ -439,10 +450,14 @@ public partial class FrmDevolutivasSd : Form
                 : "")
             + $"\r\nItens lidos no SAP: {(chaves.Length == 0 ? "(nenhum)" : chaves)}";
 
-        var previa = "PATCH no cabeçalho:\r\n" + Formatar(json)
-            + (zerarItens
-                ? $"\r\n\r\nPATCH em cada item ({chaves}):\r\n" + Formatar(corpoItem)
-                : "\r\n\r\nNenhum item é alterado neste fluxo.");
+        // A previa segue a ordem real do envio: itens primeiro, cabecalho depois. Inverter aqui
+        // esconderia justamente o que faz o peso do cabecalho prevalecer.
+        var previa = (zerarItens
+                ? $"1) PATCH em cada item ({chaves}):\r\n" + Formatar(corpoItem)
+                  + "\r\n\r\n2) PATCH no cabeçalho (depois dos itens, porque alterar item faz o "
+                  + "SAP recalcular o peso do cabeçalho):\r\n"
+                : "Nenhum item é alterado neste fluxo.\r\n\r\nPATCH no cabeçalho:\r\n")
+            + Formatar(json);
 
         if (!ConfirmarAjuste(resumoCabecalho, previa)) return;
         await AjustarRemessaAsync(linha, numero, lida, cabecalho, zerarItens, json);
@@ -663,12 +678,26 @@ public partial class FrmDevolutivasSd : Form
 
         string? Impedimento()
         {
+            // Primeiro de tudo: isto nao e trabalho nosso. Dizer "indisponivel" sugeriria falha
+            // de configuracao, quando na verdade e limite de escopo.
+            if (!EscopoExpedicaoSd.ExecutadaPeloFugaTES) return EscopoExpedicaoSd.Motivo;
             if (remessas is null || expedicao is null)
                 return $"A {nome} está indisponível nesta sessão"
                     + (motivoIndisponivel is null ? "" : " — " + motivoIndisponivel) + ".";
             if (registrada is null || registrada.NumeroRemessa is null)
                 return $"A pesagem {linha.IdPesagem} ainda não tem remessa criada.";
-            if (jaFeito is not null)
+            // Picking so existe em casca e fibra. Fora deles o botao nao deve nem poder ser usado:
+            // nao e "desaconselhado", e um passo que nao pertence ao fluxo.
+            if (!saida && !SetorAtividadeSd.ExigePicking(registrada.SetorAtividade))
+                return $"O setor {registrada.SetorAtividade} não passa por separação. "
+                    + "O picking é apenas de casca (62) e fibra (66); siga direto para a saída.";
+            // Recusa explicita nao bloqueia: o SAP respondeu que nao fez nada. Os demais sim -
+            // e no caso da saida, "desconhecido" bloqueia para sempre, porque ela pode ter
+            // acontecido e repetir duplicaria o movimento de estoque.
+            var liberaRetentativa = saida
+                ? EstadoSaidaSd.PermiteNovaTentativa(jaFeito)
+                : EstadoPickingSd.PermiteNovaTentativa(jaFeito);
+            if (jaFeito is not null && !liberaRetentativa)
                 return $"A {nome} da remessa {registrada.NumeroRemessa} já tem desfecho registrado: "
                     + jaFeito + (jaFeito == EstadoSaidaSd.DesfechoDesconhecido
                         ? ". Confira no SAP; repetir poderia duplicar o movimento de estoque." : ".");
@@ -684,13 +713,18 @@ public partial class FrmDevolutivasSd : Form
         }
 
         var numero = registrada!.NumeroRemessa!;
+        // O aviso sobre picking só faz sentido onde há picking. Antes ele aparecia em todo fluxo,
+        // dizendo que o SAP recusaria - o contrário do certo para biodiesel, que não separa.
+        var sobrePicking = !SetorAtividadeSd.ExigePicking(registrada.SetorAtividade)
+            ? $"O setor {registrada.SetorAtividade} não passa por separação; não há picking a fazer."
+            : registrada.PickingEstado == EstadoPickingSd.Confirmado
+                ? "Picking confirmado por esta tela."
+                : "⚠ Setor com separação e sem registro de picking confirmado por esta tela. "
+                  + "Se ele não tiver sido feito, o SAP vai recusar.";
+
         var aviso = saida
             ? "A saída de mercadoria MOVE ESTOQUE e gera documento de material.\r\n"
-              + "Esta tela não desfaz o movimento depois.\r\n\r\n"
-              + (registrada.PickingEstado == EstadoPickingSd.Confirmado
-                  ? "Picking confirmado por esta tela."
-                  : "⚠ Não há registro de picking confirmado por esta tela. "
-                    + "Se ele não tiver sido feito, o SAP vai recusar.")
+              + "Esta tela não desfaz o movimento depois.\r\n\r\n" + sobrePicking
             : "Confirma o picking de todos os itens da remessa. Pode ser refeito se necessário.";
 
         var texto =

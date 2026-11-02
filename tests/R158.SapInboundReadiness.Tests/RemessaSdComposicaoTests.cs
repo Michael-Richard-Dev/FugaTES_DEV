@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Contratos.Sd;
 using System.Net;
 using FugaTES.Aplicacao.Modelos.Sd;
 using FugaTES.Aplicacao.Servicos.Sd;
@@ -135,4 +136,25 @@ public sealed class RemessaSdComposicaoTests
         Assert.Equal("2985", item.ReferenceSDDocument);
         Assert.Equal("10", item.ReferenceSDDocumentItem);
     }
+
+    // --- Nova tentativa depois de uma recusa -------------------------------------------------
+    //
+    // Em 01/11/2026 o SAP recusou a pesagem 0020335 com "VL/096 Order is incomplete". A causa
+    // estava na ordem de venda, nao em nos. A tela entao bloqueava qualquer segunda tentativa, e
+    // destravar exigia apagar a linha no banco a mao.
+
+    [Fact]
+    public void Recusada_permite_tentar_de_novo()
+        => Assert.True(EstadoRemessaSd.PermiteNovaTentativa(EstadoRemessaSd.Recusada));
+
+    [Theory]
+    // Criada: a remessa existe. Desconhecido: ela PODE existir - e supor que nao e o que cria a
+    // segunda remessa para a mesma pesagem.
+    [InlineData(EstadoRemessaSd.Criada)]
+    [InlineData(EstadoRemessaSd.DesfechoDesconhecido)]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("recusada")]
+    public void Os_demais_desfechos_continuam_bloqueando(string? estado)
+        => Assert.False(EstadoRemessaSd.PermiteNovaTentativa(estado));
 }

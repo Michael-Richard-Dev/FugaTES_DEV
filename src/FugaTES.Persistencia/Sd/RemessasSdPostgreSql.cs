@@ -41,12 +41,31 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
     public async Task ReservarAsync(RemessaSdRegistro r, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(r);
+        // A reserva vale tambem como NOVA TENTATIVA depois de uma recusa: o "where estado =
+        // 'RECUSADA'" no conflito e o que autoriza, e ele roda dentro do proprio comando, sem
+        // leitura previa que ficaria velha. Quando a linha existente nao for recusada, nenhuma
+        // linha e afetada e a excecao de duplicidade acontece como antes.
         await using var comando = fonte.CreateCommand("""
             insert into fugates.remessa_sd
                 (id, id_pesagem, chave_natural, ordem_venda, linha_ordem, setor_atividade,
                  quantidade, unidade, numero_remessa, estado, http_status, payload_sha256,
                  mensagens_sap, criado_em, atualizado_em)
             values (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now())
+            on conflict (id_pesagem) do update set
+                 chave_natural = excluded.chave_natural,
+                 ordem_venda = excluded.ordem_venda,
+                 linha_ordem = excluded.linha_ordem,
+                 setor_atividade = excluded.setor_atividade,
+                 quantidade = excluded.quantidade,
+                 unidade = excluded.unidade,
+                 numero_remessa = excluded.numero_remessa,
+                 estado = excluded.estado,
+                 http_status = excluded.http_status,
+                 payload_sha256 = excluded.payload_sha256,
+                 -- A mensagem da recusa anterior sai: ela descrevia a tentativa que passou.
+                 mensagens_sap = null,
+                 atualizado_em = now()
+             where fugates.remessa_sd.estado = 'RECUSADA'
             """);
         comando.Parameters.AddWithValue(r.IdPesagem);
         comando.Parameters.AddWithValue(r.ChaveNatural);
@@ -61,9 +80,13 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
         comando.Parameters.AddWithValue(r.PayloadSha256);
         comando.Parameters.AddWithValue((object?)r.MensagensSap ?? DBNull.Value);
 
-        try { await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false); }
+        int afetadas;
+        try { afetadas = await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false); }
+        // 23505 agora so aparece por numero_remessa repetido; id_pesagem cai no "on conflict".
         catch (PostgresException erro) when (erro.SqlState == "23505")
         { throw new RemessaSdJaCriadaException(r.IdPesagem); }
+        // Zero linhas = a pesagem ja tem desfecho que NAO autoriza nova tentativa.
+        if (afetadas != 1) throw new RemessaSdJaCriadaException(r.IdPesagem);
     }
 
     public async Task FecharDesfechoAsync(string idPesagem, string? numeroRemessa, string estado,
@@ -89,8 +112,9 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
     }
 
     /// <summary>
-    /// Reserva o passo 4. A condicao "ajuste_estado is null" no proprio UPDATE e o arbitro da
-    /// corrida: duas telas tentando ao mesmo tempo, so uma afeta linha.
+    /// Reserva o passo 4. A condicao no proprio UPDATE e o arbitro da corrida, e ela aceita
+    /// tambem o estado RECUSADA: o SAP recusou e nao criou nada, entao nova tentativa e o
+    /// caminho esperado. Em 02/11/2026 isso travou a remessa 80003859 depois de um 412 no item.
     /// </summary>
     public async Task ReservarAjusteAsync(string idPesagem, string payloadSha256, CancellationToken ct)
     {
@@ -100,7 +124,7 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
             update fugates.remessa_sd
                set ajuste_estado = 'DESFECHO_DESCONHECIDO', ajuste_payload_sha256 = $2,
                    ajuste_em = now(), atualizado_em = now()
-             where id_pesagem = $1 and ajuste_estado is null
+             where id_pesagem = $1 and (ajuste_estado is null or ajuste_estado = 'RECUSADA')
             """);
         comando.Parameters.AddWithValue(idPesagem);
         comando.Parameters.AddWithValue(payloadSha256);
@@ -141,7 +165,7 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
             update fugates.remessa_sd
                set texto_estado = 'DESFECHO_DESCONHECIDO', texto_sha256 = $2,
                    texto_em = now(), atualizado_em = now()
-             where id_pesagem = $1 and texto_estado is null
+             where id_pesagem = $1 and (texto_estado is null or texto_estado = 'RECUSADO')
             """);
         comando.Parameters.AddWithValue(idPesagem);
         comando.Parameters.AddWithValue(textoSha256);
@@ -186,13 +210,13 @@ public sealed class RemessasSdPostgreSql(NpgsqlDataSource fonte) : IRemessasSdRe
                 update fugates.remessa_sd
                    set picking_estado = 'DESFECHO_DESCONHECIDO', picking_em = now(),
                        atualizado_em = now()
-                 where id_pesagem = $1 and picking_estado is null
+                 where id_pesagem = $1 and (picking_estado is null or picking_estado = 'RECUSADO')
                 """,
             EtapaExpedicaoSd.Saida => """
                 update fugates.remessa_sd
                    set saida_estado = 'DESFECHO_DESCONHECIDO', saida_em = now(),
                        atualizado_em = now()
-                 where id_pesagem = $1 and saida_estado is null
+                 where id_pesagem = $1 and (saida_estado is null or saida_estado = 'RECUSADA')
                 """,
             _ => throw new ArgumentException("SD_EXPEDICAO_ETAPA_DESCONHECIDA: " + etapa, nameof(etapa))
         };

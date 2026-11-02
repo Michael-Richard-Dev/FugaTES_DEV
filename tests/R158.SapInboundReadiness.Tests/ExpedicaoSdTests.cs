@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Contratos.Sd;
 using System.Net;
 using FugaTES.Integracao.SAP.BusinessDocuments;
 using FugaTES.WinForms.Sd;
@@ -95,5 +96,25 @@ public sealed class ExpedicaoSdTests
             "https://exemplo.invalido" + ExpedicaoSdSapClient.RotaSaida);
         await Assert.ThrowsAnyAsync<Exception>(() => client.SendAsync(pedido, CancellationToken.None));
         Assert.Equal(0, contador.Chamadas);
+    }
+
+    // --- Escopo: ate onde vai o FugaTES -----------------------------------------------------
+    //
+    // Decisao do operador em 02/11/2026, conferida com o negocio: o FugaTES vai ate o texto da
+    // NF-e. Separacao e saida de mercadoria sao feitas dentro do SAP, por quem confere o
+    // carregamento. O documento "APIS SD para FUGATES" lista as duas APIs, mas enumerar a API nao
+    // diz quem a chama - foi uma suposicao minha ao construir o passo 6.
+
+    [Fact]
+    public void Expedicao_nao_e_executada_pelo_fugates()
+        => Assert.False(EscopoExpedicaoSd.ExecutadaPeloFugaTES);
+
+    [Fact]
+    public void O_motivo_diz_onde_a_expedicao_acontece()
+    {
+        // A mensagem precisa dizer que e limite de ESCOPO, e nao falha de configuracao: quem le
+        // "indisponivel" vai procurar defeito onde nao ha.
+        Assert.Contains("dentro do SAP", EscopoExpedicaoSd.Motivo, StringComparison.Ordinal);
+        Assert.DoesNotContain("indisponível", EscopoExpedicaoSd.Motivo, StringComparison.Ordinal);
     }
 }

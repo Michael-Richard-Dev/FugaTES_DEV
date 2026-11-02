@@ -44,7 +44,7 @@ public sealed class RemessaSdTests
     public void So_o_biodiesel_pede_ajuste_de_peso_no_cabecalho()
     {
         Assert.True(FluxoRemessaSd.Escolher(SetorAtividadeSd.Biodiesel, 20100m).AjustaPesoNoCabecalho);
-        Assert.False(FluxoRemessaSd.Escolher(SetorAtividadeSd.FareloDeSoja, 20100m).AjustaPesoNoCabecalho);
+        Assert.False(FluxoRemessaSd.Escolher(SetorAtividadeSd.Casca, 20100m).AjustaPesoNoCabecalho);
     }
 
     // O peso zero so e aceitavel no biodiesel, onde a quantidade e fixa em 1 litro.
@@ -155,4 +155,36 @@ public sealed class RemessaSdTests
     [InlineData("{}")]
     public void Corpo_sem_erro_legivel_devolve_lista_vazia(string corpo)
         => Assert.Empty(LeitorErroSapOData.Ler(corpo));
+
+    // --- Quais setores passam por separacao ------------------------------------------------
+    //
+    // Decisao do operador em 02/11/2026: picking e so de casca (62) e fibra (66). Conferido no
+    // cadastro do SAP - o material de casca esta no setor 62 e "FIBRA VEGETAL" no 66. A planilha
+    // chamava esses setores de "farelo de soja" e "borra"; o operador confirmou que o errado era
+    // o nome, e que o cadastro sera ajustado.
+
+    [Theory]
+    [InlineData(SetorAtividadeSd.Casca)]
+    [InlineData(SetorAtividadeSd.Fibra)]
+    public void Casca_e_fibra_passam_por_separacao(string setor)
+        => Assert.True(SetorAtividadeSd.ExigePicking(setor));
+
+    [Theory]
+    [InlineData(SetorAtividadeSd.Graos)]
+    [InlineData(SetorAtividadeSd.OleoDeSoja)]
+    [InlineData(SetorAtividadeSd.Biodiesel)]
+    [InlineData(SetorAtividadeSd.AcidoGraxo)]
+    [InlineData(SetorAtividadeSd.Glicerina)]
+    [InlineData(SetorAtividadeSd.Retrovenda)]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("99")]
+    public void Os_demais_setores_nao_passam_por_separacao(string? setor)
+        => Assert.False(SetorAtividadeSd.ExigePicking(setor));
+
+    [Fact]
+    public void Biodiesel_nao_passa_por_separacao_mesmo_sendo_o_fluxo_de_litro()
+        // A remessa 80003859 (biodiesel) foi ate a saida sem picking: o passo nao pertence a
+        // este fluxo, e oferecer o botao ali convidava um clique que nao cabe.
+        => Assert.False(SetorAtividadeSd.ExigePicking(SetorAtividadeSd.Biodiesel));
 }

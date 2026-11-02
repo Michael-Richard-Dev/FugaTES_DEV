@@ -10,6 +10,21 @@ public static class EstadoRemessaSd
     /// remessa pode existir no SAP, e supor que nao existe e o que cria a segunda.
     /// </summary>
     public const string DesfechoDesconhecido = "DESFECHO_DESCONHECIDO";
+
+    /// <summary>
+    /// Se a pesagem pode ser tentada DE NOVO depois de um desfecho.
+    ///
+    /// So <see cref="Recusada"/> permite: ali o SAP respondeu dizendo que nao criou nada, e a
+    /// causa costuma estar fora de nos - em 01/11/2026 foi "VL/096 Order is incomplete", que se
+    /// resolve completando a ordem e tentando outra vez. Bloquear isso obrigaria a mexer no banco
+    /// a mao para cada recusa.
+    ///
+    /// <see cref="Criada"/> e <see cref="DesfechoDesconhecido"/> continuam bloqueando: no primeiro
+    /// a remessa existe; no segundo ela PODE existir, e supor que nao existe e justamente o que
+    /// cria a segunda remessa para a mesma pesagem.
+    /// </summary>
+    public static bool PermiteNovaTentativa(string? estado)
+        => string.Equals(estado, Recusada, StringComparison.Ordinal);
 }
 
 /// <summary>
@@ -21,6 +36,10 @@ public static class EstadoAjusteRemessaSd
     public const string Ajustada = "AJUSTADA";
     public const string Recusada = "RECUSADA";
     public const string DesfechoDesconhecido = "DESFECHO_DESCONHECIDO";
+
+    /// <summary>Recusado pelo SAP nao cria nada: corrigida a causa, tentar de novo e o esperado.</summary>
+    public static bool PermiteNovaTentativa(string? estado)
+        => string.Equals(estado, Recusada, StringComparison.Ordinal);
 }
 
 /// <summary>O que se grava ao tentar criar a remessa, com ou sem sucesso.</summary>
@@ -38,6 +57,10 @@ public static class EstadoTextoNfeSd
     public const string Gravado = "GRAVADO";
     public const string Recusado = "RECUSADO";
     public const string DesfechoDesconhecido = "DESFECHO_DESCONHECIDO";
+
+    /// <summary>Idem: texto recusado nao foi gravado, entao nao ocupa a remessa.</summary>
+    public static bool PermiteNovaTentativa(string? estado)
+        => string.Equals(estado, Recusado, StringComparison.Ordinal);
 }
 
 /// <summary>As duas etapas do passo 6. Nomes fixos: e por eles que o repositorio escolhe colunas.</summary>
@@ -47,12 +70,40 @@ public static class EtapaExpedicaoSd
     public const string Saida = "saida";
 }
 
+/// <summary>
+/// Ate onde vai a responsabilidade do FugaTES no fluxo SD.
+///
+/// Decisao do operador em 02/11/2026, depois de conferir com o negocio: o FugaTES vai ate o TEXTO
+/// da NF-e (passo 5). A separacao e a saida de mercadoria sao feitas DENTRO do SAP, por quem
+/// confere o carregamento - nao por nos.
+///
+/// O documento "APIS SD para FUGATES" lista ConfirmPickingAllItems e PostGoodsIssue, e foi por
+/// isso que o passo 6 chegou a ser construido; mas aquele documento enumera as APIs, nao diz quem
+/// chama cada uma. A evidencia tambem aponta nessa direcao: a remessa nasce com
+/// HdrGoodsMvtIncompletionStatus = "A" e segue assim depois de todos os nossos passos, porque
+/// quem completa aquela area e outra pessoa.
+///
+/// O codigo do passo 6 fica no lugar, desligado. Apagar custaria refazer se a decisao mudar, e
+/// deixar ligado convida um clique que move estoque e nao se desfaz.
+/// </summary>
+public static class EscopoExpedicaoSd
+{
+    public const bool ExecutadaPeloFugaTES = false;
+
+    public const string Motivo =
+        "A separação e a saída de mercadoria são feitas dentro do SAP, não pelo FugaTES. "
+        + "O nosso fluxo termina no texto da NF-e.";
+}
+
 /// <summary>Passo 6, parte 1: confirmacao do picking de todos os itens.</summary>
 public static class EstadoPickingSd
 {
     public const string Confirmado = "CONFIRMADO";
     public const string Recusado = "RECUSADO";
     public const string DesfechoDesconhecido = "DESFECHO_DESCONHECIDO";
+
+    public static bool PermiteNovaTentativa(string? estado)
+        => string.Equals(estado, Recusado, StringComparison.Ordinal);
 }
 
 /// <summary>
@@ -65,6 +116,13 @@ public static class EstadoSaidaSd
     public const string Postada = "POSTADA";
     public const string Recusada = "RECUSADA";
     public const string DesfechoDesconhecido = "DESFECHO_DESCONHECIDO";
+
+    /// <summary>
+    /// So a recusa explicita libera. DESFECHO_DESCONHECIDO continua bloqueando para sempre: a
+    /// saida PODE ter acontecido, e repetir duplicaria o movimento de estoque.
+    /// </summary>
+    public static bool PermiteNovaTentativa(string? estado)
+        => string.Equals(estado, Recusada, StringComparison.Ordinal);
 }
 
 /// <summary>O que a tela precisa ver sobre uma remessa.</summary>
