@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FugaTES.Aplicacao.Contratos.ContratosSapToledo;
 using FugaTES.Aplicacao.Modelos.Guardian;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Aplicacao.Servicos.Mvp;
 
 public interface IAcmGuardianBusinessFailure { int? BusinessErrorCode { get; } }
@@ -87,7 +88,7 @@ public static class AcmR57Mapping
             Require(v,160,"R57_INBOUND_REQUIRED_FIELDS");
         if(s.Item is not null) Require(s.Item,160,"R57_INBOUND_REQUIRED_FIELDS");
         if(s.UnidCont is not null) Require(s.UnidCont,160,"R57_INBOUND_REQUIRED_FIELDS");
-        if(s.Centro!="3011" || s.TipoContrato!="AC3P" || s.QuantidadeContrato is null or <0)
+        if(!CentrosAcm.EhPermitido(s.Centro) || s.TipoContrato!="AC3P" || s.QuantidadeContrato is null or <0)
             throw new AcmR57BlockedException("R57_INBOUND_SCENARIO_INVALID");
         Require(links.CodigoContratoGuardian,20,"R57_CONTRACT_CODE_UNAPPROVED");
         if(s.NumeroContrato.Any(c=>!char.IsAsciiDigit(c)) || links.CodigoContratoGuardian.Any(c=>!char.IsAsciiDigit(c)) ||

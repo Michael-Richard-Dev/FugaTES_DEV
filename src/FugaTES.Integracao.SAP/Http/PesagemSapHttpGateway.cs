@@ -10,6 +10,7 @@ using FugaTES.Integracao.SAP.Autenticacao;
 using FugaTES.Integracao.SAP.Configuracao;
 using FugaTES.Integracao.SAP.Dtos.Pesagem;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Integracao.SAP.Http;
 
 public sealed class PesagemSapHttpGateway(
@@ -120,7 +121,7 @@ public sealed class PesagemSapHttpGateway(
 
     private static PesagemSapWireDto Map(PesagemSapMvp source)
     {
-        if (source.TipoDocumento == "AC3P" && source.Centro != "3011")
+        if (source.TipoDocumento == "AC3P" && !CentrosAcm.EhPermitido(source.Centro))
             throw Invalid("ACM_SCOPE_NOT_APPROVED");
         var acm = IsAcm(source);
         AcmSapTicketEvidence? ticket = null;
@@ -233,7 +234,7 @@ public sealed class PesagemSapHttpGateway(
                 HoraProtocolo: null)]);
     }
 
-    private static bool IsAcm(PesagemSapMvp source) => source.Centro == "3011" && source.TipoDocumento == "AC3P";
+    private static bool IsAcm(PesagemSapMvp source) => CentrosAcm.EhPermitido(source.Centro) && source.TipoDocumento == "AC3P";
 
     private static bool FitsWeight(decimal value) => value >= 0 && value <= 9999999999.999m && decimal.Round(value, 3) == value;
 

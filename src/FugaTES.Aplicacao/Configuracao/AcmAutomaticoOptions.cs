@@ -20,9 +20,31 @@ public sealed class AcmAutomaticoOptions
 {
     public bool Enabled { get; set; }
     public string? AuthorizationReference { get; set; }
+
+    /// <summary>
+    /// Centro unico do recorte. Mantido para a configuracao que ja existe em producao
+    /// (<c>MotorIntegracao__AcmAutomatico__Centro=3011</c>) continuar valendo sem edicao.
+    /// </summary>
     public string? Centro { get; set; }
+
+    /// <summary>
+    /// Centros do recorte, quando sao mais de um. Preenchido, substitui <see cref="Centro"/>.
+    ///
+    /// E lista, e nao um segundo recorte ligado em paralelo, porque <c>MotorIntegracaoOptions</c>
+    /// recusa dois recortes ativos ao mesmo tempo: atender 3011 e 3008 tinha de caber DENTRO do
+    /// recorte continuo, nao ao lado dele.
+    /// </summary>
+    public string[] Centros { get; set; } = [];
+
     public string? Item { get; set; }
     public string[] ExcludedContractNumbers { get; set; } = [];
+
+    /// <summary>
+    /// Os centros que realmente valem. Vazio significa recorte INVALIDO - nunca "todos": sem
+    /// centro declarado o motor nao sabe de quem e o contrato, e cadastro no Guardian nao se desfaz.
+    /// </summary>
+    public IReadOnlyList<string> CentrosEfetivos =>
+        Centros is { Length: > 0 } ? Centros : Centro is null ? [] : [Centro];
 
     private static bool Token(string? value, int max) => !string.IsNullOrWhiteSpace(value) &&
         value == value.Trim() && value.Length <= max && !value.Any(char.IsControl);
@@ -31,13 +53,16 @@ public sealed class AcmAutomaticoOptions
     public bool EhValida() => Enabled &&
         Token(AuthorizationReference, 160) &&
         !new[] { "PENDENTE", "NOT_APPROVED", "NAO VALIDADO", "NÃO VALIDADO" }.Contains(AuthorizationReference, StringComparer.OrdinalIgnoreCase) &&
-        Centro == "3011" && (Item is null || Identifier(Item, 10)) &&
+        CentrosEfetivos.Count > 0 && CentrosEfetivos.All(CentrosAcm.EhPermitido) &&
+        CentrosEfetivos.Distinct(StringComparer.Ordinal).Count() == CentrosEfetivos.Count &&
+        (Item is null || Identifier(Item, 10)) &&
         ExcludedContractNumbers is not null && ExcludedContractNumbers.All(v => Identifier(v, 20));
 
     public bool SnapshotPermitido(ContratoSapToledoSnapshot snapshot) => EhValida() &&
         Identifier(snapshot.NumeroContrato, 20) &&
         !AcmInboundWindowOptions.ContratoHistoricoOuExcluido(snapshot.NumeroContrato, ExcludedContractNumbers) &&
-        snapshot.Centro == Centro && snapshot.Item == Item &&
+        snapshot.Centro is { } centro && CentrosEfetivos.Contains(centro, StringComparer.Ordinal) &&
+        snapshot.Item == Item &&
         AcmInboundWindowOptions.EscopoContratoAprovado(snapshot.TipoContrato, snapshot.TipoPesagem) &&
         snapshot.StatusContrato == "T";
 }

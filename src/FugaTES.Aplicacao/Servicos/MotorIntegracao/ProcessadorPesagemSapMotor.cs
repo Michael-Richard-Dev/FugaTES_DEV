@@ -5,6 +5,7 @@ using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 using FugaTES.Aplicacao.Servicos.Mvp;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Aplicacao.Servicos.MotorIntegracao;
 
 public sealed class ProcessadorPesagemSapMotor(
@@ -58,7 +59,7 @@ public sealed class ProcessadorPesagemSapMotor(
         int? appointment=isAcm ? null : 1;
         if(isAcm)
         {
-            if (entrada.Centro != "3011" || entrada.TipoContrato != "AC3P" ||
+            if (!CentrosAcm.EhPermitido(entrada.Centro) || entrada.TipoContrato != "AC3P" ||
                 claim.CorrelationId != correlacao.DocumentoSap ||
                 !AcmR106SapReturnPreflight.EventoFinalComprovado(correlacao) || preflight is null)
                 return new(ClassificacaoFalhaIntegracao.FalhaDefinitiva);

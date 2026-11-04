@@ -15,7 +15,7 @@ public sealed record RegraValorProximidadeFimAcm(decimal? ValorAprovado, string?
 {
     public decimal Resolver(string fluxo, string? centro)
     {
-        if (fluxo != "ACM_ENTRADA" || centro != "3011")
+        if (fluxo != "ACM_ENTRADA" || !CentrosAcm.EhPermitido(centro))
             throw new DecisaoFuncionalPendenteSapException("ACM_VALOR_PROXIMIDADE_FIM");
         if (ValorAprovado is not null)
             return ValorAprovado >= 0m ? ValorAprovado.Value
@@ -58,7 +58,7 @@ public sealed class MapeadorContratoAcmGuardian(RegraValorProximidadeFimAcm? reg
         ArgumentNullException.ThrowIfNull(versao); ArgumentNullException.ThrowIfNull(decisao);
         if (versao.IntegracaoId == Guid.Empty || versao.NumeroContrato != versao.Snapshot.NumeroContrato ||
             decisao.NumeroContratoSap != versao.NumeroContrato || decisao.VersaoH4 != versao.Versao ||
-            versao.Snapshot.Centro != "3011" || versao.Snapshot.TipoContrato != "AC3P" ||
+            !CentrosAcm.EhPermitido(versao.Snapshot.Centro) || versao.Snapshot.TipoContrato != "AC3P" ||
             new[] { decisao.CodigoGuardian, decisao.Estado, decisao.TipoLancamento, decisao.FonteAprovacao }
                 .Any(v => string.IsNullOrWhiteSpace(v) || new[] { "NÃO VALIDADO", "NAO VALIDADO", "PENDENTE" }.Contains(v.Trim(), StringComparer.OrdinalIgnoreCase)))
             throw new DecisaoFuncionalPendenteSapException("ACM_CONTRACT_FUNCTIONAL_APPROVAL_REQUIRED");
@@ -86,7 +86,7 @@ public sealed class MapeadorContratoAcmGuardian(RegraValorProximidadeFimAcm? reg
         // contrato + tipo de pesagem, a mesma regra de AcmInboundWindowOptions.EscopoContratoAprovado.
         // A operacao do SAP nao participa: ela varia para o mesmo sentido de negocio (10 e 30 sao
         // ambos compra) e nao acrescenta informacao sobre credito ou debito.
-        if (contrato.Centro != "3011" || contrato.TipoContrato is not ("AC3P" or "AC3S"))
+        if (!CentrosAcm.EhPermitido(contrato.Centro) || contrato.TipoContrato is not ("AC3P" or "AC3S"))
             throw new DecisaoFuncionalPendenteSapException("ACM_SCENARIO_NOT_APPROVED");
         var estado = contrato.StatusContrato == "T" ? "308102"
             : throw new DecisaoFuncionalPendenteSapException("ACM_ESTADO");

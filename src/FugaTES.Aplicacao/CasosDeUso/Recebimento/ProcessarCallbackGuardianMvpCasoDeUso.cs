@@ -3,6 +3,7 @@ using FugaTES.Aplicacao.Modelos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 using FugaTES.Aplicacao.Servicos.Mvp;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Aplicacao.CasosDeUso.Recebimento;
 
 public sealed class ProcessarCallbackGuardianMvpCasoDeUso(IRepositorioCorrelacaoRecebimento correlacoes, IRegistroCallbackPesagemSapStore registro)
@@ -19,7 +20,7 @@ public sealed class ProcessarCallbackGuardianMvpCasoDeUso(IRepositorioCorrelacao
         if (string.IsNullOrWhiteSpace(contratoAcm)) throw new InvalidOperationException("ACM contract is absent.");
         if (AcmR106SapReturnPreflight.RequiresAcmGuards(contexto.Entrada))
         {
-            if (contexto.Entrada.Centro != "3011" || contexto.Entrada.TipoContrato != "AC3P")
+            if (!CentrosAcm.EhPermitido(contexto.Entrada.Centro) || contexto.Entrada.TipoContrato != "AC3P")
                 throw new ArgumentException("ACM_CALLBACK_CONTEXT_INVALID");
             if (callback.Estado != "5") throw new ArgumentException("ACM_FINAL_EVENT_REQUIRED");
             GuardianFinalWeighingPolicy.RequireFinal(callback.PesoBruto, callback.Tara, callback.PesoLiquido);

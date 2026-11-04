@@ -26,7 +26,7 @@ public sealed class AcmGuardianMaterialResolver(AcmR57NormalOptions options,IGua
  public static string Candidate(AcmR57NormalOptions o,VersaoContratoSapToledo v)
  {
   var s=v.Snapshot;
-  if((v.Versao!=1&&o.ManualRecoveryScope?.Matches(v)!=true)||s.Centro!="3011"||s.StatusContrato!="T"||!AcmInboundWindowOptions.EscopoContratoAprovado(s.TipoContrato,s.TipoPesagem))throw new AcmR57BlockedException("ACM_MATERIAL_SCOPE_REQUIRED");
+  if((v.Versao!=1&&o.ManualRecoveryScope?.Matches(v)!=true)||!CentrosAcm.EhPermitido(s.Centro)||s.StatusContrato!="T"||!AcmInboundWindowOptions.EscopoContratoAprovado(s.TipoContrato,s.TipoPesagem))throw new AcmR57BlockedException("ACM_MATERIAL_SCOPE_REQUIRED");
   var raw=s.Material;
   if(string.IsNullOrEmpty(raw)||raw.Length>40||!char.IsAsciiLetterOrDigit(raw[0])||!raw.All(c=>char.IsAsciiLetterOrDigit(c)||c is '-' or '_' or '.')||raw.All(c=>c=='0'))throw new AcmR57BlockedException("ACM_MATERIAL_CODE_INVALID");
   var mappings=o.ApprovedMaterialMappings.Where(m=>m.Centro==s.Centro&&m.Item==s.Item&&m.SapMaterial==raw).ToArray();

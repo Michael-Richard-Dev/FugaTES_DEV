@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using FugaTES.Aplicacao.Servicos.Mvp;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Aplicacao.Modelos.Recebimento;
 
 // This is an internal audit snapshot of the existing SAP input, NOT a second wire mapper.
@@ -12,7 +13,7 @@ public sealed record EvidenciaPesagemGuardianSnapshot(string Json, string Sha256
     {
         ArgumentNullException.ThrowIfNull(c);ArgumentNullException.ThrowIfNull(p);
         var e=p.EvidenciaTicket;
-        if(c.Entrada.Centro!="3011" || c.Entrada.TipoContrato!="AC3P" ||
+        if(!CentrosAcm.EhPermitido(c.Entrada.Centro) || c.Entrada.TipoContrato!="AC3P" ||
            !AcmR106SapReturnPreflight.EventoFinalComprovado(c) || e is null ||
            p.SistemaBalanca!="Toledo" || p.TipoDocumento!=c.Entrada.TipoContrato || p.DocumentoSap!=c.DocumentoSap ||
            e.CallbackFingerprint!=c.CallbackFingerprint || e.ProtocoloGuardian!=c.ProtocoloGuardian ||

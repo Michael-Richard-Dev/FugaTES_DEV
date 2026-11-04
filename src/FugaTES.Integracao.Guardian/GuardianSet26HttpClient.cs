@@ -83,7 +83,7 @@ public sealed partial class GuardianSet26HttpClient(HttpClient httpClient, Guard
         {
             if (preCadastro.CodigoTransportadora is not null ||
                 !preCadastro.CamposAdicionais.Any(c => c.Numero == 1000 && c.Valor == "AC3P") ||
-                !preCadastro.CamposAdicionais.Any(c => c.Numero == 1002 && c.Valor == "3011") ||
+                !preCadastro.CamposAdicionais.Any(c => c.Numero == 1002 && FugaTES.Aplicacao.Configuracao.CentrosAcm.EhPermitido(c.Valor)) ||
                 !preCadastro.CamposAdicionais.Any(c => c.Numero == 1003 && c.Valor == "10"))
                 throw new GuardianHttpException("Guardian carrier completion context is not approved.");
         }

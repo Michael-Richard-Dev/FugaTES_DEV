@@ -7,6 +7,7 @@ using FugaTES.Aplicacao.Modelos.Mvp;
 using FugaTES.Aplicacao.Modelos.Recebimento;
 using FugaTES.Aplicacao.Servicos.ContratosSapToledo;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Aplicacao.Servicos.Mvp;
 
 // A read-only scope, not a write authorization. The shipped host selects the existing R104 scope.
@@ -29,7 +30,7 @@ public sealed class AcmR106SapReturnPreflight(
     AcmR106SapReturnScope scope) : IAcmR106SapReturnPreflight
 {
     public static bool RequiresAcmGuards(RecebimentoSapCpiMvp input) =>
-        (input.Centro == "3011" && input.TipoContrato == "AC3P") ||
+        (CentrosAcm.EhPermitido(input.Centro) && input.TipoContrato == "AC3P") ||
         input.Contrato.TrimStart('0') == AcmR104Scope.Contract.TrimStart('0') ||
         input.ContratoAcmSap?.TrimStart('0') == AcmR104Scope.Contract.TrimStart('0');
 
@@ -58,7 +59,7 @@ public sealed class AcmR106SapReturnPreflight(
             link.CodigoContratoConfirmado != link.CodigoContratoSolicitado ||
             link.CodigoContratoConfirmado != v.NumeroContrato.TrimStart('0') ||
             (link.NumeroTicketGuardian is not null && link.NumeroTicketGuardian != c.TicketGuardian) ||
-            x.Processo != "RECEBIMENTO" || x.Centro != "3011" || x.Centro != s.Centro ||
+            x.Processo != "RECEBIMENTO" || !CentrosAcm.EhPermitido(x.Centro) || x.Centro != s.Centro ||
             x.TipoContrato != "AC3P" || x.TipoContrato != s.TipoContrato || x.TipoDocumento != s.TipoContrato ||
             x.Contrato != v.NumeroContrato || x.ContratoAcmSap != v.NumeroContrato ||
             x.Material != s.Material || x.BusinessPartnerEmissor != s.IdParceiro ||

@@ -53,7 +53,7 @@ public sealed class AcmGuardianH4DurableOfflineTests
     public void Cenário_nao_aprovado_falha_fechado()
     {
         Assert.Throws<DecisaoFuncionalPendenteSapException>(() =>
-            MapeadorContratoAcmGuardian.MapearCamposConfirmados(Snapshot(center: "3008")));
+            MapeadorContratoAcmGuardian.MapearCamposConfirmados(Snapshot(center: "3020")));
     }
 
     [Fact]

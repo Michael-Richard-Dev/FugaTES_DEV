@@ -11,6 +11,7 @@ using FugaTES.Aplicacao.Resultados.SAP;
 using FugaTES.Aplicacao.Servicos.SAP;
 using FugaTES.Aplicacao.Servicos.Mvp;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Aplicacao.CasosDeUso.Mvp;
 
 public sealed class ProcessarSaidaSd(
@@ -134,7 +135,7 @@ public sealed class ProcessarContratoAcm(
             throw new CapabilityMvpPendenteException("ACM_DURABLE_INBOUND_MISSING");
         var versao = await contratos.ObterPorIntegracaoIdAsync(inboundId, ct)
             ?? throw new CapabilityMvpPendenteException("ACM_DURABLE_INBOUND_MISSING");
-        if (versao.Snapshot.Centro != "3011" || versao.Snapshot.TipoContrato != "AC3P")
+        if (!CentrosAcm.EhPermitido(versao.Snapshot.Centro) || versao.Snapshot.TipoContrato != "AC3P")
         {
             await base.ExigirDecisoesAsync(claim, ct);
             return;
@@ -154,7 +155,7 @@ public sealed class ProcessarContratoAcm(
         var versao = await contratos.ObterPorIntegracaoIdAsync(claim.IntegracaoId, ct);
         return versao is not null && versao.IntegracaoId == claim.IntegracaoId &&
             versao.NumeroContrato == claim.ChaveNegocio && versao.Snapshot.NumeroContrato == versao.NumeroContrato &&
-            versao.FingerprintSha256 == claim.FingerprintSha256 && versao.Snapshot.Centro == "3011";
+            versao.FingerprintSha256 == claim.FingerprintSha256 && CentrosAcm.EhPermitido(versao.Snapshot.Centro);
     }
 
     protected override async Task<ResultadoFluxoMvp> ExecutarEtapaAsync(ClaimIntegracaoMotor claim, EfeitosFluxoMvp efeitos, CancellationToken ct)
@@ -171,7 +172,7 @@ public sealed class ProcessarContratoAcm(
 
         if (new[] { comando.Codigo, comando.Descricao, comando.Estado, comando.TipoLancamento }.Any(string.IsNullOrWhiteSpace))
             throw new CapabilityMvpPendenteException("ACM_CONTRACT_MAPPING");
-        if (versao.Snapshot.Centro == "3011" && versao.Snapshot.TipoContrato == "AC3P")
+        if (CentrosAcm.EhPermitido(versao.Snapshot.Centro) && versao.Snapshot.TipoContrato == "AC3P")
         {
             if (vinculos is null)
                 throw new CapabilityMvpPendenteException("ACM_H4_GUARDIAN_STORE_UNAVAILABLE");
@@ -192,7 +193,7 @@ public sealed class ProcessarContratoAcm(
         if (retorno.Acao == AcaoSincronizacaoContrato.Indeterminado)
             return new(StatusFluxoMvp.ResultadoIndeterminado, claim.CorrelationId, Operacao,
                 Erro: "ACM_CONTRACT_SYNC_INDETERMINATE");
-        if (versao.Snapshot.Centro == "3011" && versao.Snapshot.TipoContrato == "AC3P")
+        if (CentrosAcm.EhPermitido(versao.Snapshot.Centro) && versao.Snapshot.TipoContrato == "AC3P")
         {
             await vinculos!.RegistrarCodigoConfirmadoAsync(versao.IntegracaoId, retorno.CodigoConfirmado!, ct);
             // Reconciliation and durable identity are preserved before resolving scheduling data.
@@ -224,7 +225,7 @@ public sealed class ProcessarPesagemAcm(
             throw new CapabilityMvpPendenteException("ACM_EVENT5_MISSING");
         // H7 nao comprova a identidade do callback associada a versao H4 do ACM 3011.
         // Este gate nao transforma ID do callback em ID de pre-cadastro nem infere NumeroContrato por padding.
-        if (correlacao.Entrada.Centro == "3011" && correlacao.Entrada.TipoContrato == "AC3P")
+        if (CentrosAcm.EhPermitido(correlacao.Entrada.Centro) && correlacao.Entrada.TipoContrato == "AC3P")
             throw new CapabilityMvpPendenteException("ACM_CALLBACK_H4_IDENTITY_NOT_PROVEN");
         var comando = mapper.Mapear(new Dictionary<string, object?>
         {

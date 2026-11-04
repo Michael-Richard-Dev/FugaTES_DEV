@@ -1,6 +1,7 @@
 using FugaTES.Aplicacao.Modelos.Recebimento;
 using FugaTES.Aplicacao.Servicos.Mvp;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.Aplicacao.Servicos.Recebimento;
 
 // R164A: INTERNAL normalized evidence contract, NOT the Guardian HTTP/SOAP wire schema.
@@ -59,7 +60,7 @@ public sealed class AcmGuardianTicketEvidenceAdapterR164A(
         if (correlacao.ProtocoloGuardian is null || correlacao.TicketGuardian is null ||
             correlacao.CallbackFingerprint is null || correlacao.Pesos is null ||
             !AcmR106SapReturnPreflight.EventoFinalComprovado(correlacao) ||
-            correlacao.Entrada.TipoContrato != "AC3P" || correlacao.Entrada.Centro != "3011")
+            correlacao.Entrada.TipoContrato != "AC3P" || !CentrosAcm.EhPermitido(correlacao.Entrada.Centro))
             return null;
         if (correlacao.Callback is { } callback &&
             (callback.Estado != "5" || callback.ProtocoloGuardian != correlacao.ProtocoloGuardian ||

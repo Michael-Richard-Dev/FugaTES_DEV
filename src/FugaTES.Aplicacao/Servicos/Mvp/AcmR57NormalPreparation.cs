@@ -154,7 +154,7 @@ public sealed class AcmR57NormalRuntimeGate(AcmR57NormalOptions options, TimePro
             return "R165U_GUARDIAN_IDENTITY_REQUIRED";
         if (!AcmR57NormalPreparation.Proven(options.PostgreSqlIdentityEvidence) || !AcmR57NormalPreparation.Proven(options.JournalEvidence))
             return "R165U_DURABLE_READINESS_REQUIRED";
-        if (version.Snapshot.Centro != "3011" ||
+        if (!CentrosAcm.EhPermitido(version.Snapshot.Centro) ||
             !AcmInboundWindowOptions.EscopoContratoAprovado(version.Snapshot.TipoContrato, version.Snapshot.TipoPesagem))
             return "R165U_BUSINESS_SCOPE_NOT_APPROVED";
         try { _ = AcmR57NormalPreparation.ResolverCodigoEmissor(options, version, emitterResolver,materialResolver); return null; }
@@ -261,7 +261,7 @@ public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options, AcmGuar
     internal static string ResolverMaterialEscopo(AcmR57NormalOptions options,VersaoContratoSapToledo version)
     {
         var s=version.Snapshot;
-        if(version.Versao!=1&&options.ManualRecoveryScope?.Matches(version)!=true||s.Centro!="3011"||!AcmInboundWindowOptions.EscopoContratoAprovado(s.TipoContrato,s.TipoPesagem))throw new AcmR57BlockedException("R170_SCOPE_INVALID");
+        if(version.Versao!=1&&options.ManualRecoveryScope?.Matches(version)!=true||!CentrosAcm.EhPermitido(s.Centro)||!AcmInboundWindowOptions.EscopoContratoAprovado(s.TipoContrato,s.TipoPesagem))throw new AcmR57BlockedException("R170_SCOPE_INVALID");
         var materials=options.ApprovedMaterialMappings.Where(m=>m.Centro==s.Centro&&m.Item==s.Item&&m.SapMaterial==s.Material&&Proven(m.GuardianCode)&&m.GuardianCode!.Length<=30&&Proven(m.EvidenceReference)).ToArray();
         if(materials.Length!=1)throw new AcmR57BlockedException("R170_MATERIAL_MAPPING_REQUIRED");
         return materials[0].GuardianCode!;
@@ -277,11 +277,11 @@ public sealed class AcmR57NormalPreparation(AcmR57NormalOptions options, AcmGuar
         // aprovados para o centro, nao um modo de selecao de contratos. Assim o reenvio manual, que
         // roda ligado a um unico contrato pelo piloto, usa a mesma tabela de codigos do motor
         // continuo, em vez de exigir um mapeamento por contrato que ninguem manteria.
-        if (version.Versao != 1 || s.Centro != "3011" ||
+        if (version.Versao != 1 || !CentrosAcm.EhPermitido(s.Centro) ||
             !AcmInboundWindowOptions.EscopoContratoAprovado(s.TipoContrato, s.TipoPesagem))
             throw new AcmR57BlockedException("R170_SCOPE_INVALID");
         bool Common(string? centre, string? item, string? code, string? evidence, int max) =>
-            centre == "3011" && centre == s.Centro && item == s.Item &&
+            centre == s.Centro && CentrosAcm.EhPermitido(centre) && item == s.Item &&
             Proven(code) && code!.Length <= max && Proven(evidence);
         var partners = options.ApprovedPartnerMappings
             .Where(m => Common(m.Centro, m.Item, m.GuardianCode, m.EvidenceReference, 20) && m.SapPartnerId == s.IdParceiro)

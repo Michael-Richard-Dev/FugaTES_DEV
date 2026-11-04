@@ -102,7 +102,7 @@ public sealed class AcmH4DispatchWiringTests
             "ID" => v with { IntegracaoId = Guid.NewGuid() },
             "CONTRACT" => v with { NumeroContrato = "OUTRO" },
             "FINGERPRINT" => v with { FingerprintSha256 = new string('B', 64) },
-            "CENTRO" => v with { Snapshot = v.Snapshot with { Centro = "3008" } },
+            "CENTRO" => v with { Snapshot = v.Snapshot with { Centro = "3020" } },
             _ => null
         };
         await f.Router.ProcessarAsync(f.Claim, default);

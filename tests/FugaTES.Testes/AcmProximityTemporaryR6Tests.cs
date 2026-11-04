@@ -46,7 +46,7 @@ public sealed class AcmProximityTemporaryR6Tests
     }
 
     [Theory]
-    [InlineData("3008")]
+    [InlineData("3020")]
     [InlineData("3012")]
     public void Other_centers_remain_blocked(string center)
     {
@@ -57,7 +57,7 @@ public sealed class AcmProximityTemporaryR6Tests
 
     [Theory]
     [InlineData("ACM_SAIDA", "3011")]
-    [InlineData("ACM_ENTRADA", "3008")]
+    [InlineData("ACM_ENTRADA", "3020")]
     [InlineData("ACM_ENTRADA", "3012")]
     [InlineData("UNKNOWN", "3011")]
     [InlineData("", "3011")]

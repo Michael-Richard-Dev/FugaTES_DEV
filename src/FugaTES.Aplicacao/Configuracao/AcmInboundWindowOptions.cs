@@ -37,7 +37,7 @@ public sealed class AcmInboundWindowOptions
         NotBeforeUtc is { Offset: var fromOffset } from && fromOffset == TimeSpan.Zero &&
         UntilUtc is { Offset: var toOffset } until && toOffset == TimeSpan.Zero &&
         until > from && until - from <= TimeSpan.FromDays(1) &&
-        Centro == "3011" && (Item is null || Identifier(Item, 10)) &&
+        CentrosAcm.EhPermitido(Centro) && (Item is null || Identifier(Item, 10)) &&
         AllowedSapPartners is { Length: > 0 and <= 100 } && AllowedSapPartners.All(v => Token(v, 20)) &&
         AllowedSapMaterials is { Length: > 0 and <= 100 } && AllowedSapMaterials.All(v => Token(v, 30)) &&
         ExcludedContractNumbers is not null && ExcludedContractNumbers.All(v => Identifier(v, 20));

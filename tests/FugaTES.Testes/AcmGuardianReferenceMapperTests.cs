@@ -47,7 +47,7 @@ public sealed class AcmGuardianReferenceMapperTests
         versao = defect switch {
             "SNAPSHOT" => versao with { Snapshot = versao.Snapshot with { NumeroContrato = "1031" } },
             "ID" => versao with { IntegracaoId = Guid.Empty },
-            "CENTRO" => versao with { Snapshot = versao.Snapshot with { Centro = "3008" } },
+            "CENTRO" => versao with { Snapshot = versao.Snapshot with { Centro = "3020" } },
             "STATUS" => versao with { Snapshot = versao.Snapshot with { StatusContrato = "X" } },
             _ => versao with { Snapshot = versao.Snapshot with { OperacaoContrato = "20" } }
         };
@@ -99,7 +99,7 @@ public sealed class AcmGuardianReferenceMapperTests
             MapeadorContratoAcmGuardian.MapearCamposConfirmados(Snapshot() with { NumeroContrato = sap! }));
 
     [Theory]
-    [InlineData("3008", "AC3P", "T", "10")]
+    [InlineData("3020", "AC3P", "T", "10")]
     [InlineData("3011", "OUTRO", "T", "10")]
     [InlineData("3011", "AC3P", "t", "10")]
     [InlineData("3011", "AC3P", "", "10")]

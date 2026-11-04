@@ -108,7 +108,7 @@ public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IA
         if(await r.ReadAsync(ct))throw new InvalidOperationException("ACM_RETRY_H4_AMBIGUOUS");
         await r.DisposeAsync();
         return facts with {CanonicalFingerprint=new ContratoSapToledoCanonicalizer().Canonicalizar(payload).FingerprintSha256,
-            IdentityVerified=facts.IdentityVerified&&payload.NumeroContrato==facts.Contract&&payload.Item==facts.Item&&payload.Centro=="3011"&&
+            IdentityVerified=facts.IdentityVerified&&payload.NumeroContrato==facts.Contract&&payload.Item==facts.Item&&FugaTES.Aplicacao.Configuracao.CentrosAcm.EhPermitido(payload.Centro)&&
                 FugaTES.Aplicacao.Configuracao.AcmInboundWindowOptions.EscopoContratoAprovado(payload.TipoContrato,payload.TipoPesagem)&&payload.StatusContrato=="T",
             Predecessors=await Predecessors(c,tx,facts,ct)};
     }
@@ -165,7 +165,7 @@ public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IA
             using var d=JsonDocument.Parse(r.GetString(0));var facts=d.RootElement.GetProperty("Facts").Deserialize<AcmRetryPredecessor>(Json)!;
             var payload=d.RootElement.GetProperty("Payload").Deserialize<ContratoSapToledoSnapshot>(Json)!;
             result.Add(facts with{CanonicalFingerprint=new ContratoSapToledoCanonicalizer().Canonicalizar(payload).FingerprintSha256,
-                IdentityVerified=facts.IdentityVerified&&payload.NumeroContrato==target.Contract&&payload.Item==target.Item&&payload.Centro=="3011"&&
+                IdentityVerified=facts.IdentityVerified&&payload.NumeroContrato==target.Contract&&payload.Item==target.Item&&FugaTES.Aplicacao.Configuracao.CentrosAcm.EhPermitido(payload.Centro)&&
                     FugaTES.Aplicacao.Configuracao.AcmInboundWindowOptions.EscopoContratoAprovado(payload.TipoContrato,payload.TipoPesagem)&&payload.StatusContrato=="T"});
         }
         return result.ToArray();
