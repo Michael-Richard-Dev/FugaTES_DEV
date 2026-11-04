@@ -63,8 +63,9 @@ public sealed class ToledoReceiptTests
         Assert.Equal(400,result.Status);Assert.Equal(0,store.Calls);
     }
     [Theory]
-    [InlineData("DataPesagem","27/10/2026 12:00:22")][InlineData("DataPesagem","02/30/2026 12:00:22 PM")]
-    [InlineData("DataPesagem","10/27/2026 12:00:22 PMZ")][InlineData("PesoBruto","1,5")]
+    [InlineData("DataPesagem","02/30/2026 12:00:22 PM")]
+    [InlineData("DataPesagem","10/27/2026 12:00:22 PMZ")]
+    [InlineData("DataPesagem","2026-11-03 09:23:54")][InlineData("DataPesagem","13/13/2026 10:00:00")]
     [InlineData("PesoTara","-1")][InlineData("PesoAntesDesconto","1e3")]
     [InlineData("PesoAposDesconto","0.12345678901234567890123456789")]
     [InlineData("IdPesagem","1.5")][InlineData("IdPesagem","")][InlineData("Material","7e6")]
@@ -74,6 +75,23 @@ public sealed class ToledoReceiptTests
         var p=Payload();p[field]=value;var store=new Store();using var services=Services(store);
         var result=await ToledoCallbackTests.Post(p.ToJsonString(),services);
         Assert.Equal(400,result.Status);Assert.Contains("INVALID_TOLEDO_CALLBACK",result.Body);Assert.Equal(0,store.Calls);
+    }
+    // O Guardian manda a data em DUAS convencoes, conforme o caminho, e a virgula decimal vem da
+    // propria balanca. Recusar qualquer uma delas derruba pesagem boa: foi o que aconteceu com a
+    // 0020345, de 3 de novembro de 2026, recusada porque o dia veio como "3" e a lista de
+    // formatos so aceitava "dd". Estes casos sao os que TEM de passar.
+    [Theory]
+    [InlineData("DataPesagem","11/3/2026 9:23:54 AM")]    // automatico: mes/dia, sem zero, AM/PM
+    [InlineData("DataPesagem","11/03/2026 09:23:54 AM")]
+    [InlineData("DataPesagem","03/11/2026 08:30:44")]     // manual: dia/mes, 24 horas
+    [InlineData("DataPesagem","3/11/2026 8:30:44")]
+    [InlineData("PesoBruto","5000,0")]                    // virgula decimal da balanca
+    [InlineData("PesoBruto","5000.0")]
+    public async Task Accepted_guardian_formats_are_not_rejected(string field,string value)
+    {
+        var p=Payload();p[field]=value;var store=new Store();using var services=Services(store);
+        var result=await ToledoCallbackTests.Post(p.ToJsonString(),services);
+        Assert.Equal(200,result.Status);Assert.DoesNotContain("INVALID_TOLEDO_CALLBACK",result.Body);
     }
     [Theory]
     [InlineData(0)][InlineData(1)]

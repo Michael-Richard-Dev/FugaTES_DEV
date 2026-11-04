@@ -60,6 +60,37 @@ public static class DevolutivaSdEndpoint
             return;
         }
 
+        // Pesagem com contrato do ACM nao e nossa. O Guardian manda a MESMA finalizacao para as
+        // duas rotas, e ate 03/11/2026 nos guardavamos as duas: a 0020344 virou uma linha de
+        // venda em branco, sem ordem e sem nada a fazer.
+        //
+        // Nao e recusa - nada esta errado com o documento, ele so pertence ao outro fluxo. Por
+        // isso 200 com "mensagem": OK: uma recusa faria o Guardian marcar falha e reenviar para
+        // sempre uma pesagem que esta certa. E nada e gravado.
+        if (devolutiva.ContratoAcm is not null)
+        {
+            // Warning, e nao Information, por um motivo pratico: o servico sobe com
+            // "--Logging:LogLevel:FugaTES.Callback.Http.DevolutivaSdEndpoint=Warning" na linha de
+            // comando, entao Information nao apareceria no journal. Uma pesagem desviada em
+            // silencio e exatamente o que custou a manha de 03/11/2026 a ser diagnosticado.
+            //
+            // O numero do contrato NAO vai para o log: para saber que a pesagem foi desviada
+            // basta o id dela, e o documento inteiro ja esta do lado do ACM.
+            context.RequestServices.GetService<ILoggerFactory>()
+                ?.CreateLogger(typeof(DevolutivaSdEndpoint))
+                .LogWarning("SD_DEVOLUTIVA_E_DO_ACM: {Pesagem} tem contrato ACM; nada gravado.",
+                    devolutiva.IdPesagem);
+            await context.Response.WriteAsJsonAsync(new
+            {
+                mensagem = MensagemSucesso,
+                status = "NAO_E_DO_SD",
+                idPesagem = devolutiva.IdPesagem,
+                persisted = false,
+                detalhe = "Pesagem com contrato do ACM: pertence ao fluxo de recebimento."
+            }, context.RequestAborted);
+            return;
+        }
+
         var repositorio = context.RequestServices.GetService<IDevolutivasSdRepositorio>();
         if (repositorio is null)
         { await ResponderAsync(context, 503, "SD_RECEPTOR_NAO_CONFIGURADO"); return; }

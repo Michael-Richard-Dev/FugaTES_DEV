@@ -11,6 +11,24 @@ public sealed record ToledoPesagemCallbackDto(string SistemaBalanca,string DataP
     decimal PesoAntesDesconto,decimal PesoAposDesconto,IReadOnlyList<ToledoQualidadeCallbackDto> Qualidades,
     IReadOnlyList<ToledoItemPesagemCallbackDto> Pesagens,string DocumentoJson)
 {
+    /// <summary>
+    /// Formatos de data do Guardian. Os MESMOS que o fluxo SD ja aceita (LeitorDevolutivaSd):
+    ///
+    ///   automatico : "11/3/2026 9:23:54 AM"   - mes/dia, SEM zero a esquerda, com AM/PM
+    ///   manual     : "03/11/2026 08:30:44"    - dia/mes, com zero a esquerda, 24 horas
+    ///
+    /// "M" e "d" aceitam um OU dois digitos; "MM" e "dd" exigem dois. Era essa a falha: a lista
+    /// anterior so tinha "MM/dd", e a pesagem 0020345, de 3 de novembro de 2026, foi recusada
+    /// porque o dia veio como "3". O mesmo defeito ja tinha derrubado a pesagem 0020340 no lado
+    /// do SD, em 02/11/2026 - dois receptores, a mesma lista incompleta.
+    ///
+    /// Cada ordem aparece so com o seu tipo de relogio, e isso e deliberado: e o relogio que
+    /// desfaz a ambiguidade. Juntar as duas faria "03/04/2026 10:00:00" virar 3 de abril ou 4 de
+    /// marco conforme a ordem da lista, em silencio.
+    /// </summary>
+    private static readonly string[] FormatosData=
+        ["M/d/yyyy h:mm:ss tt","M/d/yyyy hh:mm:ss tt","d/M/yyyy H:mm:ss","d/M/yyyy HH:mm:ss"];
+
     private static readonly Regex Digits=new("^[0-9]+$",RegexOptions.CultureInvariant);
     private static readonly Regex DecimalText=new("^[0-9]+(?:\\.[0-9]+)?$",RegexOptions.CultureInvariant);
 
@@ -26,7 +44,7 @@ public sealed record ToledoPesagemCallbackDto(string SistemaBalanca,string DataP
         var system=Text(fields,"SistemaBalanca",true)!;
         if(!string.Equals(system,"Toledo",StringComparison.OrdinalIgnoreCase))throw Invalid("SistemaBalanca");
         var date=Text(fields,"DataPesagem",true)!;
-        if(!DateTime.TryParseExact(date,new[]{"MM/dd/yyyy h:mm:ss tt","MM/dd/yyyy hh:mm:ss tt","dd/MM/yyyy HH:mm:ss"},
+        if(!DateTime.TryParseExact(date,FormatosData,
             CultureInfo.InvariantCulture,DateTimeStyles.None,out var parsedDate))throw Invalid("DataPesagem");
         // Wire has no timezone. Preserve local wall time; do not invent UTC or a business timezone.
         parsedDate=DateTime.SpecifyKind(parsedDate,DateTimeKind.Unspecified);

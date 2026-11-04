@@ -24,6 +24,20 @@ public sealed record DevolutivaPesagemSd(
     string? NomeMotorista,
     string PayloadJson)
 {
+    /// <summary>
+    /// Contrato do ACM, quando a pesagem traz um. E o que diz A QUEM a pesagem pertence.
+    ///
+    /// O Guardian manda a MESMA finalizacao de pesagem para as duas rotas, a do ACM e a nossa, e
+    /// ate 03/11/2026 nos guardavamos as duas. A pesagem 0020344 virou uma linha de venda em
+    /// branco: sem ordem, sem linha, sem nada a fazer com ela - porque era do ACM.
+    ///
+    /// Preenchido (e diferente de zero) significa: nao e do fluxo de venda. Vazio, ausente ou
+    /// zerado significa que e nossa. A regra e do operador, e o campo ja vem no documento.
+    /// </summary>
+    public string? ContratoAcm { get; init; }
+
+    public bool EhDoAcm => ContratoAcm is not null;
+
     /// <summary>Chave natural da linha de ordem, no mesmo formato do registro de protocolos.</summary>
     public string? ChaveNatural => OrdemVenda is null || LinhaOrdem is null ? null : OrdemVenda + "/" + LinhaOrdem;
 

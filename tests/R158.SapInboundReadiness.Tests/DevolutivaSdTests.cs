@@ -302,3 +302,121 @@ public sealed class DevolutivaSdTests
         Assert.Equal("4233/10", lida.ChaveNatural);
     }
 }
+
+/// <summary>
+/// A quem a pesagem pertence. O Guardian manda a MESMA finalizacao para a rota do ACM e para a
+/// nossa; o contrato e o que separa as duas.
+///
+/// Veio de um caso real: em 03/11/2026 a pesagem 0020344, de um contrato do ACM, virou uma linha
+/// de venda em branco - sem ordem, sem linha, sem nada a fazer com ela.
+/// </summary>
+public sealed class ContratoAcmNaDevolutivaSdTests
+{
+    private static string Corpo(string? contrato) => $$"""
+    {
+      "SistemaBalanca": "Toledo",
+      "DataPesagem": "03/11/2026 08:30:44",
+      "TipoPesagem": "S",
+      "IdPesagem": "0020344",
+      "Centro": "3011",
+      "PesoBruto": "5000,0",
+      "PesoTara": "2000,0",
+      "PesoAposDesconto": "3000,0",
+      "to_Pesagem": [{"Indice":1,"NrIndiceTotal":1{{(contrato is null ? "" : $",\"ContratoACM\":\"{contrato}\"")}}}]
+    }
+    """;
+
+    [Fact]
+    public void Pesagem_com_contrato_e_do_acm()
+    {
+        var d = LeitorDevolutivaSd.Ler(Corpo("0000001175"));
+        Assert.True(d.EhDoAcm);
+        Assert.Equal("0000001175", d.ContratoAcm);
+    }
+
+    [Theory]
+    [InlineData(null)]        // o campo nem vem - e o caso das vendas que ja rodaram
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("0")]
+    [InlineData("0000000000")]
+    public void Sem_contrato_preenchido_a_pesagem_e_do_sd(string? contrato)
+    {
+        // Zeros sao como o Guardian escreve "sem contrato". Le-los como preenchido devolveria
+        // TODA venda ao ACM, que e a falha oposta e silenciosa.
+        var d = LeitorDevolutivaSd.Ler(Corpo(contrato));
+        Assert.False(d.EhDoAcm);
+        Assert.Null(d.ContratoAcm);
+    }
+
+    [Fact]
+    public void Basta_um_desdobro_com_contrato()
+    {
+        var corpo = """
+        {
+          "SistemaBalanca": "Toledo", "DataPesagem": "03/11/2026 08:30:44", "TipoPesagem": "S",
+          "IdPesagem": "0020344", "Centro": "3011",
+          "PesoBruto": "5000,0", "PesoTara": "2000,0", "PesoAposDesconto": "3000,0",
+          "to_Pesagem": [
+            {"Indice":1,"NrIndiceTotal":2,"ContratoACM":""},
+            {"Indice":2,"NrIndiceTotal":2,"ContratoACM":"0000001175"}
+          ]
+        }
+        """;
+        // A pesagem mista e a duvidosa: exigir contrato em todos os desdobros a deixaria entrar.
+        Assert.Equal("0000001175", LeitorDevolutivaSd.Ler(corpo).ContratoAcm);
+    }
+
+    [Fact]
+    public void Contrato_do_acm_nao_impede_a_leitura_do_resto()
+    {
+        // Continua sendo um documento valido: ele e DESVIADO, nao recusado. Quem decide o que
+        // fazer com ele e o receptor, e para isso precisa dos campos lidos.
+        var d = LeitorDevolutivaSd.Ler(Corpo("0000001175"));
+        Assert.Equal("0020344", d.IdPesagem);
+        Assert.Equal(5000.0m, d.PesoBruto);
+        Assert.Equal(3000.0m, d.PesoLiquido);
+        Assert.Equal(new DateTime(2026, 11, 3, 8, 30, 44), d.DataPesagem);
+    }
+}
+
+/// <summary>
+/// Zero nao e ordem de venda.
+///
+/// O Guardian preenche 1003 e 1009 com zeros quando a pesagem nao pertence a uma ordem - toda
+/// pesagem do ACM chega assim. Em 03/11/2026 as pesagens 0020344 e 0020345 foram gravadas como
+/// CORRELACIONADA com a chave "0/0": uma ordem que nao existe, numa tabela que a tela le.
+/// </summary>
+public sealed class CorrelacaoZeradaSdTests
+{
+    private static string Corpo(string ordem, string linha) => $$"""
+    {
+      "SistemaBalanca": "Toledo", "DataPesagem": "11/3/2026 9:23:54 AM", "TipoPesagem": "S",
+      "IdPesagem": "0020345", "Centro": "3011",
+      "PesoBruto": "5000.0", "PesoTara": "2000.0", "PesoAposDesconto": "3000.0",
+      "camposAdicionais": [{"numero":1003,"valor":"{{ordem}}"},{"numero":1009,"valor":"{{linha}}"}]
+    }
+    """;
+
+    [Theory]
+    [InlineData("0", "0")]
+    [InlineData("000000", "000000")]
+    [InlineData("0000000000", "000010")]   // so a ordem zerada ja invalida o par
+    [InlineData("0000000782", "0")]        // so a linha zerada tambem
+    public void Zeros_nao_correlacionam(string ordem, string linha)
+    {
+        var d = LeitorDevolutivaSd.Ler(Corpo(ordem, linha));
+        Assert.False(d.TemCorrelacao);
+        Assert.Null(d.ChaveNatural);
+    }
+
+    [Fact]
+    public void Ordem_de_verdade_continua_correlacionando()
+    {
+        // O zero a esquerda do SAP segue sendo removido: o que muda e so o valor TODO zerado.
+        var d = LeitorDevolutivaSd.Ler(Corpo("0000000782", "000010"));
+        Assert.Equal("782", d.OrdemVenda);
+        Assert.Equal("10", d.LinhaOrdem);
+        Assert.Equal("782/10", d.ChaveNatural);
+    }
+}

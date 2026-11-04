@@ -94,7 +94,43 @@ public static class LeitorDevolutivaSd
                 PesoBruto: bruto, PesoTara: tara, PesoLiquido: liquido,
                 OrdemVenda: ordem, LinhaOrdem: linha,
                 Placa: Texto(raiz, "Placa"), NomeMotorista: Texto(raiz, "NomeMotorista"),
-                PayloadJson: corpoJson);
+                PayloadJson: corpoJson)
+            { ContratoAcm = ContratoAcm(raiz) };
+        }
+    }
+
+    /// <summary>
+    /// Procura o contrato do ACM, que e o que separa os dois fluxos. Devolve nulo quando a
+    /// pesagem e do SD.
+    ///
+    /// Vazio, ausente e ZERADO sao a mesma coisa: "0", "0000000000" e "   " nao sao contrato.
+    /// O Guardian preenche com zeros quando nao ha contrato, e tratar isso como preenchido faria
+    /// toda venda ser devolvida como se fosse do ACM.
+    ///
+    /// Olha item a item: basta UM desdobro com contrato para a pesagem ser do ACM. O contrario -
+    /// exigir que todos tenham - deixaria passar a pesagem mista, que e justamente a duvidosa.
+    /// </summary>
+    public static string? ContratoAcm(JsonElement raiz)
+    {
+        var itens = Propriedade(raiz, "to_Pesagem");
+        if (itens.ValueKind == JsonValueKind.Array)
+            foreach (var item in itens.EnumerateArray())
+                if (Contrato(item) is { } achado) return achado;
+        return Contrato(raiz);
+
+        static string? Contrato(JsonElement no)
+        {
+            var valor = Propriedade(no, "ContratoACM");
+            var texto = valor.ValueKind switch
+            {
+                JsonValueKind.String => valor.GetString(),
+                JsonValueKind.Number => valor.ToString(),
+                _ => null
+            };
+            if (string.IsNullOrWhiteSpace(texto)) return null;
+            texto = texto.Trim();
+            // So zeros e o mesmo que vazio - e e assim que o Guardian escreve "sem contrato".
+            return texto.All(c => c == '0') ? null : texto;
         }
     }
 
@@ -189,9 +225,24 @@ public static class LeitorDevolutivaSd
         return null;
     }
 
-    /// <summary>Mesma normalizacao do protocolo: sem os zeros a esquerda que o SAP preenche.</summary>
+    /// <summary>
+    /// Mesma normalizacao do protocolo - sem os zeros a esquerda que o SAP preenche - com uma
+    /// regra a mais: ZERO NAO E ORDEM.
+    ///
+    /// O Guardian preenche os campos 1003 e 1009 com zeros quando a pesagem nao tem ordem de
+    /// venda, que e o caso de toda pesagem do ACM. <c>MapeadorProtocoloSd.Normalizar</c> tira os
+    /// zeros a esquerda e, quando sobra nada, devolve "0" - correto para um codigo, errado para
+    /// uma correlacao. Sem este tratamento, "000000/000000" virava a chave "0/0" e a pesagem
+    /// entrava como CORRELACIONADA com uma ordem que nao existe.
+    ///
+    /// Aconteceu duas vezes em 03/11/2026, com as pesagens 0020344 e 0020345, as duas do ACM.
+    /// </summary>
     private static string? Normalizar(string? valor)
-        => string.IsNullOrWhiteSpace(valor) ? null : MapeadorProtocoloSd.Normalizar(valor);
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        var limpo = MapeadorProtocoloSd.Normalizar(valor);
+        return limpo == "0" ? null : limpo;
+    }
 
     private static JsonElement Propriedade(JsonElement no, string nome)
         => no.ValueKind == JsonValueKind.Object && no.TryGetProperty(nome, out var v) ? v : default;
