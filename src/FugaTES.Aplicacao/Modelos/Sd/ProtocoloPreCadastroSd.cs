@@ -17,6 +17,10 @@ public sealed record DadosProtocoloPreCadastroSd(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("codigoItem")] string CodigoItem,
     [property: JsonPropertyName("codigoEmissor")] string CodigoEmissor,
+    // Referencia legivel do protocolo, no formato combinado com o operador em 04/11/2026:
+    // "OV" + ordem + "-" + linha + "-" + pedido do cliente (ex.: OV4274-10-49580). E o que
+    // identifica o protocolo para quem olha a balanca, onde nao ha a tela do SAP ao lado.
+    [property: JsonPropertyName("numeroReferencia")] string NumeroReferencia,
     [property: JsonPropertyName("camposAdicionais")] IReadOnlyList<CampoAdicionalGuardianSet26> CamposAdicionais);
 
 public sealed record ConfiguracaoProtocoloSd(

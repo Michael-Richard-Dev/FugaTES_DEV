@@ -81,9 +81,14 @@ public sealed class ProtocoloSdEnvioTests
     }
 
     // Regressao contra evidencia real: este e o payload do protocolo 6 (ordem 782, linha 10,
-    // criado no Guardian em 31/10/2026) e a impressao digital registrada daquele envio. Se o
-    // mapeamento ou a serializacao mudarem, este teste quebra - e tem de quebrar, porque o que
-    // sairia deixaria de ser o que foi conferido e aprovado.
+    // criado no Guardian em 31/10/2026). Se o mapeamento ou a serializacao mudarem, este teste
+    // quebra - e tem de quebrar, porque o que sairia deixaria de ser o que foi conferido.
+    //
+    // A impressao MUDOU uma vez, em 04/11/2026, e de proposito: o protocolo passou a levar o
+    // RECEBEDOR da mercadoria (20000733) no lugar do emissor da ordem (20000184). O valor antigo
+    // era F096D7785DE97524554FDE99A754B514A085EC9C4B04ED5F124024A9963EA96A, e em 04/11 mudou de
+    // novo, ao entrar o campo numeroReferencia (01A1D6F7...63CD -> 5414408B...4FC6). Esta linha so pode
+    // mudar junto com uma decisao escrita; se ela quebrar sem uma, o mapeamento regrediu.
     [Fact]
     public void Impressao_do_protocolo_6_continua_a_mesma()
     {
@@ -92,7 +97,7 @@ public sealed class ProtocoloSdEnvioTests
         var pedido = MapeadorProtocoloSd.Montar(linha,
             "https://webhook.site/717543aa-e052-4a2d-95b1-53983c881c1e");
         Assert.Equal("782/10", MapeadorProtocoloSd.ChaveNatural(linha));
-        Assert.Equal("F096D7785DE97524554FDE99A754B514A085EC9C4B04ED5F124024A9963EA96A",
+        Assert.Equal("5414408BC83FB3CBA3A1430E8488E9B23A8B4724C744CBB755B570DD48DC4FC6",
             GuardianProtocoloSdClient.Impressao(pedido));
     }
 }

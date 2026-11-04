@@ -4,8 +4,9 @@ using FugaTES.Aplicacao.Modelos.Sd;
 namespace FugaTES.Aplicacao.Servicos.Sd;
 
 /// <summary>
-/// Cadastro do Guardian conhecido por este processo: os codigos de emissor e item que o operador
-/// ja criou la.
+/// Cadastro do Guardian conhecido por este processo: os codigos de PESSOA e de item que o
+/// operador ja criou la. "Emissores" aqui e o nome do campo no Guardian, e desde 04/11/2026 o
+/// valor conferido e o do recebedor da mercadoria - ver MapeadorProtocoloSd.Montar.
 ///
 /// Existe porque o Guardian recusa o POST quando o emissor ou o item nao existem, e uma recusa no
 /// envio e cara: ela custa uma ida a rede e chega como erro generico. Conferir antes transforma
@@ -57,7 +58,19 @@ public static class MapeadorProtocoloSd
                 "A url de retorno precisa ser https e sem credencial embutida.");
 
         var item = CodigoGuardian(linha.Material, "SD_ITEM_AUSENTE", "material");
-        var emissor = CodigoGuardian(linha.Emissor, "SD_EMISSOR_AUSENTE", "emissor");
+
+        // QUEM vai no protocolo e o RECEBEDOR DA MERCADORIA (funcao WE), nao o emissor da ordem
+        // (funcao AG). Decisao do operador em 04/11/2026, depois da ordem 4274: ali os dois sao
+        // diferentes, foi o emissor que viajou e estava errado.
+        //
+        // Faz sentido no processo: quem chega na balanca e quem recebe a mercadoria, e e o
+        // cadastro dele que precisa existir no Guardian. Nas ordens em que emissor e recebedor
+        // sao a mesma empresa - a maioria - a troca nao muda nada, e foi por isso que o erro
+        // passou despercebido ate aparecer uma ordem em que eles diferem.
+        //
+        // O campo do Guardian continua se chamando "codigoEmissor": o nome e da API deles.
+        var recebedor = CodigoGuardian(
+            linha.RecebedorMercadoria, "SD_RECEBEDOR_AUSENTE", "recebedor da mercadoria");
 
         // Conferencia contra o que o operador ja cadastrou. Quando a lista esta vazia nao ha o que
         // conferir, e a decisao continua sendo do Guardian - nunca o contrario, que seria liberar
@@ -65,9 +78,9 @@ public static class MapeadorProtocoloSd
         if (cadastro.ConfereItem && !cadastro.TemItem(item))
             throw new ProtocoloSdBloqueadoException("SD_ITEM_NAO_CADASTRADO",
                 $"O item {item} nao consta no Guardian. Cadastre-o antes de criar o protocolo.");
-        if (cadastro.ConfereEmissor && !cadastro.TemEmissor(emissor))
-            throw new ProtocoloSdBloqueadoException("SD_EMISSOR_NAO_CADASTRADO",
-                $"O emissor {emissor} nao consta no Guardian. Cadastre-o antes de criar o protocolo.");
+        if (cadastro.ConfereEmissor && !cadastro.TemEmissor(recebedor))
+            throw new ProtocoloSdBloqueadoException("SD_RECEBEDOR_NAO_CADASTRADO",
+                $"O recebedor {recebedor} nao consta no Guardian. Cadastre-o antes de criar o protocolo.");
 
         var centro = Obrigatorio(linha.Centro, "SD_CENTRO_AUSENTE", "centro");
         if (!OrdensVendaSdFiltro.CentrosPermitidos.Contains(centro, StringComparer.Ordinal))
@@ -83,7 +96,9 @@ public static class MapeadorProtocoloSd
                 // Zero sempre: quem numera o protocolo e o Guardian.
                 Id: 0,
                 CodigoItem: item,
-                CodigoEmissor: emissor,
+                // Nome do campo e do Guardian; o valor e o recebedor da mercadoria.
+                CodigoEmissor: recebedor,
+                NumeroReferencia: Referencia(ordem, item_linha, linha.PedidoDoCliente),
                 CamposAdicionais:
                 [
                     new(CamposProtocoloSd.TipoDocumento, CamposProtocoloSd.Saida),
@@ -127,6 +142,23 @@ public static class MapeadorProtocoloSd
         var semZeros = limpo.TrimStart('0');
         // Um codigo que e so zeros nao vira vazio: vale "0".
         return semZeros.Length == 0 ? "0" : semZeros;
+    }
+
+    /// <summary>
+    /// Referencia do protocolo: "OV" + ordem + "-" + linha + "-" + pedido do cliente.
+    /// Formato combinado com o operador em 04/11/2026 - exemplo: OV4274-10-49580.
+    ///
+    /// Sem pedido do cliente a referencia PARA na linha ("OV4274-10"), em vez de terminar num
+    /// hifen solto: nem toda ordem traz o pedido, e "OV4274-10-" na balanca parece dado perdido.
+    ///
+    /// Ordem e linha ja vem normalizadas, sem os zeros do SAP - a referencia mostra o que o
+    /// operador le na tela do SAP, nao "OV0000004274-000010".
+    /// </summary>
+    public static string Referencia(string ordem, string linha, string? pedidoDoCliente)
+    {
+        var baseRef = "OV" + ordem + "-" + linha;
+        var pedido = pedidoDoCliente?.Trim();
+        return string.IsNullOrEmpty(pedido) ? baseRef : baseRef + "-" + pedido;
     }
 
     private static string CodigoGuardian(string? valor, string codigo, string campo)

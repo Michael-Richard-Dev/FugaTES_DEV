@@ -134,12 +134,22 @@ public sealed class SdProtocoloWorker(
             if (conhecidos.Any(p => string.Equals(p.ChaveNatural, chave, StringComparison.Ordinal)))
                 continue;
 
+            // Ordem sem pedido do cliente nao e o esperado pelo negocio - decisao do operador em
+            // 04/11/2026. Nao bloqueia: a referencia simplesmente para na linha, e a pesagem
+            // acontece do mesmo jeito. Mas nao passa calada, senao o cadastro faltando so
+            // apareceria na balanca, longe de quem pode corrigir.
+            if (string.IsNullOrWhiteSpace(linha.PedidoDoCliente))
+                log.LogWarning("SD_ORDEM_SEM_PEDIDO_CLIENTE: {Chave} — a referência do protocolo "
+                    + "vai sem o pedido do cliente.", chave);
+
             var desfecho = await criador.ExecutarAsync(pedido, chave, linha.Centro!, ct).ConfigureAwait(false);
             if (desfecho.Criado)
             {
                 criados++;
-                log.LogInformation("SD_MOTOR_PROTOCOLO_CRIADO: {Chave}, id {Id}, HTTP {Status}.",
-                    chave, desfecho.ProtocoloId, desfecho.HttpStatus);
+                log.LogInformation("SD_MOTOR_PROTOCOLO_CRIADO: {Chave}, id {Id}, HTTP {Status}, "
+                    + "referência {Referencia}.",
+                    chave, desfecho.ProtocoloId, desfecho.HttpStatus,
+                    pedido.DadosProtocoloPreCadastro.NumeroReferencia);
             }
             else if (desfecho.NadaEnviado) { pulados++; }
             else
