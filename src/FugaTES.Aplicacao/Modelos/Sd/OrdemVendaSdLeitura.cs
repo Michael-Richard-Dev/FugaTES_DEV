@@ -42,6 +42,18 @@ public sealed record OrdemVendaSdLeitura(
     /// tratar "nao sei quando foi criada" como "foi criada hoje".
     /// </summary>
     public DateTime? DataCriacao { get; init; }
+
+    /// <summary>
+    /// A_SalesOrderItem.PurchaseOrderByCustomer - o numero do pedido NO CLIENTE, como ele mesmo
+    /// o chama (exemplo: "49580"). Pedido do operador em 04/11/2026.
+    ///
+    /// E campo de ITEM no servico, nao de cabecalho: itens diferentes da mesma ordem podem trazer
+    /// pedidos diferentes. Por isso viaja na linha, e nao na ordem.
+    ///
+    /// Nulo quando a ordem nao traz: e informacao do cliente, nem toda ordem tem. Nulo aqui nao
+    /// bloqueia nada - e um dado a mais na tela, nao um requisito do fluxo.
+    /// </summary>
+    public string? PedidoDoCliente { get; init; }
 }
 
 /// <summary>
@@ -53,9 +65,9 @@ public sealed record OrdensVendaSdFiltro(
     string SalesOrganization,
     // Um ou mais de CentrosPermitidos, sem repeticao. Nenhum outro centro e aceito.
     IReadOnlyList<string> ShippingPoints,
-    // Vazio significa TODOS os tipos. A planilha diz "puxar so o que e pra balanca" sem listar
-    // quais, e a lista sera confirmada com o consultor SAP; ate la a varredura traz todos. O que
-    // segura o volume nesse meio-tempo e a organizacao de vendas somada a MaximoPorVarredura.
+    // Vazio significa OS CINCO TIPOS DO FLUXO (ver TiposPermitidos), nao "todos". Um subconjunto
+    // deles tambem e aceito, para o operador estreitar a busca na tela; qualquer tipo de fora
+    // reprova o filtro.
     IReadOnlyList<string> SalesOrderTypes,
     int MaximoPorVarredura = 200,
     // A_SalesOrder.OverallSDProcessStatus exigido - "Situacao da Ordem" na planilha. Decisao do
@@ -73,6 +85,25 @@ public sealed record OrdensVendaSdFiltro(
 
     /// <summary>Unicos centros do fluxo SD. A tela escolhe entre eles; nenhum outro e aceito.</summary>
     public static readonly string[] CentrosPermitidos = ["3011", "3008"];
+
+    /// <summary>
+    /// Unicos tipos de documento de venda que pertencem ao fluxo da balanca. Lista fechada pelo
+    /// operador em 04/11/2026, depois de confirmada com o negocio - antes disso a varredura
+    /// trazia TODOS os tipos, porque a planilha de integracao dizia "puxar so o que e pra
+    /// balanca" sem dizer quais.
+    ///
+    /// E regra, como os centros, e nao conveniencia de tela: uma ordem de outro tipo nao vai a
+    /// balanca, e trazer o que nao vai a balanca so enche a lista do operador e gasta varredura.
+    /// Por isso tipo de fora REPROVA o filtro, em vez de ser ignorado em silencio.
+    /// </summary>
+    public static readonly string[] TiposPermitidos = ["ZVSP", "ZVBI", "ZVSC", "ZRMS", "ZVNE"];
+
+    /// <summary>
+    /// Os tipos que realmente vao ao SAP. Vazio significa os cinco - nunca "todos": antes, lista
+    /// vazia fazia a clausula sumir do $filter e a varredura trazia a base de vendas inteira.
+    /// </summary>
+    public IReadOnlyList<string> TiposEfetivos =>
+        SalesOrderTypes is { Count: > 0 } ? SalesOrderTypes : TiposPermitidos;
 
     /// <summary>
     /// Corte do motor automatico: so ordens criadas a partir daqui viram protocolo sozinhas.
@@ -100,7 +131,10 @@ public sealed record OrdensVendaSdFiltro(
         ShippingPoints is { Count: > 0 } &&
         ShippingPoints.Distinct(StringComparer.Ordinal).Count() == ShippingPoints.Count &&
         ShippingPoints.All(c => CentrosPermitidos.Contains(c, StringComparer.Ordinal)) &&
-        SalesOrderTypes is not null && SalesOrderTypes.Count <= 20 && SalesOrderTypes.All(Token) &&
+        SalesOrderTypes is not null && SalesOrderTypes.Count <= TiposPermitidos.Length &&
+        SalesOrderTypes.All(Token) &&
+        SalesOrderTypes.All(t => TiposPermitidos.Contains(t, StringComparer.Ordinal)) &&
+        SalesOrderTypes.Distinct(StringComparer.Ordinal).Count() == SalesOrderTypes.Count &&
         Token(FuncaoEmissor) && Token(FuncaoRecebedor) && Token(SituacaoOrdemAprovada) &&
         MaximoPorVarredura is > 0 and <= 1000;
 

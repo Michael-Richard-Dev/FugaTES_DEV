@@ -59,18 +59,17 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
         // A conferencia local em Mapear permanece: se o servico ignorar a clausula, a linha ainda
         // nao aparece.
         sb.Append(" and OverallSDProcessStatus eq ").Append(Literal(filtro.SituacaoOrdemAprovada));
-        // Lista vazia = todos os tipos: a clausula simplesmente nao entra. Emitir "and ()" geraria
-        // filtro invalido, e emitir "and (false)" traria sempre zero.
-        if (filtro.SalesOrderTypes.Count > 0)
+        // A clausula de tipo entra SEMPRE: lista vazia no filtro significa os cinco tipos do
+        // fluxo, nunca "todos". Antes ela sumia quando a lista vinha vazia, e a varredura
+        // alcancava a base de vendas inteira.
+        var tipos = filtro.TiposEfetivos;
+        sb.Append(" and (");
+        for (var i = 0; i < tipos.Count; i++)
         {
-            sb.Append(" and (");
-            for (var i = 0; i < filtro.SalesOrderTypes.Count; i++)
-            {
-                if (i > 0) sb.Append(" or ");
-                sb.Append("SalesOrderType eq ").Append(Literal(filtro.SalesOrderTypes[i]));
-            }
-            sb.Append(')');
+            if (i > 0) sb.Append(" or ");
+            sb.Append("SalesOrderType eq ").Append(Literal(tipos[i]));
         }
+        sb.Append(')');
         // Corte por data de criacao. Vai no $filter, e nao numa conferencia local, para o SAP nao
         // mandar o que seria descartado: com o corte a varredura do motor sai de 268 ordens para
         // as poucas criadas depois dele.
@@ -154,7 +153,11 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
                     RecebedorMercadoria: recebedor,
                     PayloadJson: Payload(ordem, item, filtro, emissor, recebedor))
                 {
-                    DataCriacao = DataOData(Texto(ordem, "CreationDate"))
+                    DataCriacao = DataOData(Texto(ordem, "CreationDate")),
+                    // Campo de ITEM. O cabecalho tambem expoe um PurchaseOrderByCustomer, e ele
+                    // fica como alternativa: quando o item nao traz, vale o da ordem.
+                    PedidoDoCliente = Texto(item, "PurchaseOrderByCustomer")
+                        ?? Texto(ordem, "PurchaseOrderByCustomer")
                 };
             }
         }
@@ -173,6 +176,8 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
             ["SalesOrderItem"] = Texto(item, "SalesOrderItem"),
             ["ShippingPoint"] = Texto(item, "ShippingPoint"),
             ["Material"] = Texto(item, "Material"),
+            ["PurchaseOrderByCustomer"] = Texto(item, "PurchaseOrderByCustomer")
+                ?? Texto(ordem, "PurchaseOrderByCustomer"),
             ["OverallSDProcessStatus"] = Texto(ordem, "OverallSDProcessStatus"),
             ["SalesOrderType"] = Texto(ordem, "SalesOrderType"),
             ["SalesOrganization"] = Texto(ordem, "SalesOrganization"),

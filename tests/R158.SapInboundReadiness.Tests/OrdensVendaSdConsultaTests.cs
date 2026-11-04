@@ -12,19 +12,39 @@ public sealed class OrdensVendaSdConsultaTests
 {
     private static OrdensVendaSdFiltro Filtro(
         string org = "3000", string[]? centros = null, string[]? tipos = null, int top = 200)
-        => new(org, centros ?? ["3011", "3008"], tipos ?? ["ZBAL"], top);
+        => new(org, centros ?? ["3011", "3008"], tipos ?? ["ZVSP"], top);
 
-    // Lista de tipos vazia significa TODOS, enquanto o consultor SAP nao confirma quais sao "pra
-    // balanca". O volume fica contido pela organizacao e pelo maximo por varredura.
+    // Lista de tipos vazia significa OS CINCO DO FLUXO, nunca "todos" - lista fechada pelo
+    // operador em 04/11/2026. Antes a clausula sumia do $filter quando a lista vinha vazia, e a
+    // varredura alcancava a base de vendas inteira do SAP.
     [Fact]
-    public void Sem_tipo_de_documento_a_varredura_traz_todos()
+    public void Sem_tipo_de_documento_a_varredura_traz_os_cinco_do_fluxo()
     {
         Assert.True(Filtro(tipos: []).EhValido());
         var query = OrdensVendaSdConsultaAdapter.MontarQuery(Filtro(tipos: []));
         Assert.Equal("$filter=SalesOrganization eq '3000' and OverallSDProcessStatus eq 'A'"
+            + " and (SalesOrderType eq 'ZVSP' or SalesOrderType eq 'ZVBI'"
+            + " or SalesOrderType eq 'ZVSC' or SalesOrderType eq 'ZRMS'"
+            + " or SalesOrderType eq 'ZVNE')"
             + "&$expand=to_Item,to_Partner&$orderby=SalesOrder desc&$top=200", query);
-        Assert.DoesNotContain("SalesOrderType", query, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void A_lista_do_fluxo_e_a_que_o_operador_fechou()
+        => Assert.Equal(["ZVSP", "ZVBI", "ZVSC", "ZRMS", "ZVNE"], OrdensVendaSdFiltro.TiposPermitidos);
+
+    [Theory]
+    [InlineData("ZBAL")]   // o tipo que a tela usava antes de a lista existir
+    [InlineData("TA")]     // tipo padrao do SAP, fora do fluxo da balanca
+    [InlineData("zvsp")]   // caixa diferente: o SAP compara exato, e nos tambem
+    public void Tipo_fora_da_lista_reprova_o_filtro(string tipo)
+        // Reprovar, e nao ignorar: uma ordem de outro tipo nao vai a balanca, e varrer o que nao
+        // vai a balanca gasta varredura e enche a lista do operador.
+        => Assert.False(Filtro(tipos: [tipo]).EhValido());
+
+    [Fact]
+    public void Tipo_repetido_reprova_o_filtro()
+        => Assert.False(Filtro(tipos: ["ZVSP", "ZVSP"]).EhValido());
 
     /// <summary>
     /// Corte por data de criacao: e o que impede o motor automatico de varrer o acervo antigo.
@@ -122,9 +142,9 @@ public sealed class OrdensVendaSdConsultaTests
     [Fact]
     public void Query_filtra_por_organizacao_e_tipos_e_expande_itens_e_parceiros()
     {
-        var query = OrdensVendaSdConsultaAdapter.MontarQuery(Filtro(tipos: ["ZBAL", "TA"]));
+        var query = OrdensVendaSdConsultaAdapter.MontarQuery(Filtro(tipos: ["ZVSP", "ZVBI"]));
         Assert.Contains("$filter=SalesOrganization eq '3000'", query, StringComparison.Ordinal);
-        Assert.Contains("SalesOrderType eq 'ZBAL' or SalesOrderType eq 'TA'", query, StringComparison.Ordinal);
+        Assert.Contains("SalesOrderType eq 'ZVSP' or SalesOrderType eq 'ZVBI'", query, StringComparison.Ordinal);
         Assert.Contains("$expand=to_Item,to_Partner", query, StringComparison.Ordinal);
         Assert.Contains("$top=200", query, StringComparison.Ordinal);
         Assert.DoesNotContain("ShippingPoint", query, StringComparison.Ordinal);
@@ -318,7 +338,9 @@ public sealed class OrdensVendaSdConsultaTests
         var linha = Mapear(RespostaV2, Filtro(centros: ["3011"])).Single();
         using var json = JsonDocument.Parse(linha.PayloadJson);
         Assert.Equal(
-            ["SalesOrder", "SalesOrderItem", "ShippingPoint", "Material", 
+            ["SalesOrder", "SalesOrderItem", "ShippingPoint", "Material",
+             // PurchaseOrderByCustomer entrou em 04/11/2026, a pedido do operador.
+             "PurchaseOrderByCustomer",
              "OverallSDProcessStatus", "SalesOrderType", "SalesOrganization", "OrganizationDivision",
              "Emissor", "RecebedorMercadoria"],
             json.RootElement.EnumerateObject().Select(p => p.Name));
@@ -347,12 +369,114 @@ public sealed class OrdensVendaSdConsultaTests
     // A tela monta o filtro a partir de texto livre; recorte incompleto nao pode virar busca.
     [Theory]
     [InlineData("3000", "3011,3008", "", true)]
-    [InlineData("3000", "", "ZBAL", false)]
-    [InlineData("", "3011", "ZBAL", false)]
-    [InlineData("3000", "3011, 3008", "ZBAL; TA", true)]
+    [InlineData("3000", "", "ZVSP", false)]
+    [InlineData("", "3011", "ZVSP", false)]
+    [InlineData("3000", "3011, 3008", "ZVSP; ZVBI", true)]
+    // Tipo fora da lista fechada do fluxo: recusado, nao ignorado.
+    [InlineData("3000", "3011", "ZBAL", false)]
+    [InlineData("3000", "3011", "ZVSP; TA", false)]
     [InlineData("3000", "3008", "", true)]
     [InlineData("3001", "3011", "", false)]
     [InlineData("3000", "9999", "", false)]
     public void Tela_so_monta_filtro_quando_o_recorte_fecha(string org, string centros, string tipos, bool esperado)
         => Assert.Equal(esperado, FugaTES.WinForms.FrmOrdensVendaSd.Montar(org, centros, tipos) is not null);
+}
+
+/// <summary>
+/// O recorte que a TELA usa. Em 04/11/2026 o operador pediu que o acervo antigo saisse da vista:
+/// eram 268 ordens em situacao A, a maioria de anos atras, escondendo as poucas que vao a
+/// balanca. A tela passou a usar o mesmo corte do motor.
+/// </summary>
+public sealed class RecorteDaTelaOrdensVendaSdTests
+{
+    private static OrdensVendaSdFiltro Tela()
+        => FugaTES.WinForms.FrmOrdensVendaSd.Montar("3000", "3011", "")!;
+
+    [Fact]
+    public void A_tela_usa_o_corte_do_motor()
+        => Assert.Equal(OrdensVendaSdFiltro.CorteAutomatico, Tela().DataCriacaoMinima);
+
+    [Fact]
+    public void O_corte_vai_para_o_SAP_e_nao_e_conferido_so_aqui()
+    {
+        // No $filter, e nao numa filtragem local: o que nao interessa nem sai do SAP, e o $top
+        // deixa de ser gasto com ordem que ninguem vai olhar.
+        var query = OrdensVendaSdConsultaAdapter.MontarQuery(Tela());
+        Assert.Contains("CreationDate ge datetime'2026-11-01T00:00:00'", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_tela_tambem_pede_so_os_tipos_do_fluxo()
+    {
+        var query = OrdensVendaSdConsultaAdapter.MontarQuery(Tela());
+        foreach (var tipo in OrdensVendaSdFiltro.TiposPermitidos)
+            Assert.Contains($"SalesOrderType eq '{tipo}'", query, StringComparison.Ordinal);
+    }
+}
+
+/// <summary>
+/// O numero do pedido NO CLIENTE (A_SalesOrderItem.PurchaseOrderByCustomer). Pedido do operador
+/// em 04/11/2026. E campo de ITEM: dois itens da mesma ordem podem trazer pedidos diferentes, e
+/// por isso ele viaja na linha.
+/// </summary>
+public sealed class PedidoDoClienteSdTests
+{
+    private const string Resposta = """
+    {"d":{"results":[
+      {"SalesOrder":"5000001","SalesOrderType":"ZVSP","SalesOrganization":"3000",
+       "OverallSDProcessStatus":"A",
+       "to_Item":{"results":[
+         {"SalesOrderItem":"10","Material":"7000000","ShippingPoint":"3011",
+          "PurchaseOrderByCustomer":"49580"},
+         {"SalesOrderItem":"20","Material":"7000002","ShippingPoint":"3011",
+          "PurchaseOrderByCustomer":"49581"},
+         {"SalesOrderItem":"30","Material":"7000009","ShippingPoint":"3011"}]},
+       "to_Partner":{"results":[
+         {"Customer":"20000777","PartnerFunctionInternalCode":"WE"},
+         {"Customer":"20000051","PartnerFunctionInternalCode":"AG"}]}}
+    ]}}
+    """;
+
+    private static readonly OrdensVendaSdFiltro Filtro =
+        new("3000", ["3011"], ["ZVSP"]);
+
+    [Fact]
+    public void Cada_item_leva_o_seu_pedido_do_cliente()
+    {
+        var linhas = OrdensVendaSdConsultaAdapter.LerResposta(Resposta, Filtro);
+        Assert.Equal(["49580", "49581", null], linhas.Select(l => l.PedidoDoCliente));
+    }
+
+    [Fact]
+    public void Item_sem_pedido_do_cliente_nao_bloqueia_a_linha()
+    {
+        // Nem toda ordem tem: e informacao do cliente. Ausente vira nulo e a linha segue.
+        var linhas = OrdensVendaSdConsultaAdapter.LerResposta(Resposta, Filtro);
+        var semPedido = Assert.Single(linhas, l => l.LinhaItem == "30");
+        Assert.Null(semPedido.PedidoDoCliente);
+        Assert.Equal("7000009", semPedido.Material);
+    }
+
+    [Fact]
+    public void O_pedido_do_cliente_vai_para_o_json_da_linha()
+    {
+        // A projecao e o que o operador abre na tela para conferir a origem de cada valor.
+        var linha = OrdensVendaSdConsultaAdapter.LerResposta(Resposta, Filtro)[0];
+        Assert.Contains("\"PurchaseOrderByCustomer\":\"49580\"", linha.PayloadJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Quando_so_o_cabecalho_traz_o_pedido_ele_vale_para_os_itens()
+    {
+        const string soNoCabecalho = """
+        {"d":{"results":[
+          {"SalesOrder":"5000002","SalesOrderType":"ZVSP","SalesOrganization":"3000",
+           "OverallSDProcessStatus":"A","PurchaseOrderByCustomer":"77777",
+           "to_Item":{"results":[{"SalesOrderItem":"10","Material":"7000000","ShippingPoint":"3011"}]},
+           "to_Partner":{"results":[{"Customer":"20000777","PartnerFunctionInternalCode":"WE"}]}}
+        ]}}
+        """;
+        var linha = Assert.Single(OrdensVendaSdConsultaAdapter.LerResposta(soNoCabecalho, Filtro));
+        Assert.Equal("77777", linha.PedidoDoCliente);
+    }
 }

@@ -12,9 +12,11 @@ namespace FugaTES.WinForms;
 /// SD: tela de acompanhamento da varredura de ordens de venda no SAP.
 ///
 /// Somente leitura. Nao persiste, nao despacha e nao chama o Guardian - existe para validar a
-/// busca no SAP enquanto o fluxo e construido. Os filtros sao editaveis de proposito: a planilha
-/// de integracao diz "puxar so o que e pra balanca" sem listar os tipos de documento, e e aqui
-/// que esse recorte vai ser descoberto.
+/// busca no SAP enquanto o fluxo e construido.
+///
+/// O campo de tipos continua editavel, mas ja nao e uma pergunta em aberto: em 04/11/2026 o
+/// operador fechou a lista do fluxo da balanca (ver OrdensVendaSdFiltro.TiposPermitidos), e o
+/// campo serve para ESTREITAR a busca dentro dela. Tipo de fora e recusado pelo filtro.
 /// </summary>
 public partial class FrmOrdensVendaSd : Form
 {
@@ -85,7 +87,7 @@ public partial class FrmOrdensVendaSd : Form
         organizacao.Text = OrdensVendaSdFiltro.OrganizacaoFixa;
         centros.Items.AddRange([.. OrdensVendaSdFiltro.CentrosPermitidos]);
         centros.SelectedIndex = 0;
-        tipos.PlaceholderText = "vazio = todos";
+        tipos.PlaceholderText = "vazio = " + string.Join(" ", OrdensVendaSdFiltro.TiposPermitidos);
 
         MontarColunas();
         atualizar.Click += async (_, _) => await BuscarAsync();
@@ -112,11 +114,12 @@ public partial class FrmOrdensVendaSd : Form
             status.Text = $"Organização {OrdensVendaSdFiltro.OrganizacaoFixa} e centro "
                 + string.Join(" ou ", OrdensVendaSdFiltro.CentrosPermitidos) + " — fixos. "
                 + "Somente ordens com OverallSDProcessStatus = A, mais recentes primeiro. "
-                + "Tipos de documento em branco trazem TODOS os tipos dessa situação. "
+                + "Tipos de documento em branco trazem os do fluxo da balança ("
+                + string.Join(", ", OrdensVendaSdFiltro.TiposPermitidos) + "). "
                 + $"A cada varredura, até {ProtocolosPorVarredura} linha(s) sem protocolo viram "
                 + "protocolo REAL no Guardian, sem confirmação — apenas de ordens criadas a "
                 + $"partir de {OrdensVendaSdFiltro.CorteAutomatico:dd/MM/yyyy}. "
-                + "As anteriores aparecem na lista e só saem pelo botão Enviar.";
+                + "As criadas antes dessa data não são mais listadas.";
         }
         // posseRegistro carrega a fonte de dados e o tunel SSH abertos sob demanda.
         FormClosing += (_, _) =>
@@ -155,6 +158,8 @@ public partial class FrmOrdensVendaSd : Form
         Coluna("ordem", "Ordem de venda", nameof(OrdemVendaSdLeitura.CodigoOrdemVenda), 120);
         Coluna("linha", "Linha", nameof(OrdemVendaSdLeitura.LinhaItem), 70);
         Coluna("material", "Item da ordem", nameof(OrdemVendaSdLeitura.Material));
+        Coluna("pedidoCliente", "Pedido do cliente",
+            nameof(OrdemVendaSdLeitura.PedidoDoCliente), 120);
         Coluna("situacao", "Situação", nameof(OrdemVendaSdLeitura.SituacaoOrdem), 80);
         Coluna("tipo", "Tipo doc.", nameof(OrdemVendaSdLeitura.TipoDocumentoVendas), 90);
         Coluna("empresa", "Empresa", nameof(OrdemVendaSdLeitura.EmpresaOrdem), 80);
@@ -170,7 +175,17 @@ public partial class FrmOrdensVendaSd : Form
             .Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var filtro = new OrdensVendaSdFiltro(
-            (organizacao ?? string.Empty).Trim(), Lista(centros), Lista(tipos));
+            (organizacao ?? string.Empty).Trim(), Lista(centros), Lista(tipos))
+        {
+            // A tela passa a usar o MESMO corte do motor. Antes ela trazia tudo de proposito,
+            // para o operador enxergar o que o motor nao tocaria; na pratica eram 268 ordens
+            // antigas - a maioria de anos atras - escondendo as poucas que interessam.
+            // Decisao do operador em 04/11/2026: o acervo anterior ao corte sai da vista.
+            //
+            // Isto NAO apaga nada. A ordem continua existindo no SAP, e um corte diferente a
+            // traz de volta - e so mudar esta data, nao ha nada a restaurar.
+            DataCriacaoMinima = OrdensVendaSdFiltro.CorteAutomatico
+        };
         return filtro.EhValido() ? filtro : null;
     }
 
