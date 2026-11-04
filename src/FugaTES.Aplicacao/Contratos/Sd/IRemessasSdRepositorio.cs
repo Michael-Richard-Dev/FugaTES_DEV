@@ -80,42 +80,63 @@ public static class EtapaExpedicaoSd
 /// <summary>
 /// Ate onde vai a responsabilidade do FugaTES no fluxo SD.
 ///
-/// Decisao do operador em 02/11/2026, depois de conferir com o negocio: o FugaTES vai ate o TEXTO
-/// da NF-e (passo 5). A separacao e a saida de mercadoria sao feitas DENTRO do SAP, por quem
-/// confere o carregamento - nao por nos.
+/// HOJE: o FugaTES para no TEXTO da NF-e, em TODOS os setores. Separacao e saida de mercadoria
+/// sao feitas dentro do SAP, por quem confere o carregamento. Decisao do processo, trazida pelo
+/// operador em 04/11/2026 - a primeira vinda do negocio, e nao uma leitura nossa da documentacao.
 ///
-/// O documento "APIS SD para FUGATES" lista ConfirmPickingAllItems e PostGoodsIssue, e foi por
-/// isso que o passo 6 chegou a ser construido; mas aquele documento enumera as APIs, nao diz quem
-/// chama cada uma. A evidencia tambem aponta nessa direcao: a remessa nasce com
-/// HdrGoodsMvtIncompletionStatus = "A" e segue assim depois de todos os nossos passos, porque
-/// quem completa aquela area e outra pessoa.
+/// COMO CHEGAMOS AQUI, porque isto ja mudou tres vezes em tres dias:
+///   02/11, manha - o passo 6 inteiro parecia ser do SAP e foi desligado;
+///   02/11, tarde - o operador corrigiu: em casca (62) e fibra (66) a separacao era nossa;
+///   02/11, noite - e a saida tambem, como ultimo passo daqueles dois fluxos;
+///   04/11       - o processo definiu: nenhuma das duas e nossa, em setor nenhum.
 ///
-/// O codigo do passo 6 fica no lugar, desligado. Apagar custaria refazer se a decisao mudar, e
-/// deixar ligado convida um clique que move estoque e nao se desfaz.
+/// O CODIGO CONTINUA INTEIRO, de proposito, a pedido do operador: cliente SAP, executor, tela,
+/// motor, tabela e migracao. O que esta desligado e <see cref="ExpedicaoHabilitada"/>, uma chave
+/// so. Religar o passo 6 como estava em 02/11 e trocar essa constante para true - nada precisa
+/// ser reescrito, e os testes que descrevem o comportamento ligado continuam ali, so invertidos.
+///
+/// A SAIDA MOVE ESTOQUE e gera documento de material, e nao se desfaz por API neste fluxo. Por
+/// isso, quando religada, o automatico dela ainda depende de uma segunda chave no motor
+/// (SdProtocolo:SaidaAutomatica), desligada por padrao.
 /// </summary>
 public static class EscopoExpedicaoSd
 {
     /// <summary>
-    /// A separacao e nossa APENAS em casca e fibra. Decisao do operador em 02/11/2026: naqueles
-    /// dois fluxos ela e parte do processo e acontece depois do texto da NF-e; nos demais ela
-    /// simplesmente nao existe.
+    /// A chave do passo 6 inteiro - separacao e saida. Falsa desde 04/11/2026.
+    ///
+    /// Esta constante existe para que o corte seja UM lugar e nao cinco: dela dependem a tela, o
+    /// motor e os dois guardas HTTP. Em 02/11 a regra mudou tres vezes em um dia; da proxima vez
+    /// que o negocio mudar de ideia, muda-se aqui.
     /// </summary>
-    public static bool PickingNoFugaTES(string? setorAtividade)
-        => Modelos.Sd.SetorAtividadeSd.ExigePicking(setorAtividade);
+    public const bool ExpedicaoHabilitada = false;
 
     /// <summary>
-    /// A saida de mercadoria NUNCA e nossa - e feita dentro do SAP, por quem confere o
-    /// carregamento. Ela move estoque e gera documento de material, e nao se desfaz por API
-    /// neste fluxo; manter a decisao fora daqui e deliberado.
+    /// Separacao. Com a expedicao desligada, nunca e nossa. Ligada, vale o recorte de 02/11:
+    /// apenas casca (62) e fibra (66).
     /// </summary>
-    public const bool SaidaNoFugaTES = false;
+    public static bool PickingNoFugaTES(string? setorAtividade)
+        => ExpedicaoHabilitada && Modelos.Sd.SetorAtividadeSd.ExigePicking(setorAtividade);
 
-    public const string MotivoSaida =
-        "A saída de mercadoria é feita dentro do SAP, não pelo FugaTES.";
+    /// <summary>
+    /// Saida de mercadoria. Segue exatamente o mesmo recorte da separacao - nao faz sentido
+    /// separarmos e a saida ficar com outro, nem o contrario.
+    /// </summary>
+    public static bool SaidaNoFugaTES(string? setorAtividade)
+        => ExpedicaoHabilitada && Modelos.Sd.SetorAtividadeSd.ExigePicking(setorAtividade);
+
+    // As mensagens dizem QUEM faz, e nao "indisponivel": quem le "indisponivel" vai procurar
+    // falha de configuracao onde ha limite de responsabilidade.
+    public static string MotivoSaida(string? setorAtividade)
+        => ExpedicaoHabilitada
+            ? $"O setor {setorAtividade} não tem saída de mercadoria pelo FugaTES. "
+              + "Fora de casca (62) e fibra (66) ela é feita dentro do SAP."
+            : "A saída de mercadoria é feita dentro do SAP, não pelo FugaTES.";
 
     public static string MotivoPicking(string? setorAtividade)
-        => $"O setor {setorAtividade} não passa por separação. "
-            + "O picking é apenas de casca (62) e fibra (66).";
+        => ExpedicaoHabilitada
+            ? $"O setor {setorAtividade} não passa por separação. "
+              + "O picking é apenas de casca (62) e fibra (66)."
+            : "A separação é feita dentro do SAP, não pelo FugaTES.";
 }
 
 /// <summary>Passo 6, parte 1: confirmacao do picking de todos os itens.</summary>

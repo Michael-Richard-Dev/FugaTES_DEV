@@ -203,55 +203,84 @@ public sealed class ExecutorFluxoRemessaSd(
 
     /// <summary>
     /// Separacao de todos os itens. So existe em casca e fibra - ver <see cref="EscopoExpedicaoSd"/>.
-    /// A saida de mercadoria NAO passa por aqui: ela e feita dentro do SAP.
     /// </summary>
-    public async Task<PassoFluxoSd> ConfirmarPickingAsync(string idPesagem, string numero,
+    public Task<PassoFluxoSd> ConfirmarPickingAsync(string idPesagem, string numero,
         IExpedirRemessaSdSap expedicao, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(expedicao);
+        return ExpedirAsync(idPesagem, numero, EtapaExpedicaoSd.Picking, "picking",
+            ct2 => expedicao.ConfirmarPickingAsync(numero, ct2),
+            ok => ok ? EstadoPickingSd.Confirmado : EstadoPickingSd.Recusado,
+            $"Picking da remessa {numero} confirmado", ct);
+    }
+
+    /// <summary>
+    /// Saida de mercadoria - o ULTIMO passo do fluxo de casca e fibra, e o unico irreversivel:
+    /// move estoque e gera documento de material. Mesma mecanica de reserva do picking, e e ela
+    /// que garante uma saida so; o que muda e o preco de errar, por isso DESFECHO_DESCONHECIDO
+    /// bloqueia para sempre em vez de liberar uma segunda tentativa.
+    /// </summary>
+    public Task<PassoFluxoSd> PostarSaidaAsync(string idPesagem, string numero,
+        IExpedirRemessaSdSap expedicao, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(expedicao);
+        return ExpedirAsync(idPesagem, numero, EtapaExpedicaoSd.Saida, "saída de mercadoria",
+            ct2 => expedicao.PostarSaidaAsync(numero, ct2),
+            ok => ok ? EstadoSaidaSd.Postada : EstadoSaidaSd.Recusada,
+            $"Saída de mercadoria da remessa {numero} postada", ct);
+    }
+
+    /// <summary>
+    /// Reserva, envia, fecha. Picking e saida fazem a mesma coisa com nomes e estados diferentes,
+    /// e a parte que importa - nao enviar duas vezes - fica escrita uma vez so.
+    /// </summary>
+    private async Task<PassoFluxoSd> ExpedirAsync(string idPesagem, string numero, string etapa,
+        string nome, Func<CancellationToken, Task<ExpedicaoSd>> enviar,
+        Func<bool, string> estado, string sucesso, CancellationToken ct)
+    {
         try
         {
-            await remessas.ReservarExpedicaoAsync(idPesagem, EtapaExpedicaoSd.Picking, ct)
-                .ConfigureAwait(false);
+            await remessas.ReservarExpedicaoAsync(idPesagem, etapa, ct).ConfigureAwait(false);
         }
         catch (ExpedicaoSdJaFeitaException)
         {
-            return new(false, $"O picking da remessa {numero} já tem desfecho registrado; "
+            return new(false, $"A {nome} da remessa {numero} já tem desfecho registrado; "
                 + "nada foi enviado.") { NadaEnviado = true };
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception erro)
         {
-            return new(false, $"Reserva do picking falhou por {erro.GetType().Name}: "
+            return new(false, $"Reserva da {nome} falhou por {erro.GetType().Name}: "
                 + $"{erro.Message}. Nada foi enviado ao SAP.") { NadaEnviado = true };
         }
 
         ExpedicaoSd desfecho;
-        try { desfecho = await expedicao.ConfirmarPickingAsync(numero, ct).ConfigureAwait(false); }
+        try { desfecho = await enviar(ct).ConfigureAwait(false); }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception erro)
         {
-            return new(false, $"Picking interrompido por {erro.GetType().Name}: {erro.Message}. "
-                + $"Confira a remessa {numero} no SAP antes de repetir.");
+            // A reserva fica como esta: nao se sabe se o SAP recebeu, e em estoque supor que nao
+            // recebeu e pior do que parar. Quem confere a remessa no SAP libera o reenvio.
+            return new(false, $"A {nome} foi interrompida por {erro.GetType().Name}: "
+                + $"{erro.Message}. Confira a remessa {numero} no SAP antes de repetir.");
         }
 
         try
         {
-            await remessas.FecharExpedicaoAsync(idPesagem, EtapaExpedicaoSd.Picking,
-                desfecho.Ok ? EstadoPickingSd.Confirmado : EstadoPickingSd.Recusado,
+            await remessas.FecharExpedicaoAsync(idPesagem, etapa, estado(desfecho.Ok),
                 desfecho.HttpStatus, desfecho.MensagensSap.Count == 0 ? null : desfecho.Resumo, ct)
                 .ConfigureAwait(false);
         }
         catch (Exception erro)
         {
-            return new(false, $"HTTP {desfecho.HttpStatus} no picking, mas o desfecho não foi "
+            return new(false, $"HTTP {desfecho.HttpStatus} na {nome}, mas o desfecho não foi "
                 + $"gravado ({erro.GetType().Name}: {erro.Message}).");
         }
 
         return new(desfecho.Ok,
             desfecho.Ok
-                ? $"Picking da remessa {numero} confirmado (HTTP {desfecho.HttpStatus})."
-                : $"SAP recusou o picking (HTTP {desfecho.HttpStatus}): {desfecho.Resumo}",
+                ? $"{sucesso} (HTTP {desfecho.HttpStatus})."
+                : $"SAP recusou a {nome} (HTTP {desfecho.HttpStatus}): {desfecho.Resumo}",
             desfecho.Resumo);
     }
 

@@ -10,8 +10,9 @@ namespace FugaTES.HostIntegracao;
 /// Leva a pesagem ate o SAP sozinha: cria a remessa, ajusta cabecalho e itens, grava o texto da
 /// NF-e. Os passos 3, 4 e 5, sem tela aberta e sem ninguem confirmando.
 ///
-/// Separacao e saida de mercadoria NAO entram: sao feitas dentro do SAP, por quem confere o
-/// carregamento (ver <see cref="EscopoExpedicaoSd"/>).
+/// Desde 04/11/2026 e so ate ai: separacao e saida de mercadoria sao feitas dentro do SAP, em
+/// todos os setores. O codigo delas continua aqui, atras de <see cref="EscopoExpedicaoSd"/> -
+/// quando a chave volta, o motor retoma a separacao de casca e fibra sem nada ser reescrito.
 ///
 /// O que ele NAO faz, deliberadamente:
 ///
@@ -48,8 +49,13 @@ public sealed class RemessaSdWorker(
 
         log.LogInformation(
             "SD_REMESSA_MOTOR_INICIADO: intervalo {Intervalo}, até {Teto} pesagem(ns) por volta. "
-            + "Cria remessa, ajusta e grava o texto; separação e saída continuam no SAP.",
-            config.Intervalo, config.RemessasPorVarredura);
+            + "Cria remessa, ajusta e grava o texto. Expedição (separação e saída): {Expedicao}.",
+            config.Intervalo, config.RemessasPorVarredura,
+            EscopoExpedicaoSd.ExpedicaoHabilitada
+                ? (config.SaidaAutomatica
+                    ? "separa em casca e fibra e posta a saída automaticamente"
+                    : "separa em casca e fibra; a saída fica para o clique")
+                : "feita dentro do SAP, fora do nosso fluxo");
 
         using var timer = new PeriodicTimer(config.Intervalo, relogio);
         do
@@ -150,7 +156,6 @@ public sealed class RemessaSdWorker(
         if (!await TextoAsync(pesagem, numero, ct).ConfigureAwait(false)) return false;
 
         // Separacao: so em casca e fibra, e sempre DEPOIS do texto, que e a ordem do processo.
-        // A saida de mercadoria nao entra - e feita dentro do SAP.
         if (!EscopoExpedicaoSd.PickingNoFugaTES(setor)) return true;
         if (expedicao is null)
         {
@@ -164,9 +169,28 @@ public sealed class RemessaSdWorker(
         if (picking.Ok)
             log.LogInformation("SD_PICKING_OK: {Pesagem} — {Resumo}", pesagem.IdPesagem, picking.Resumo);
         else
+        {
             log.LogWarning("SD_PICKING_NAO_CONFIRMADO: {Pesagem} — {Resumo}",
                 pesagem.IdPesagem, picking.Resumo);
-        return picking.Ok;
+            return false;
+        }
+
+        // Saida de mercadoria: o ultimo passo, e o unico atras de chave propria. Sem ela o motor
+        // para na separacao e deixa a saida para o clique - nao e falha, e o padrao.
+        if (!config.SaidaAutomatica)
+        {
+            log.LogInformation("SD_SAIDA_MANUAL: {Pesagem} — separação feita; a saída de mercadoria "
+                + "aguarda o clique (SdProtocolo:SaidaAutomatica desligada).", pesagem.IdPesagem);
+            return true;
+        }
+
+        var saida = await executor.PostarSaidaAsync(pesagem.IdPesagem, numero, expedicao, ct)
+            .ConfigureAwait(false);
+        if (saida.Ok)
+            log.LogInformation("SD_SAIDA_OK: {Pesagem} — {Resumo}", pesagem.IdPesagem, saida.Resumo);
+        else
+            log.LogWarning("SD_SAIDA_NAO_POSTADA: {Pesagem} — {Resumo}", pesagem.IdPesagem, saida.Resumo);
+        return saida.Ok;
     }
 
     private async Task<bool> AjustarAsync(DevolutivaSdLinha pesagem, string numero, string setor,

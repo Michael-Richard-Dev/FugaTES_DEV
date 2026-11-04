@@ -34,6 +34,15 @@ public sealed class SdProtocoloOptions
     /// </summary>
     public bool RemessaAutomatica { get; set; }
 
+    /// <summary>
+    /// Liga a SAIDA DE MERCADORIA automatica, o ultimo passo de casca e fibra. Chave SEPARADA da
+    /// anterior, e desligada por padrao, porque a saida e o unico passo do fluxo que nao se
+    /// desfaz: ela move estoque e gera documento de material. Com ela desligada o motor vai ate a
+    /// separacao e para ali, e a saida acontece por clique na tela - que e como a primeira de cada
+    /// ambiente deve acontecer, com alguem olhando.
+    /// </summary>
+    public bool SaidaAutomatica { get; set; }
+
     /// <summary>Teto de pesagens levadas ao SAP por varredura.</summary>
     public int RemessasPorVarredura { get; set; } = 5;
 
@@ -43,7 +52,12 @@ public sealed class SdProtocoloOptions
     /// <summary>Centros do fluxo. Vazio assume os dois permitidos.</summary>
     public IList<string> Centros { get; } = [];
 
-    /// <summary>Tipos de documento de venda. Vazio traz todos, como na tela.</summary>
+    /// <summary>
+    /// Tipos de documento de venda. Vazio assume os do fluxo da balanca
+    /// (<see cref="OrdensVendaSdFiltro.TiposPermitidos"/>), como na tela - e NAO "todos".
+    /// Preencher aqui so serve para estreitar; um tipo de fora reprova o filtro e o motor para
+    /// na partida, em vez de varrer um recorte que ninguem pediu.
+    /// </summary>
     public IList<string> TiposDocumento { get; } = [];
 
     /// <summary>Para onde o Guardian devolve a pesagem. Sem ela nao se cria protocolo.</summary>

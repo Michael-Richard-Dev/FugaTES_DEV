@@ -7,6 +7,7 @@ partial class FrmDevolutivasSd
     private FlowLayoutPanel barra;
     private Button atualizar;
     private CheckBox automatico;
+    private CheckBox mostrarSemCorrelacao;
     private Label resumo;
     private DataGridView grid;
     private Label status;
@@ -23,6 +24,7 @@ partial class FrmDevolutivasSd
         layout = new TableLayoutPanel();
         barra = new FlowLayoutPanel();
         atualizar = new Button(); automatico = new CheckBox(); resumo = new Label();
+        mostrarSemCorrelacao = new CheckBox();
         grid = new DataGridView(); status = new Label();
         SuspendLayout();
 
@@ -40,9 +42,15 @@ partial class FrmDevolutivasSd
 
         atualizar.Text = "Atualizar"; atualizar.AutoSize = true; atualizar.Margin = new Padding(0, 2, 12, 0);
         automatico.Text = "A cada 30s"; automatico.AutoSize = true; automatico.Margin = new Padding(0, 7, 16, 0);
+        // Desmarcada por padrao. A pesagem que chega sem indicar a ordem quase sempre e do ACM,
+        // que o Guardian manda para as duas rotas; mostra-la aqui enche a tela de linha em branco
+        // e confunde quem monitora a venda. Nada e descartado - a linha continua gravada, com o
+        // documento, e esta caixa a traz de volta quando alguem precisar procurar uma pesagem.
+        mostrarSemCorrelacao.Text = "Mostrar sem correlação"; mostrarSemCorrelacao.AutoSize = true;
+        mostrarSemCorrelacao.Margin = new Padding(0, 7, 16, 0);
         resumo.AutoSize = true; resumo.Margin = new Padding(0, 8, 0, 0); resumo.Name = "resumo";
 
-        barra.Controls.AddRange([atualizar, automatico, resumo]);
+        barra.Controls.AddRange([atualizar, automatico, mostrarSemCorrelacao, resumo]);
 
         grid.Dock = DockStyle.Fill;
         grid.AllowUserToAddRows = false;

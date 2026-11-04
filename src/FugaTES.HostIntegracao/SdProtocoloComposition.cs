@@ -182,13 +182,15 @@ public sealed class MotorSdSapGuard(HttpMessageHandler inner) : DelegatingHandle
             && caminho.EndsWith(TextoNfeSdSapClient.Navegacao, StringComparison.Ordinal);
         var entidadeTexto = Entidade(caminho, TextoNfeSdSapClient.Entidade);
 
-        // Separacao de casca e fibra. A SAIDA de mercadoria nao sai daqui em hipotese alguma.
-        var picking = origemOk
-            && caminho.Equals(ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal);
-        // Os mesmos limites da tela do operador. Em especial: a saida de mercadoria NAO sai
-        // daqui - e feita dentro do SAP (ver EscopoExpedicaoSd).
+        // Expedicao: separacao e saida de mercadoria, atras da MESMA chave do escopo. Desligada
+        // em 04/11/2026, as duas rotas deixam de sair daqui - o motor nem chega a tenta-las,
+        // porque consulta EscopoExpedicaoSd antes.
+        var expedicao = EscopoExpedicaoSd.ExpedicaoHabilitada && origemOk
+            && (caminho.Equals(ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal)
+                || caminho.Equals(ExpedicaoSdSapClient.RotaSaida, StringComparison.Ordinal));
+        // Os mesmos limites da tela do operador - nem um a mais.
         var liberado =
-            request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || picking
+            request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || expedicao
             : request.Method == HttpMethod.Patch ? entidadeRemessa || entidadeTexto
             : request.Method == HttpMethod.Get
                 && (ordem || colecaoRemessa || entidadeRemessa || navegacaoTexto);

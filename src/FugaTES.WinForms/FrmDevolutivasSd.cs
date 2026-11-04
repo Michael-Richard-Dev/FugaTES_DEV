@@ -54,6 +54,7 @@ public partial class FrmDevolutivasSd : Form
         relogio = new System.Windows.Forms.Timer(components) { Interval = 30_000 };
         relogio.Tick += async (_, _) => await ConsultarAsync();
         automatico.CheckedChanged += (_, _) => relogio.Enabled = automatico.Checked;
+        mostrarSemCorrelacao.CheckedChanged += async (_, _) => await ConsultarAsync();
 
         status.Text = repositorio is null
             ? "Registro de devolutivas indisponível"
@@ -161,17 +162,32 @@ public partial class FrmDevolutivasSd : Form
         {
             var linhas = await repositorio.ListarAsync(LimiteDeLinhas, cancelamento.Token);
             if (cancelamento.IsCancellationRequested) return;
-            grid.DataSource = linhas.ToList();
+
+            // A pesagem sem correlacao fica FORA da grade por padrao. O Guardian manda a mesma
+            // finalizacao para as duas rotas, e a do ACM chega aqui sem ordem nenhuma: eram essas
+            // linhas em branco que confundiam quem monitora a venda. Elas continuam gravadas, com
+            // o documento inteiro - some da tela, nao do registro.
+            var sem = linhas.Count(l => l.Estado == EstadoDevolutivaSd.SemCorrelacao);
+            var visiveis = mostrarSemCorrelacao.Checked
+                ? linhas.ToList()
+                : linhas.Where(l => l.Estado != EstadoDevolutivaSd.SemCorrelacao).ToList();
+            grid.DataSource = visiveis;
             RealcarSemCorrelacao();
             await MarcarRemessasAsync();
 
             var decorrido = (DateTime.Now - inicio).TotalMilliseconds
                 .ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
-            var sem = linhas.Count(l => l.Estado == EstadoDevolutivaSd.SemCorrelacao);
-            resumo.Text = $"{linhas.Count} devolutiva(s)" + (sem > 0 ? $"   —   {sem} sem correlação" : "");
-            status.Text = $"{DateTime.Now:HH:mm:ss} — {linhas.Count} linha(s), {decorrido} ms. "
+            // O numero some da grade, nao da conta: escondido nao pode virar inexistente.
+            var ocultas = linhas.Count - visiveis.Count;
+            resumo.Text = $"{visiveis.Count} devolutiva(s)"
+                + (sem > 0 ? $"   —   {sem} sem correlação"
+                             + (ocultas > 0 ? " (ocultas)" : "") : "");
+            status.Text = $"{DateTime.Now:HH:mm:ss} — {visiveis.Count} linha(s), {decorrido} ms. "
                 + "Nada foi enviado ao SAP por esta consulta."
-                + (sem > 0 ? $"   ⚠ {sem} pesagem(ns) chegaram sem indicar a ordem de venda." : "");
+                + (ocultas > 0
+                    ? $"   {ocultas} pesagem(ns) sem correlação não estão na lista; marque "
+                      + "\"Mostrar sem correlação\" para vê-las."
+                    : sem > 0 ? $"   ⚠ {sem} pesagem(ns) chegaram sem indicar a ordem de venda." : "");
         }
         catch (OperationCanceledException) when (cancelamento.IsCancellationRequested) { }
         // Handler async void: uma excecao nao tratada aqui derrubaria o aplicativo.
@@ -325,10 +341,22 @@ public partial class FrmDevolutivasSd : Form
             // A acao nao tem corpo: a remessa vai na query, e nao no JSON.
             partes.Add("POST ConfirmPickingAllItems?DeliveryDocument='"
                 + (remessa.NumeroRemessa ?? "") + "'  (sem corpo)");
+
+            partes.Add("");
+            partes.Add("===== PASSO 7 — SAÍDA DE MERCADORIA =====");
+            partes.Add(remessa.SaidaEstado is null
+                ? "(ainda não postada)"
+                : $"Situação: {remessa.SaidaEstado}");
+            partes.Add("POST PostGoodsIssue?DeliveryDocument='"
+                + (remessa.NumeroRemessa ?? "") + "'  (sem corpo)");
+        }
+        else
+        {
+            partes.Add("");
+            partes.Add($"O setor {remessa.SetorAtividade} termina no texto da NF-e. "
+                + "Separação e saída de mercadoria são feitas dentro do SAP.");
         }
 
-        partes.Add("");
-        partes.Add("A saída de mercadoria é feita dentro do SAP.");
         return string.Join("\r\n", partes);
     }
 
@@ -742,19 +770,23 @@ public partial class FrmDevolutivasSd : Form
 
         string? Impedimento()
         {
-            // Escopo primeiro, e por ETAPA. Dizer "indisponivel" sugeriria falha de configuracao,
-            // quando e limite de responsabilidade: a saida nunca e nossa; a separacao e nossa so
-            // em casca e fibra.
-            if (saida && !EscopoExpedicaoSd.SaidaNoFugaTES) return EscopoExpedicaoSd.MotivoSaida;
             if (remessas is null || expedicao is null)
                 return $"A {nome} está indisponível nesta sessão"
                     + (motivoIndisponivel is null ? "" : " — " + motivoIndisponivel) + ".";
             if (registrada is null || registrada.NumeroRemessa is null)
                 return $"A pesagem {linha.IdPesagem} ainda não tem remessa criada.";
-            // Fora de casca e fibra o botao nao deve nem poder ser usado: nao e "desaconselhado",
-            // e um passo que nao pertence ao fluxo.
+            // Escopo por ETAPA e por SETOR. Fora de casca e fibra nenhuma das duas pertence ao
+            // fluxo, e o motivo diz isso: "indisponivel" sugeriria falha de configuracao, quando
+            // e limite de responsabilidade.
+            if (saida && !EscopoExpedicaoSd.SaidaNoFugaTES(registrada.SetorAtividade))
+                return EscopoExpedicaoSd.MotivoSaida(registrada.SetorAtividade);
             if (!saida && !EscopoExpedicaoSd.PickingNoFugaTES(registrada.SetorAtividade))
                 return EscopoExpedicaoSd.MotivoPicking(registrada.SetorAtividade);
+            // A saida e o ULTIMO passo: sem separacao confirmada ela nao deve sair daqui. O SAP
+            // recusaria de todo jeito, mas uma recusa gravada vira trabalho de conferencia.
+            if (saida && registrada.PickingEstado != EstadoPickingSd.Confirmado)
+                return $"A remessa {registrada.NumeroRemessa} ainda não tem separação confirmada. "
+                    + "A saída de mercadoria é o último passo, depois do picking.";
             // Recusa explicita nao bloqueia: o SAP respondeu que nao fez nada. Os demais sim -
             // e no caso da saida, "desconhecido" bloqueia para sempre, porque ela pode ter
             // acontecido e repetir duplicaria o movimento de estoque.
@@ -777,18 +809,10 @@ public partial class FrmDevolutivasSd : Form
         }
 
         var numero = registrada!.NumeroRemessa!;
-        // O aviso sobre picking só faz sentido onde há picking. Antes ele aparecia em todo fluxo,
-        // dizendo que o SAP recusaria - o contrário do certo para biodiesel, que não separa.
-        var sobrePicking = !SetorAtividadeSd.ExigePicking(registrada.SetorAtividade)
-            ? $"O setor {registrada.SetorAtividade} não passa por separação; não há picking a fazer."
-            : registrada.PickingEstado == EstadoPickingSd.Confirmado
-                ? "Picking confirmado por esta tela."
-                : "⚠ Setor com separação e sem registro de picking confirmado por esta tela. "
-                  + "Se ele não tiver sido feito, o SAP vai recusar.";
-
         var aviso = saida
             ? "A saída de mercadoria MOVE ESTOQUE e gera documento de material.\r\n"
-              + "Esta tela não desfaz o movimento depois.\r\n\r\n" + sobrePicking
+              + "Esta tela não desfaz o movimento depois.\r\n\r\n"
+              + "Separação já confirmada; esta é a última etapa do fluxo desta remessa."
             : "Confirma o picking de todos os itens da remessa. Pode ser refeito se necessário.";
 
         var texto =
@@ -827,10 +851,14 @@ public partial class FrmDevolutivasSd : Form
                 + $"{erro.GetType().Name}: {erro.Message}. Nada foi enviado ao SAP.";
             return;
         }
-        // So o picking chega aqui: a saida e barrada no impedimento, antes de qualquer envio.
         var saida = etapa == EtapaExpedicaoSd.Saida;
         ExpedicaoSd desfecho;
-        try { desfecho = await expedicao!.ConfirmarPickingAsync(numero, cancelamento.Token); }
+        try
+        {
+            desfecho = saida
+                ? await expedicao!.PostarSaidaAsync(numero, cancelamento.Token)
+                : await expedicao!.ConfirmarPickingAsync(numero, cancelamento.Token);
+        }
         catch (Exception erro)
         {
             // Fica DESFECHO_DESCONHECIDO. Na saida isso e proposital: o POST pode ter chegado, e

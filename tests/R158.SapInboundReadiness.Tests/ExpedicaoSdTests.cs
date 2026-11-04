@@ -31,8 +31,8 @@ public sealed class ExpedicaoSdTests
         // aceita por alguns servidores e recusada por outros.
         Assert.DoesNotContain("//", ExpedicaoSdSapClient.RotaPicking[8..], StringComparison.Ordinal);
         Assert.EndsWith("/ConfirmPickingAllItems", ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal);
-        // A saida de mercadoria nao tem mais rota neste cliente: o codigo foi removido, e o que
-        // sobra e a guarda HTTP, testada abaixo.
+        Assert.DoesNotContain("//", ExpedicaoSdSapClient.RotaSaida[8..], StringComparison.Ordinal);
+        Assert.EndsWith("/PostGoodsIssue", ExpedicaoSdSapClient.RotaSaida, StringComparison.Ordinal);
     }
 
     // --- Guarda HTTP ---------------------------------------------------------------------------
@@ -92,59 +92,141 @@ public sealed class ExpedicaoSdTests
     }
 
     // --- Escopo: ate onde vai o FugaTES -----------------------------------------------------
-    // --- Escopo, por ETAPA ------------------------------------------------------------------
     //
-    // Decisao do operador em 02/11/2026, em duas partes: a SAIDA de mercadoria e feita dentro do
-    // SAP, por quem confere o carregamento, e nunca e nossa. A SEPARACAO e nossa, mas so em casca
-    // (62) e fibra (66) - nos demais setores ela nao existe no processo.
+    // Em 04/11/2026 o PROCESSO definiu: separacao e saida de mercadoria sao feitas dentro do SAP,
+    // em todos os setores. O passo 6 saiu do nosso fluxo.
     //
-    // Eu tinha desligado as duas por escopo, de uma vez; o operador corrigiu: picking de casca e
-    // fibra e parte do fluxo e acontece depois do texto da NF-e.
+    // Antes disso a regra mudou tres vezes em 02/11: desligada, depois nossa em casca (62) e
+    // fibra (66), depois nossa ate a saida naqueles dois. O codigo de todas essas etapas continua
+    // inteiro - o que mudou foi a chave ExpedicaoHabilitada. Os testes abaixo descrevem os DOIS
+    // estados, para que religar seja trocar uma constante e nao redescobrir o comportamento.
 
     [Fact]
-    public void A_saida_nunca_e_do_fugates()
-        => Assert.False(EscopoExpedicaoSd.SaidaNoFugaTES);
+    public void O_passo_6_esta_desligado()
+        => Assert.False(EscopoExpedicaoSd.ExpedicaoHabilitada);
 
     [Theory]
     [InlineData(SetorAtividadeSd.Casca)]
     [InlineData(SetorAtividadeSd.Fibra)]
-    public void O_picking_de_casca_e_fibra_e_do_fugates(string setor)
-        => Assert.True(EscopoExpedicaoSd.PickingNoFugaTES(setor));
-
-    [Theory]
     [InlineData(SetorAtividadeSd.Biodiesel)]
     [InlineData(SetorAtividadeSd.Graos)]
     [InlineData(SetorAtividadeSd.Retrovenda)]
     [InlineData(null)]
-    public void Nos_demais_setores_nao_ha_separacao(string? setor)
-        => Assert.False(EscopoExpedicaoSd.PickingNoFugaTES(setor));
+    public void Nenhum_setor_tem_separacao_nem_saida_pelo_fugates(string? setor)
+    {
+        Assert.False(EscopoExpedicaoSd.PickingNoFugaTES(setor));
+        Assert.False(EscopoExpedicaoSd.SaidaNoFugaTES(setor));
+    }
+
+    // Casca e fibra sao o caso que importa: foram os unicos setores em que as duas etapas ja
+    // foram nossas. Se alguem religar a chave sem querer, e aqui que aparece.
+    [Theory]
+    [InlineData(SetorAtividadeSd.Casca)]
+    [InlineData(SetorAtividadeSd.Fibra)]
+    public void Nem_casca_nem_fibra_separam_mais(string setor)
+    {
+        Assert.False(EscopoExpedicaoSd.PickingNoFugaTES(setor));
+        Assert.False(EscopoExpedicaoSd.SaidaNoFugaTES(setor));
+    }
+
+    // O recorte por setor continua escrito e nao foi apagado: e o que volta a valer se o negocio
+    // mudar de ideia de novo.
+    [Theory]
+    [InlineData(SetorAtividadeSd.Casca, true)]
+    [InlineData(SetorAtividadeSd.Fibra, true)]
+    [InlineData(SetorAtividadeSd.Biodiesel, false)]
+    [InlineData(null, false)]
+    public void O_recorte_de_casca_e_fibra_continua_preservado(string? setor, bool esperado)
+        => Assert.Equal(esperado, SetorAtividadeSd.ExigePicking(setor));
+
+    [Theory]
+    [InlineData(SetorAtividadeSd.Casca)]
+    [InlineData(SetorAtividadeSd.Biodiesel)]
+    [InlineData(null)]
+    public void Separacao_e_saida_andam_juntas(string? setor)
+        => Assert.Equal(EscopoExpedicaoSd.PickingNoFugaTES(setor),
+            EscopoExpedicaoSd.SaidaNoFugaTES(setor));
 
     [Fact]
-    public void As_mensagens_dizem_o_motivo_e_nao_sugerem_defeito()
+    public void As_mensagens_dizem_quem_faz_e_nao_sugerem_defeito()
     {
         // Quem le "indisponivel" vai procurar falha de configuracao onde ha limite de processo.
-        Assert.Contains("dentro do SAP", EscopoExpedicaoSd.MotivoSaida, StringComparison.Ordinal);
-        Assert.DoesNotContain("indisponível", EscopoExpedicaoSd.MotivoSaida, StringComparison.Ordinal);
-        var picking = EscopoExpedicaoSd.MotivoPicking(SetorAtividadeSd.Biodiesel);
-        Assert.Contains("casca (62) e fibra (66)", picking, StringComparison.Ordinal);
-        Assert.DoesNotContain("indisponível", picking, StringComparison.Ordinal);
+        foreach (var motivo in new[]
+                 { EscopoExpedicaoSd.MotivoSaida(SetorAtividadeSd.Casca),
+                   EscopoExpedicaoSd.MotivoPicking(SetorAtividadeSd.Casca) })
+        {
+            Assert.Contains("dentro do SAP", motivo, StringComparison.Ordinal);
+            Assert.DoesNotContain("indisponível", motivo, StringComparison.Ordinal);
+        }
     }
 
     // --- A guarda HTTP acompanha a decisao ---------------------------------------------------
+    //
+    // Segunda tranca, atras da MESMA chave: com o passo 6 desligado, as duas rotas nao saem daqui
+    // nem por engano - nem que alguem chame o cliente diretamente.
 
     [Fact]
-    public async Task O_picking_sai_pela_tela()
-        => Assert.True((await Enviar(HttpMethod.Post,
-            ExpedicaoSdSapClient.RotaPicking + "?DeliveryDocument='80001997'")).Passou);
-
-    [Fact]
-    public async Task A_saida_de_mercadoria_nao_sai_nem_pela_tela()
+    public async Task O_picking_nao_sai_mais()
     {
-        // Mesmo com o botao fora de escopo, a guarda recusa: duas travas para o passo que move
-        // estoque e nao se desfaz.
         var (passou, chamadas) = await Enviar(HttpMethod.Post,
-            "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/PostGoodsIssue" + "?DeliveryDocument='80001997'");
+            ExpedicaoSdSapClient.RotaPicking + "?DeliveryDocument='80001997'");
         Assert.False(passou);
         Assert.Equal(0, chamadas);
     }
+
+    [Fact]
+    public async Task A_saida_de_mercadoria_nao_sai_mais()
+    {
+        var (passou, chamadas) = await Enviar(HttpMethod.Post,
+            ExpedicaoSdSapClient.RotaSaida + "?DeliveryDocument='80001997'");
+        Assert.False(passou);
+        Assert.Equal(0, chamadas);
+    }
+
+    [Fact]
+    public async Task Desfazer_a_saida_continua_fora()
+    {
+        // ReverseGoodsIssue nao e passo do fluxo. Se um dia for, entra por decisao, nao por
+        // acidente de prefixo.
+        var (passou, chamadas) = await Enviar(HttpMethod.Post,
+            "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/ReverseGoodsIssue?DeliveryDocument='80001997'");
+        Assert.False(passou);
+        Assert.Equal(0, chamadas);
+    }
+}
+
+/// <summary>
+/// O que o SAP respondeu ao picking da remessa 80003869, em 02/11/2026: HTTP 200 com o relatorio
+/// VAZIO. Nos gravamos CONFIRMADO, o VL03N mostrou separacao zerada, e a saida foi recusada
+/// depois com VU/010 por documento incompleto.
+///
+/// Estes testes fixam a leitura do relatorio. Quem decide se separou e a lista, nao o codigo HTTP.
+/// </summary>
+public sealed class PickingReportSdTests
+{
+    private const string Vazio =
+        """{"d":{"__metadata":{"type":"Collection(API_OUTBOUND_DELIVERY_SRV.PickingReport)"},"results":[]}}""";
+
+    private const string ComUmItem =
+        """{"d":{"results":[{"DeliveryDocument":"80003869","DeliveryDocumentItem":"10"}]}}""";
+
+    [Fact]
+    public void Relatorio_vazio_nao_e_separacao()
+        => Assert.Equal(0, ExpedicaoSdSapClient.LerPickingReport(Vazio));
+
+    [Fact]
+    public void Relatorio_com_item_conta_o_item()
+        => Assert.Equal(1, ExpedicaoSdSapClient.LerPickingReport(ComUmItem));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("isto nao e json")]
+    [InlineData("""{"d":{}}""")]
+    [InlineData("""{"d":{"results":{}}}""")]
+    [InlineData("""{"results":[{"x":1}]}""")]
+    public void Corpo_que_nao_e_o_relatorio_conta_como_zero(string? corpo)
+        // Silencio nao e sucesso: o que nao se consegue ler nao autoriza gravar CONFIRMADO.
+        => Assert.Equal(0, ExpedicaoSdSapClient.LerPickingReport(corpo));
 }
