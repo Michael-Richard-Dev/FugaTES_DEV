@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath 'fugates-motor-sd.tgz')) {
 }
 
 $sha = (Get-FileHash -LiteralPath 'fugates-motor-sd.tgz' -Algorithm SHA256).Hash.ToLowerInvariant()
-$esperado = '86300ddd5ffce20d7cc8b78cc0da50dec2f395e18825b0ce1b01ac6866bdb7d2'
+$esperado = '72db0c16e47efda8a6b0c270c54497a21c7ab85fe73492ef587ad4ca9257a199'
 Write-Host "pacote ... fugates-motor-sd.tgz"
 Write-Host "sha256 ... $sha"
 Write-Host "esperado . $esperado"
