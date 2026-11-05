@@ -63,21 +63,24 @@ public sealed class TextoNfeSdComplementoTests
 
     // --- o contrato, para quando o Guardian passar a enviar ---------------------------------
 
+    // Em 05/11/2026 os numeros 1010 e 1011 deixaram de ser transportadora e carreta e passaram
+    // a ser LACRE, quando o operador ampliou o JSON do Guardian. Transportadora e carreta nunca
+    // chegaram por numero: vem da raiz, por nome. Este payload reflete o contrato de verdade.
     private const string PayloadComOsTres = """
         {
           "Placa": "ABC1D23",
+          "Placa Carreta": "XYZ9W87",
+          "NomeTransportadora": "TRANSPORTES SAO JORGE LTDA",
           "CamposAdicionais": [
             { "valor": "4291", "numero": 1003 },
             { "valor": "10", "numero": 1009 },
-            { "valor": "65593 / 65594 / 65595", "numero": 1006 },
-            { "valor": "TRANSPORTES SAO JORGE LTDA", "numero": 1010 },
-            { "valor": "XYZ9W87", "numero": 1011 }
+            { "valor": "65593 / 65594 / 65595", "numero": 1006 }
           ]
         }
         """;
 
     [Fact]
-    public void Pelos_numeros_reservados_os_tres_sao_lidos()
+    public void O_lacre_vem_por_numero_e_os_outros_dois_pela_raiz()
     {
         var c = Ler(PayloadComOsTres);
         Assert.Equal("65593 / 65594 / 65595", c.Lacre);

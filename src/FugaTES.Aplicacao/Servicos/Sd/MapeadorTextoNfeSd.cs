@@ -201,15 +201,15 @@ public static class MapeadorTextoNfeSd
             var raiz = doc.RootElement;
             if (raiz.ValueKind != JsonValueKind.Object) return new();
             return new(
-                Lacre: Complemento(raiz, CamposProtocoloSd.Lacre, NomesLacre),
+                Lacre: Lacres(raiz),
                 Placa: Texto(raiz, "Placa"),
                 Motorista: Texto(raiz, "NomeMotorista"),
                 Cpf: Texto(raiz, "CpfMotorista"),
-                PlacaCarreta: Complemento(raiz, CamposProtocoloSd.PlacaCarreta, NomesCarreta),
-                // O numero reservado leva o NOME: o codigo so chega por chave propria.
+                // Carreta e transportadora chegam na RAIZ, por nome. Nao ha numero reservado para
+                // elas: os que havia (1010, 1011) passaram a ser lacre.
+                PlacaCarreta: Complemento(raiz, numero: -1, NomesCarreta),
                 TransportadoraCodigo: Complemento(raiz, numero: -1, NomesTransportadoraCodigo),
-                TransportadoraNome: Complemento(raiz, CamposProtocoloSd.Transportadora,
-                    NomesTransportadoraNome));
+                TransportadoraNome: Complemento(raiz, numero: -1, NomesTransportadoraNome));
         }
         catch (JsonException) { return new(); }
     }
@@ -246,6 +246,39 @@ public static class MapeadorTextoNfeSd
 
     private static readonly string[] NomesTransportadoraNome =
         ["NomeTransportadora", "RazaoSocialTransportadora", "Transportadora", "Transportador"];
+
+    /// <summary>
+    /// TODOS os lacres da pesagem, numa linha so.
+    ///
+    /// Diferente dos outros dados do complemento: aqui nao vence o primeiro que responder - vale
+    /// cada campo que tiver conteudo, porque uma carga pode levar varios lacres e o Guardian os
+    /// entrega em campos separados (1006 e, desde 05/11/2026, de 1010 a 1013).
+    ///
+    /// Campo zerado ou em branco some, a pedido do operador: o 1006 volta "0" quando ninguem
+    /// digita, porque e o valor que NOS enviamos no protocolo, e os demais vem vazios quando a
+    /// carga tem menos lacres do que campos. Imprimir "Lacres: 0, 0, 0" seria pior do que nao
+    /// imprimir nada.
+    ///
+    /// Valor repetido entra uma vez so: o mesmo lacre em dois campos e erro de digitacao na
+    /// balanca, e a nota nao precisa herdar o erro.
+    /// </summary>
+    private static string? Lacres(JsonElement raiz)
+    {
+        var achados = new List<string>();
+
+        void Juntar(string? valor)
+        {
+            if (SemZero(valor) is not string limpo) return;
+            if (!achados.Contains(limpo, StringComparer.OrdinalIgnoreCase)) achados.Add(limpo);
+        }
+
+        // Na ordem dos numeros, que e a ordem em que o operador os preenche na balanca.
+        foreach (var numero in CamposProtocoloSd.Lacres) Juntar(CampoAdicionalPorNumero(raiz, numero));
+        foreach (var nome in NomesLacre) Juntar(CampoAdicionalPorNome(raiz, nome));
+        foreach (var nome in NomesLacre) Juntar(Texto(raiz, nome));
+
+        return achados.Count == 0 ? null : string.Join(", ", achados);
+    }
 
     /// <summary>
     /// Um dado do complemento, procurado nas tres formas do contrato acima. A primeira que

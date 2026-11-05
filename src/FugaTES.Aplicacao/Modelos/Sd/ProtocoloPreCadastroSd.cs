@@ -45,16 +45,21 @@ public static class CamposProtocoloSd
     public const int LinhaDaOrdem = 1009;
 
     /// <summary>
-    /// Transportadora e placa da carreta, pedidas pelo operador em 05/11/2026 para o texto da
-    /// NF-e. Diferentes de todos os campos acima: o FugaTES NAO as envia no protocolo - ele as
-    /// RECEBE na devolutiva. Sao dados que so existem no momento da pesagem.
+    /// TODOS os campos adicionais que trazem lacre na devolutiva.
     ///
-    /// Os numeros sao nossos e estao reservados aqui para que ninguem os reaproveite para outra
-    /// coisa. Em 05/11/2026 a devolutiva trazia apenas 1003 e 1009; estes tres - com o lacre em
-    /// 1006 - serao acrescentados do lado do Guardian.
+    /// Uma pesagem pode levar varios lacres, e o Guardian os entrega em campos separados. O
+    /// operador ampliou o JSON em 05/11/2026 para mandar de 1010 a 1013 alem do 1006.
+    ///
+    /// ATENCAO ao reaproveitar numeros: 1010 e 1011 chegaram a ser reservados aqui para
+    /// transportadora e placa da carreta, antes de se descobrir que o Guardian manda esses dois
+    /// na RAIZ (IdTransportadora, NomeTransportadora, "Placa Carreta"). A reserva nunca foi usada,
+    /// e manter as duas leituras sobre o mesmo numero poria o nome da transportadora no texto como
+    /// se fosse lacre. Por isso ela foi desfeita no mesmo movimento, e nao depois.
+    ///
+    /// O 1006 continua sendo enviado por nos como "0" no protocolo - no momento do pre-cadastro o
+    /// lacre ainda nao existe. Zero nao e lacre, e some do texto.
     /// </summary>
-    public const int Transportadora = 1010;
-    public const int PlacaCarreta = 1011;
+    public static readonly int[] Lacres = [Lacre, 1010, 1011, 1012, 1013];
 
     /// <summary>Os dez campos, na ordem do mapeamento. Nem um a mais, nem um a menos.</summary>
     public static readonly int[] Todos =
