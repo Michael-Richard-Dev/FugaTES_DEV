@@ -40,6 +40,35 @@ public sealed class AcmAutomaticoOptions
     public string[] ExcludedContractNumbers { get; set; } = [];
 
     /// <summary>
+    /// Corte do cadastro automatico: so contrato RECEBIDO a partir deste instante vira cadastro
+    /// sozinho. Decisao do operador em 05/11/2026 - "daqui pra frente, dos proximos que vierem".
+    ///
+    /// E corte por data de RECEBIMENTO, e nao lista de numeros, porque o pedido era temporal: a
+    /// fila tinha cerca de quarenta contratos travados em reconciliacao, em recusa 400 do Guardian
+    /// e em aprovacao de callback, e enumera-los satisfaria hoje e exigiria manutencao amanha. O
+    /// corte diz a regra uma vez. E o mesmo padrao que o ACM ja usa em
+    /// DynamicEmitterValidationFromUtc e que o SD usa em OrdensVendaSdFiltro.CorteAutomatico.
+    ///
+    /// E instante FIXO, nunca "agora": com corte movel, o contrato que chegou hoje e ainda nao foi
+    /// cadastrado sairia do recorte amanha, sem ninguem decidir isso.
+    ///
+    /// Nulo traz tudo - o comportamento anterior, preservado para quem nao configurar corte.
+    ///
+    /// Contrato que o SAP REENTREGAR depois do corte entra: o recebimento e novo, ainda que o
+    /// numero seja antigo. E o que "os proximos que vierem" quer dizer.
+    /// </summary>
+    public DateTimeOffset? RecebidoDesdeUtc { get; set; }
+
+    /// <summary>
+    /// Se um recebimento esta dentro do corte.
+    ///
+    /// Recebimento NULO com corte configurado NAO passa: "nao sei quando chegou" nao pode valer
+    /// como "chegou depois do corte" - seria deixar entrar justamente o que nao se consegue datar.
+    /// </summary>
+    public bool RecebimentoNoCorte(DateTimeOffset? recebidoEmUtc) =>
+        RecebidoDesdeUtc is not { } corte || (recebidoEmUtc is { } quando && quando >= corte);
+
+    /// <summary>
     /// Os centros que realmente valem. Vazio significa recorte INVALIDO - nunca "todos": sem
     /// centro declarado o motor nao sabe de quem e o contrato, e cadastro no Guardian nao se desfaz.
     /// </summary>
@@ -56,6 +85,8 @@ public sealed class AcmAutomaticoOptions
         CentrosEfetivos.Count > 0 && CentrosEfetivos.All(CentrosAcm.EhPermitido) &&
         CentrosEfetivos.Distinct(StringComparer.Ordinal).Count() == CentrosEfetivos.Count &&
         (Item is null || Identifier(Item, 10)) &&
+        // Mesma exigencia dos outros cortes do ACM: instante declarado em UTC, nao em fuso local.
+        (RecebidoDesdeUtc is null || RecebidoDesdeUtc.Value.Offset == TimeSpan.Zero) &&
         ExcludedContractNumbers is not null && ExcludedContractNumbers.All(v => Identifier(v, 20));
 
     public bool SnapshotPermitido(ContratoSapToledoSnapshot snapshot) => EhValida() &&

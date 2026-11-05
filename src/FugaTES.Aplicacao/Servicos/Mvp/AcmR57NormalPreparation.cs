@@ -148,6 +148,11 @@ public sealed class AcmR57NormalRuntimeGate(AcmR57NormalOptions options, TimePro
             return "R165AG_WINDOW_SCOPE_INVALID";
         if (Automatico && (version.Versao != 1 || !options.AcmAutomatico.SnapshotPermitido(version.Snapshot)))
             return "R170_SCOPE_INVALID";
+        // O recorte do motor ja nao varre contrato de antes do corte. Este gate repete a regra
+        // porque ele tambem serve caminhos que nao passam pelo recorte - e porque uma regra de
+        // escopo conferida num lugar so e uma regra que a proxima composicao esquece.
+        if (Automatico && !options.AcmAutomatico.RecebimentoNoCorte(version.RecebidoEmUtc))
+            return "R173_ANTERIOR_AO_CORTE_AUTOMATICO";
         if (!options.Enabled || !options.ExecutionAuthorized || !AcmR57NormalPreparation.Proven(options.AuthorizationReference))
             return "R165U_EXECUTION_DISABLED";
         if (options.GuardianEnvironment != "HML" || !AcmR57NormalPreparation.Proven(options.GuardianIdentityEvidence))

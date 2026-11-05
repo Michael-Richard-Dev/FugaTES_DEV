@@ -120,6 +120,10 @@ public sealed class MotorIntegracaoServico
         if (!options.UsaJanelaAcm && !options.UsaAutomaticoAcm)
             return version!.Snapshot.Centro == options.AcmPilotCentro && version.Snapshot.Item == options.AcmPilotItem;
         if (version!.Versao != 1) return false;
+        // Corte do cadastro automatico. Fica aqui, no recorte, e nao num bloqueio: contrato de
+        // antes do corte nao e trabalho deste motor, e nao-trabalho nao gera recusa - a fila antiga
+        // deixa de ser varrida em vez de acumular tentativa e backoff para sempre.
+        if (options.UsaAutomaticoAcm && !options.AcmAutomatico.RecebimentoNoCorte(version.RecebidoEmUtc)) return false;
         if (options.UsaAutomaticoAcm && !options.AcmAutomatico.SnapshotPermitido(version.Snapshot)) return false;
         if (options.UsaJanelaAcm && !options.AcmInboundWindow.SnapshotPermitido(version.Snapshot)) return false;
         try { return new ContratoSapToledoCanonicalizer().Canonicalizar(version.Snapshot).FingerprintSha256 == version.FingerprintSha256; }
