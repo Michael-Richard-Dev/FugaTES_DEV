@@ -22,7 +22,7 @@ public static class CarrierManualReadOnlyProfile
             if(!bool.TryParse(c[key],out var enabled)||enabled||bool.TryParse(Environment.GetEnvironmentVariable(key),out var env)&&env)
                 throw new DesktopStartupException("MANUAL_READONLY_FLAGS_NOT_PROVEN_FALSE");
         var sap=SafeUri(c["Sap:BaseUrl"]);var guardian=SafeUri(c["Guardian:BaseUrl"]);
-        if(sap.GetLeftPart(UriPartial.Authority)!="https://vhfufds4ci.sap.fugacouros.com.br:44300"||sap.AbsolutePath.TrimEnd('/')!="/sap/opu/odata/sap/API_BUSINESS_PARTNER"||c["Sap:SapClient"]!="110"||
+        if(!FugaTES.Aplicacao.Configuracao.AmbientesSap.EhAprovado(sap.GetLeftPart(UriPartial.Authority),c["Sap:SapClient"])||sap.AbsolutePath.TrimEnd('/')!="/sap/opu/odata/sap/API_BUSINESS_PARTNER"||
             guardian.GetLeftPart(UriPartial.Authority)!="https://guardian.cloudprix.com.br")
             throw new DesktopStartupException("MANUAL_APPROVED_ORIGIN_MISMATCH");
         if(!CarrierDesktopProfile.True(c,"Carrier:ManualReadOnly:Sap:Proven")||string.IsNullOrWhiteSpace(c["Carrier:ManualReadOnly:Sap:ApprovalReference"])||

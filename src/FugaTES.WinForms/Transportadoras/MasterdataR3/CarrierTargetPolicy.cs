@@ -19,7 +19,8 @@ public static class CarrierTargetPolicy
         foreach(var key in new[]{"FUGATES_INTEGRATION_WORKER_ENABLED","INC005_WORKER_ENABLED","FUGATES_CARRIER_SYNC_ENABLED","FUGATES_CARRIER_WORKER_ENABLED","Carrier:IntegrationWorkerEnabled","Carrier:DesktopGuardianWritesEnabled","Carrier:Authorization:IncrementalReleased"})
             if(!bool.TryParse(c[key],out var enabled)||enabled||bool.TryParse(Environment.GetEnvironmentVariable(key),out var global)&&global)
                 throw new FugaTES.WinForms.Runtime.DesktopStartupException("MASTERDATA_AUTOMATIC_ROUTES_MUST_BE_DISABLED");
-        if(c["Sap:BaseUrl"]?.TrimEnd('/')!="https://vhfufds4ci.sap.fugacouros.com.br:44300/sap/opu/odata/sap/API_BUSINESS_PARTNER"||c["Sap:SapClient"]!="110"||c["Guardian:BaseUrl"]?.TrimEnd('/')!="https://guardian.cloudprix.com.br"||FugaTES.HostIntegracao.CarrierProtocolBinding.BuildGuardianManualContract(c) is null)
+        // O ambiente vem do par configurado; o caminho continua sendo so o de parceiros.
+        if(!Uri.TryCreate(c["Sap:BaseUrl"],UriKind.Absolute,out var urlBp)||!FugaTES.Aplicacao.Configuracao.AmbientesSap.EhAprovado(urlBp.GetLeftPart(UriPartial.Authority),c["Sap:SapClient"])||urlBp.AbsolutePath.TrimEnd('/')!="/sap/opu/odata/sap/API_BUSINESS_PARTNER"||c["Guardian:BaseUrl"]?.TrimEnd('/')!="https://guardian.cloudprix.com.br"||FugaTES.HostIntegracao.CarrierProtocolBinding.BuildGuardianManualContract(c) is null)
             throw new FugaTES.WinForms.Runtime.DesktopStartupException("MASTERDATA_READ_CONTRACT_NOT_PROVEN");
         foreach(var field in new[]{"SapUser","SapCredentialTarget","GuardianUser","GuardianCredentialTarget","GuardianSignatureTarget","GuardianSignatureUser"})
             if(!Has("Carrier:Secrets:"+field))throw new FugaTES.WinForms.Runtime.DesktopStartupException("MASTERDATA_CREDENTIAL_REFERENCE_MISSING");
