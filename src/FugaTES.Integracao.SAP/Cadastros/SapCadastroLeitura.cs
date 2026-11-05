@@ -97,7 +97,7 @@ public abstract class SapCadastroConsultaBase:ICadastroSapConsulta
    if(d.TryGetProperty("__next",out var next)&&next.ValueKind!=JsonValueKind.Null)
    {
     var current=sap.ConstruirUri(path);
-    if(next.ValueKind!=JsonValueKind.String||!Uri.TryCreate(current,next.GetString(),out var target)||target.GetLeftPart(UriPartial.Authority)!=Origem||target.Scheme!="https"||target.AbsolutePath!=path||target.UserInfo.Length>0||target.Fragment.Length>0)throw Error("SAP_CONTINUATION_INVALID");
+    if(next.ValueKind!=JsonValueKind.String||!Uri.TryCreate(current,next.GetString(),out var target)||target.GetLeftPart(UriPartial.Authority)!=current.GetLeftPart(UriPartial.Authority)||target.Scheme!="https"||target.AbsolutePath!=path||target.UserInfo.Length>0||target.Fragment.Length>0)throw Error("SAP_CONTINUATION_INVALID");
     var args=QueryHelpers.ParseQuery(target.Query);if(args.Any(x=>x.Value.Count!=1)||!args.TryGetValue("sap-client",out var client)||!QueryHelpers.ParseQuery(current.Query).TryGetValue("sap-client",out var meu)||client.ToString()!=meu.ToString())throw Error("SAP_CONTINUATION_INVALID");hasNext=true;
    }
    if(result.Count>100_000||declared is not null&&(result.Count>declared||rows.Count==0&&result.Count<declared)||rows.Count==0&&hasNext)throw Error("SAP_PAGE_INCOMPLETE");

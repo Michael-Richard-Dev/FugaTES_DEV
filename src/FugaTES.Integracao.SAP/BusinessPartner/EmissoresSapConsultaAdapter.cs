@@ -67,7 +67,7 @@ public sealed class EmissoresSapConsultaAdapter : IEmissoresSapConsulta
   var hasNext=false;
   if(d.TryGetProperty("__next",out var next)&&next.ValueKind!=JsonValueKind.Null)
   {
-   if(next.ValueKind!=JsonValueKind.String||!Uri.TryCreate(uri,next.GetString(),out var remote)||remote.Scheme!="https"||remote.GetLeftPart(UriPartial.Authority)!=Origem||remote.AbsolutePath!=Colecao||remote.UserInfo.Length!=0||remote.Fragment.Length!=0||remote==uri)throw Error("SAP_CONTINUATION_INVALID");
+   if(next.ValueKind!=JsonValueKind.String||!Uri.TryCreate(uri,next.GetString(),out var remote)||remote.Scheme!="https"||remote.GetLeftPart(UriPartial.Authority)!=uri.GetLeftPart(UriPartial.Authority)||remote.AbsolutePath!=Colecao||remote.UserInfo.Length!=0||remote.Fragment.Length!=0||remote==uri)throw Error("SAP_CONTINUATION_INVALID");
    var query=QueryHelpers.ParseQuery(remote.Query);
    if(query.Any(x=>x.Value.Count!=1)||!query.TryGetValue("sap-client",out var client)||!QueryHelpers.ParseQuery(uri.Query).TryGetValue("sap-client",out var meu)||client.ToString()!=meu.ToString())throw Error("SAP_CONTINUATION_INVALID");
    // Never follow the server URL. Pagination is constructed locally with a fixed scope.

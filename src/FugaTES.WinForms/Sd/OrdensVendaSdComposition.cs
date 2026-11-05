@@ -200,8 +200,11 @@ public static class OrdensVendaSdComposition
         new SemConsulta(),
         bloqueio: "Busca no SAP indisponível: " + codigo
             + ".\r\nA tela abriu somente para conferência; nada foi consultado, gravado ou enviado."
-            + "\r\nEsperado em " + OrigemAprovada + RotaAprovada.TrimStart('/')
-            + " com sap-client " + SapClientAprovado + " e a credencial do perfil do desktop.");
+            // Os ambientes APROVADOS, nao um deles escrito: num desktop de QAS esta mensagem
+            // dizia "esperado em DEV110" e mandava a pessoa conferir o lugar errado.
+            + "\r\nEsperado em " + string.Join(" ou ", AmbientesSap.Aprovados
+                .Select(a => a.Origem + RotaAprovada + " com sap-client " + a.SapClient))
+            + ", com a credencial do perfil do desktop.");
 
     // Nunca chamada com a tela bloqueada; existe para que a tela nao precise de um gateway nulo.
     private sealed class SemConsulta : Aplicacao.Contratos.Gateways.SAP.IConsultaOrdensVendaSdSap
