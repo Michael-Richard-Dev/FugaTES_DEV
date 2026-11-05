@@ -29,24 +29,48 @@ public static class MapeadorRemessaSd
     /// linha, nao o evento. Fabricar um <see cref="DevolutivaPesagemSd"/> incompleto so para
     /// chamar a sobrecarga acima inventaria dados que a leitura nao traz.
     /// </summary>
+    /// <param name="linhasAdicionais">
+    /// Outras linhas da MESMA ordem que entram na remessa, alem da pesada. So o fluxo de biodiesel
+    /// as usa (pedido do operador em 05/11/2026): a ordem ganha linhas novas depois que a primeira
+    /// ja foi expedida, e a remessa precisa nascer com todas as que ainda estao em aberto.
+    ///
+    /// Quem decide QUAIS e <see cref="LinhasRemessaSd.Escolher"/>; aqui elas so viram itens. Cada
+    /// uma leva a mesma quantidade e unidade da linha pesada - no biodiesel, 1 L. Nulo ou vazio
+    /// devolve exatamente a remessa de uma linha so, que e o comportamento de sempre.
+    /// </param>
     public static RemessaSdRequest Montar(string? ordemVenda, string? linhaOrdem,
-        decimal pesoLiquido, string? setorAtividade)
+        decimal pesoLiquido, string? setorAtividade,
+        IReadOnlyList<string>? linhasAdicionais = null)
     {
         if (string.IsNullOrWhiteSpace(ordemVenda) || string.IsNullOrWhiteSpace(linhaOrdem))
             throw new RemessaSdBloqueadaException("SD_REMESSA_SEM_CORRELACAO",
                 "A pesagem não indica a ordem de venda; não há a que referenciar a remessa.");
 
         var fluxo = FluxoRemessaSd.Escolher(setorAtividade, pesoLiquido);
+        var ordem = ordemVenda.Trim();
 
-        return new RemessaSdRequest(new ItensRemessaSdDto([
-            new ItemRemessaSdDto(
-                // O SAP espera o numero como ele proprio devolve, sem os zeros de preenchimento:
-                // "000010" nao casa com o item "10" da ordem.
-                ReferenceSDDocument: ordemVenda.Trim(),
-                ReferenceSDDocumentItem: linhaOrdem.Trim(),
-                ActualDeliveryQuantity: fluxo.Quantidade,
-                DeliveryQuantityUnit: fluxo.Unidade)
-        ]));
+        // O SAP espera o numero como ele proprio devolve, sem os zeros de preenchimento:
+        // "000010" nao casa com o item "10" da ordem.
+        ItemRemessaSdDto Item(string linha) => new(
+            ReferenceSDDocument: ordem,
+            ReferenceSDDocumentItem: linha.Trim(),
+            ActualDeliveryQuantity: fluxo.Quantidade,
+            DeliveryQuantityUnit: fluxo.Unidade);
+
+        var itens = new List<ItemRemessaSdDto> { Item(linhaOrdem) };
+
+        // A linha pesada ja esta dentro: repeti-la criaria duas linhas para o mesmo item da ordem.
+        // A comparacao ignora zeros a esquerda porque "10" e "000010" sao a mesma linha.
+        var pesada = linhaOrdem.Trim().TrimStart('0');
+        foreach (var adicional in linhasAdicionais ?? [])
+        {
+            var numero = (adicional ?? "").Trim();
+            if (numero.Length == 0 || numero.TrimStart('0') == pesada) continue;
+            if (itens.Any(i => i.ReferenceSDDocumentItem.TrimStart('0') == numero.TrimStart('0'))) continue;
+            itens.Add(Item(numero));
+        }
+
+        return new RemessaSdRequest(new ItensRemessaSdDto(itens));
     }
 
     /// <summary>

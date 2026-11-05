@@ -110,6 +110,9 @@ public static class SdProtocoloComposition
         // para o motor de protocolo, e o servico nao subia por nao achar IConsultarSetorAtividadeSd.
         services.AddSingleton<IConsultarSetorAtividadeSd>(sp =>
             new SetorAtividadeSdConsulta(sp.GetRequiredService<SapODataHttpExecutor>()));
+        // As linhas da ordem, para o biodiesel montar a remessa com as que ainda estao em aberto.
+        services.AddSingleton<IConsultarLinhasOrdemSd>(sp =>
+            new LinhasOrdemSdConsulta(sp.GetRequiredService<SapODataHttpExecutor>()));
         services.AddSingleton<ICriarRemessaSdSap>(sp =>
             new RemessaSdSapClient(sp.GetRequiredService<SapODataHttpExecutor>()));
         services.AddSingleton<IAjustarRemessaSdSap>(sp =>
@@ -148,7 +151,8 @@ public static class SdProtocoloComposition
             sp.GetRequiredService<IConsultarSetorAtividadeSd>(),
             sp.GetRequiredService<ICriarRemessaSdSap>(),
             sp.GetRequiredService<IAjustarRemessaSdSap>(),
-            sp.GetRequiredService<IGravarTextoNfeSd>()));
+            sp.GetRequiredService<IGravarTextoNfeSd>(),
+            sp.GetRequiredService<IConsultarLinhasOrdemSd>()));
         services.AddHostedService<SdProtocoloWorker>();
         services.AddHostedService<RemessaSdWorker>();
     }

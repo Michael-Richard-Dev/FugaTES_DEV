@@ -40,7 +40,7 @@ public static class DevolutivasSdComposition
 
     private static FrmDevolutivasSd Montar(ConexaoSdPostgreSql.Resultado aberta)
     {
-        var (sap, setores, ajuste, textos, expedicao, httpSap, motivoSap) = CriarSap();
+        var (sap, setores, ajuste, textos, expedicao, linhasOrdem, httpSap, motivoSap) = CriarSap();
         var posse = new Descartavel(aberta.Posse, httpSap);
 
         if (aberta.Fonte is null)
@@ -50,7 +50,8 @@ public static class DevolutivasSdComposition
             new DevolutivasSdPostgreSql(aberta.Fonte), posse,
             motivoIndisponivel: motivoSap,
             remessas: new RemessasSdPostgreSql(aberta.Fonte),
-            sap: sap, setores: setores, ajuste: ajuste, textos: textos, expedicao: expedicao);
+            sap: sap, setores: setores, ajuste: ajuste, textos: textos, expedicao: expedicao,
+            linhasOrdem: linhasOrdem);
     }
 
     /// <summary>
@@ -58,7 +59,7 @@ public static class DevolutivasSdComposition
     /// continua acompanhando as devolutivas, apenas sem criar nem ajustar remessa.
     /// </summary>
     private static (ICriarRemessaSdSap?, IConsultarSetorAtividadeSd?, IAjustarRemessaSdSap?,
-        IGravarTextoNfeSd?, IExpedirRemessaSdSap?, IDisposable?, string?) CriarSap()
+        IGravarTextoNfeSd?, IExpedirRemessaSdSap?, IConsultarLinhasOrdemSd?, IDisposable?, string?) CriarSap()
     {
         HttpClient? http = null;
         try
@@ -80,12 +81,12 @@ public static class DevolutivasSdComposition
                 new CookieContainer());
             return (new RemessaSdSapClient(executor), new SetorAtividadeSdConsulta(executor),
                 new AjusteRemessaSdSapClient(executor), new TextoNfeSdSapClient(executor),
-                new ExpedicaoSdSapClient(executor), http, null);
+                new ExpedicaoSdSapClient(executor), new LinhasOrdemSdConsulta(executor), http, null);
         }
         catch (DesktopStartupException ex)
-        { http?.Dispose(); return (null, null, null, null, null, null, ex.Code); }
+        { http?.Dispose(); return (null, null, null, null, null, null, null, ex.Code); }
         catch (Exception erro)
-        { http?.Dispose(); return (null, null, null, null, null, null, "SD_SAP_" + erro.GetType().Name); }
+        { http?.Dispose(); return (null, null, null, null, null, null, null, "SD_SAP_" + erro.GetType().Name); }
     }
 }
 

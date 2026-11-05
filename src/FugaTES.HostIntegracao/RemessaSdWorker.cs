@@ -125,6 +125,25 @@ public sealed class RemessaSdWorker(
             return false;
         }
 
+        // Biodiesel: a remessa nasce com a linha pesada MAIS as demais linhas da ordem que ainda
+        // estao em aberto. Falha de leitura bloqueia - nada e criado.
+        var (adicionais, falhaLinhas, ignoradas) = await executor
+            .LerLinhasAdicionaisAsync(pesagem.OrdemVenda!, pesagem.LinhaOrdem, setor, ct)
+            .ConfigureAwait(false);
+        if (adicionais is null)
+        {
+            log.LogWarning("SD_REMESSA_SEM_LINHAS: {Pesagem} — {Falha}", pesagem.IdPesagem, falhaLinhas);
+            return false;
+        }
+        if (ignoradas.Count > 0)
+            log.LogWarning("SD_REMESSA_LINHA_OUTRO_MATERIAL: {Pesagem} — linha(s) {Linhas} em aberto "
+                + "na ordem {Ordem}, mas de material diferente do pesado; ficaram de fora.",
+                pesagem.IdPesagem, string.Join(", ", ignoradas), pesagem.OrdemVenda);
+        if (adicionais.Count > 0)
+            log.LogInformation("SD_REMESSA_LINHAS_ADICIONAIS: {Pesagem} — ordem {Ordem}, pesada "
+                + "{Pesada}, acrescentando {Linhas}.", pesagem.IdPesagem, pesagem.OrdemVenda,
+                pesagem.LinhaOrdem, string.Join(", ", adicionais));
+
         FluxoRemessaSd fluxo;
         RemessaSdRequest pedido;
         string json;
@@ -132,7 +151,7 @@ public sealed class RemessaSdWorker(
         {
             fluxo = FluxoRemessaSd.Escolher(setor, pesagem.PesoLiquido);
             pedido = MapeadorRemessaSd.Montar(pesagem.OrdemVenda, pesagem.LinhaOrdem,
-                pesagem.PesoLiquido, setor);
+                pesagem.PesoLiquido, setor, adicionais);
             json = MapeadorRemessaSd.Serializar(pedido);
         }
         catch (RemessaSdBloqueadaException bloqueio)

@@ -32,7 +32,10 @@ public sealed class ExecutorFluxoRemessaSd(
     IConsultarSetorAtividadeSd setores,
     ICriarRemessaSdSap criacao,
     IAjustarRemessaSdSap ajuste,
-    IGravarTextoNfeSd textos)
+    IGravarTextoNfeSd textos,
+    // Opcional para nao quebrar quem ja compoe este executor sem a consulta nova. Ausente, o
+    // biodiesel BLOQUEIA em vez de seguir sem as linhas adicionais - ver LerLinhasAdicionaisAsync.
+    IConsultarLinhasOrdemSd? linhas = null)
 {
     /// <summary>
     /// Setor de atividade da ordem, lido do SAP. Sem ele nao da para escolher entre litro e quilo,
@@ -45,6 +48,37 @@ public sealed class ExecutorFluxoRemessaSd(
             return (null, $"Não foi possível ler o setor de atividade da ordem {ordemVenda} "
                 + $"({consulta.Status}). Sem ele não dá para escolher entre litro e quilo.");
         return (consulta.Dados.Trim(), null);
+    }
+
+    /// <summary>
+    /// Outras linhas da ordem que entram na remessa junto com a pesada. SO no biodiesel: nos
+    /// demais setores a remessa continua nascendo com uma linha, e devolver vazio aqui e o
+    /// caminho normal, nao uma falha.
+    ///
+    /// Falha de leitura NAO degrada para "sem linhas adicionais". Decisao do operador em
+    /// 05/11/2026: bloqueia e nao cria nada. Uma remessa com menos linhas do que devia passaria
+    /// por completa - o operador acertaria as quantidades a mao sem saber que falta uma linha, e
+    /// o erro so apareceria na conferencia do estoque. Bloqueio aparece; remessa incompleta nao.
+    ///
+    /// A terceira saida devolve o que ficou de fora por material diferente, para o journal. Na
+    /// pratica nunca acontece - o operador afirmou que o material nao varia dentro da ordem -,
+    /// mas exclusao silenciosa e exatamente o que ninguem descobre a tempo.
+    /// </summary>
+    public async Task<(IReadOnlyList<string>? Linhas, string? Falha, IReadOnlyList<string> IgnoradasPorMaterial)>
+        LerLinhasAdicionaisAsync(string ordemVenda, string? linhaPesada, string setor, CancellationToken ct)
+    {
+        if (setor != SetorAtividadeSd.Biodiesel) return ([], null, []);
+        if (linhas is null)
+            return (null, $"A ordem {ordemVenda} é de biodiesel e exige conferir as demais linhas "
+                + "no SAP, mas a consulta de linhas não está configurada.", []);
+
+        var consulta = await linhas.ConsultarAsync(ordemVenda, ct).ConfigureAwait(false);
+        if (consulta.Status != StatusConsultaSap.Sucesso || consulta.Dados is null)
+            return (null, $"Não foi possível ler as linhas da ordem {ordemVenda} no SAP "
+                + $"({consulta.Status}). Sem elas a remessa sairia sem as linhas em aberto.", []);
+
+        var escolha = LinhasRemessaSd.Escolher(linhaPesada, consulta.Dados);
+        return (escolha.Adicionais, null, escolha.IgnoradasPorMaterial);
     }
 
     public async Task<PassoFluxoSd> CriarRemessaAsync(DevolutivaSdLinha linha, string setor,

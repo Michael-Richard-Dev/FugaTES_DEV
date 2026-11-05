@@ -19,6 +19,7 @@ public partial class FrmDevolutivasSd : Form
     private readonly IRemessasSdRepositorio? remessas;
     private readonly ICriarRemessaSdSap? sap;
     private readonly IConsultarSetorAtividadeSd? setores;
+    private readonly IConsultarLinhasOrdemSd? linhasOrdem;
     private readonly IAjustarRemessaSdSap? ajuste;
     private readonly IGravarTextoNfeSd? textos;
     private readonly IExpedirRemessaSdSap? expedicao;
@@ -35,12 +36,13 @@ public partial class FrmDevolutivasSd : Form
         string? motivoIndisponivel = null, IRemessasSdRepositorio? remessas = null,
         ICriarRemessaSdSap? sap = null, IConsultarSetorAtividadeSd? setores = null,
         IAjustarRemessaSdSap? ajuste = null, IGravarTextoNfeSd? textos = null,
-        IExpedirRemessaSdSap? expedicao = null)
+        IExpedirRemessaSdSap? expedicao = null, IConsultarLinhasOrdemSd? linhasOrdem = null)
     {
         this.repositorio = repositorio;
         this.remessas = remessas;
         this.sap = sap;
         this.setores = setores;
+        this.linhasOrdem = linhasOrdem;
         this.ajuste = ajuste;
         this.textos = textos;
         this.expedicao = expedicao;
@@ -419,13 +421,54 @@ public partial class FrmDevolutivasSd : Form
             return;
         }
 
+        // Biodiesel: a remessa nasce com a linha pesada MAIS as demais linhas da ordem que ainda
+        // estao em aberto. Falha de leitura bloqueia e nao cria nada - a mesma regra do motor.
+        IReadOnlyList<string> adicionais = [];
+        IReadOnlyList<string> ignoradasPorMaterial = [];
+        if (setor == SetorAtividadeSd.Biodiesel)
+        {
+            if (linhasOrdem is null)
+            {
+                var falta = $"A ordem {linha.OrdemVenda} é de biodiesel e exige conferir as demais "
+                    + "linhas no SAP, mas essa consulta não está disponível nesta sessão.";
+                status.Text = $"{DateTime.Now:HH:mm:ss} — {falta}";
+                MessageBox.Show(this, falta, "Remessa não criada",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            try
+            {
+                var consultaLinhas = await linhasOrdem.ConsultarAsync(linha.OrdemVenda!, cancelamento.Token);
+                if (consultaLinhas.Status != StatusConsultaSap.Sucesso || consultaLinhas.Dados is null)
+                {
+                    var falha = $"Não foi possível ler as linhas da ordem {linha.OrdemVenda} no SAP "
+                        + $"({consultaLinhas.Status}). Sem elas a remessa sairia sem as linhas em aberto.";
+                    status.Text = $"{DateTime.Now:HH:mm:ss} — {falha}";
+                    MessageBox.Show(this, falha, "Remessa não criada",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                var escolha = LinhasRemessaSd.Escolher(linha.LinhaOrdem, consultaLinhas.Dados);
+                adicionais = escolha.Adicionais;
+                ignoradasPorMaterial = escolha.IgnoradasPorMaterial;
+            }
+            catch (OperationCanceledException) when (cancelamento.IsCancellationRequested) { return; }
+            catch (Exception erro)
+            {
+                status.Text = $"{DateTime.Now:HH:mm:ss} — consulta das linhas da ordem interrompida "
+                    + $"por {erro.GetType().Name}: {erro.Message}. Nada foi criado.";
+                return;
+            }
+        }
+
         RemessaSdRequest pedido;
         string json;
         FluxoRemessaSd fluxo;
         try
         {
             fluxo = FluxoRemessaSd.Escolher(setor, linha.PesoLiquido);
-            pedido = MapeadorRemessaSd.Montar(linha.OrdemVenda, linha.LinhaOrdem, linha.PesoLiquido, setor);
+            pedido = MapeadorRemessaSd.Montar(linha.OrdemVenda, linha.LinhaOrdem, linha.PesoLiquido,
+                setor, adicionais);
             json = MapeadorRemessaSd.Serializar(pedido);
         }
         catch (RemessaSdBloqueadaException bloqueio)
@@ -451,7 +494,16 @@ public partial class FrmDevolutivasSd : Form
                 ? "  (biodiesel: remessa nasce com 1 L e o peso real vai depois no cabeçalho)"
                 : "  (quantidade = peso líquido da balança, em quilo)")
             + $"\r\nQuantidade a enviar: {fluxo.Quantidade} {fluxo.Unidade}"
-            + $"   —   peso líquido medido: {linha.PesoLiquido:N3} kg";
+            + $"   —   peso líquido medido: {linha.PesoLiquido:N3} kg"
+            // O operador precisa ver que a remessa leva mais de uma linha ANTES de confirmar:
+            // confirmar sem saber disso e assinar um documento que ele nao leu.
+            + (adicionais.Count == 0 ? ""
+                : $"\r\nLinhas em aberto acrescentadas: {string.Join(", ", adicionais)}"
+                  + $"   ({adicionais.Count + 1} linhas na remessa, {fluxo.Quantidade} "
+                  + $"{fluxo.Unidade} cada)")
+            + (ignoradasPorMaterial.Count == 0 ? ""
+                : $"\r\n⚠ Linha(s) {string.Join(", ", ignoradasPorMaterial)} estão em aberto mas são "
+                  + "de OUTRO material; ficaram de fora.");
 
         if (!ConfirmarEnvio(cabecalho, json)) return;
         await CriarRemessaAsync(linha, setor, fluxo, pedido, json);
