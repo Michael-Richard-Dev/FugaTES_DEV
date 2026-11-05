@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Net;
 using FugaTES.Integracao.Guardian;
 using FugaTES.Aplicacao.Contratos.Sd;
@@ -11,6 +12,7 @@ using FugaTES.WinForms.Runtime;
 using FugaTES.WinForms.Transportadoras;
 using Microsoft.Extensions.Configuration;
 
+using FugaTES.Aplicacao.Configuracao;
 namespace FugaTES.WinForms.Sd;
 
 /// <summary>
@@ -30,6 +32,27 @@ public static class OrdensVendaSdComposition
     public const string RotaAprovada = "/sap/opu/odata/sap/API_SALES_ORDER_SRV/";
 
     public const string SapClientAprovado = "110";
+
+    /// <summary>
+    /// O ambiente DESTE desktop, pelo par que ele tem configurado. Uma pasta, um ambiente: a
+    /// mesma publicacao vai para C:/FugaTES_DEV110 e C:/FugaTES_QAS120, e o que as distingue e o
+    /// FugaTES.carrier.json ao lado do executavel.
+    ///
+    /// Nao ha seletor de ambiente dentro do programa, de proposito. Ele faria um processo so
+    /// segurar os dois, e as credenciais dos dois ambientes sao as MESMAS - um clique errado
+    /// gravaria no SAP errado sem esbarrar em senha nenhuma.
+    /// </summary>
+    public static AmbienteSap Ambiente(IConfiguration config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        // O perfil do desktop guarda em Sap:BaseUrl a URL do servico de parceiros, COM caminho.
+        // O ambiente e a autoridade dela - era isso que o guarda antigo comparava, e comparar a
+        // URL inteira reprovaria um perfil valido.
+        if (!Uri.TryCreate(config["Sap:BaseUrl"], UriKind.Absolute, out var url))
+            throw new DesktopStartupException("SD_SAP_AMBIENTE_NAO_APROVADO");
+        return AmbientesSap.Por(url, config["Sap:SapClient"])
+            ?? throw new DesktopStartupException("SD_SAP_AMBIENTE_NAO_APROVADO");
+    }
 
     /// <summary>
     /// Codigos de emissor e item que o operador ja cadastrou no Guardian, em arquivo ao lado do
@@ -132,15 +155,16 @@ public static class OrdensVendaSdComposition
         {
             var config = CarrierDesktopProfile.Load(Path.Combine(AppContext.BaseDirectory, "FugaTES.carrier.json"));
             Validar(config);
-            http = new HttpClient(new OrdensVendaSdHttpGuard(new HttpClientHandler { AllowAutoRedirect = false }));
+            var ambiente = Ambiente(config);
+            http = new HttpClient(new OrdensVendaSdHttpGuard(new HttpClientHandler { AllowAutoRedirect = false }, ambiente.Origem));
             var executor = new SapODataHttpExecutor(
                 http,
                 new OpcoesSap
                 {
                     // Origem pura: o path vem da colecao, nao do perfil, que aponta para o servico
                     // de parceiros de negocio.
-                    BaseUrl = new Uri(OrigemAprovada),
-                    SapClient = SapClientAprovado,
+                    BaseUrl = new Uri(ambiente.Origem),
+                    SapClient = ambiente.SapClient,
                     Timeout = TimeSpan.FromSeconds(30)
                 },
                 new CarrierServiceSapAuthentication(config),
@@ -164,10 +188,9 @@ public static class OrdensVendaSdComposition
     {
         ArgumentNullException.ThrowIfNull(config);
         if (!Uri.TryCreate(config["Sap:BaseUrl"], UriKind.Absolute, out var sap) || sap.Scheme != "https"
-            || sap.UserInfo.Length != 0 || sap.GetLeftPart(UriPartial.Authority) != OrigemAprovada)
+            || sap.UserInfo.Length != 0)
             throw new DesktopStartupException("SD_SAP_ORIGEM_NAO_APROVADA");
-        if (config["Sap:SapClient"] != SapClientAprovado)
-            throw new DesktopStartupException("SD_SAP_CLIENT_NAO_APROVADO");
+        _ = Ambiente(config);
         foreach (var chave in new[] { "SapUser", "SapCredentialTarget" })
             if (string.IsNullOrWhiteSpace(config["Carrier:Secrets:" + chave]))
                 throw new DesktopStartupException("SD_SAP_CREDENCIAL_NAO_REFERENCIADA");
@@ -196,7 +219,8 @@ public static class OrdensVendaSdComposition
 /// outro metodo, origem ou rota e recusado antes de virar requisicao - inclusive um redirecionamento
 /// que apontasse para fora.
 /// </summary>
-public sealed class OrdensVendaSdHttpGuard(HttpMessageHandler inner) : DelegatingHandler(inner)
+/// <summary>A origem vem do processo: o mesmo binario serve DEV110 e QAS120.</summary>
+public sealed class OrdensVendaSdHttpGuard(HttpMessageHandler inner, string origemAprovada) : DelegatingHandler(inner)
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
@@ -204,7 +228,7 @@ public sealed class OrdensVendaSdHttpGuard(HttpMessageHandler inner) : Delegatin
         var uri = request.RequestUri;
         var liberado = uri is not null
             && uri.Scheme == "https" && uri.UserInfo.Length == 0 && uri.Fragment.Length == 0
-            && uri.GetLeftPart(UriPartial.Authority) == OrdensVendaSdComposition.OrigemAprovada
+            && uri.GetLeftPart(UriPartial.Authority) == origemAprovada
             && request.Method == HttpMethod.Get
             && uri.AbsolutePath.StartsWith(OrdensVendaSdComposition.RotaAprovada, StringComparison.Ordinal);
         if (!liberado) throw new InvalidOperationException("SD_HTTP_ROTA_OU_METODO_PROIBIDO");

@@ -29,7 +29,7 @@ public sealed class RemessaSdComposicaoTests
     private static async Task<(bool Passou, int Chamadas)> Enviar(HttpMethod metodo, string url)
     {
         var contador = new Contador();
-        using var client = new HttpClient(new RemessaSdHttpGuard(contador));
+        using var client = new HttpClient(new RemessaSdHttpGuard(contador, FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem));
         using var pedido = new HttpRequestMessage(metodo, url);
         try
         {

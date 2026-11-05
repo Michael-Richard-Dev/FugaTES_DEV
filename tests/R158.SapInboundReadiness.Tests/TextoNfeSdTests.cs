@@ -213,7 +213,7 @@ public sealed class TextoNfeSdTests
 
     private static async Task<bool> Passa(HttpMethod metodo, string caminho)
     {
-        using var client = new HttpClient(new FugaTES.WinForms.Sd.RemessaSdHttpGuard(new Contador()));
+        using var client = new HttpClient(new FugaTES.WinForms.Sd.RemessaSdHttpGuard(new Contador(), FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem));
         using var pedido = new HttpRequestMessage(metodo, Origem + caminho);
         try { using var _ = await client.SendAsync(pedido, CancellationToken.None); return true; }
         catch (InvalidOperationException) { return false; }

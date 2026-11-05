@@ -61,7 +61,7 @@ public sealed class OrdensVendaSdComposicaoTests
     private static async Task<(HttpStatusCode? Status, int Chamadas)> Enviar(HttpMethod metodo, string url)
     {
         var contador = new Contador();
-        using var client = new HttpClient(new OrdensVendaSdHttpGuard(contador));
+        using var client = new HttpClient(new OrdensVendaSdHttpGuard(contador, FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem));
         using var request = new HttpRequestMessage(metodo, url);
         try { using var resposta = await client.SendAsync(request); return (resposta.StatusCode, contador.Chamadas); }
         catch (InvalidOperationException) { return (null, contador.Chamadas); }

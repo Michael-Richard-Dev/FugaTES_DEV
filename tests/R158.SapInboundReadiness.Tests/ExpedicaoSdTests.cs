@@ -52,7 +52,7 @@ public sealed class ExpedicaoSdTests
     private static async Task<(bool Passou, int Chamadas)> Enviar(HttpMethod metodo, string caminho)
     {
         var contador = new Contador();
-        using var client = new HttpClient(new RemessaSdHttpGuard(contador));
+        using var client = new HttpClient(new RemessaSdHttpGuard(contador, FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem));
         using var pedido = new HttpRequestMessage(metodo, Origem + caminho);
         try
         {
@@ -84,7 +84,7 @@ public sealed class ExpedicaoSdTests
     public async Task Saida_em_outra_origem_nao_sai()
     {
         var contador = new Contador();
-        using var client = new HttpClient(new RemessaSdHttpGuard(contador));
+        using var client = new HttpClient(new RemessaSdHttpGuard(contador, FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem));
         using var pedido = new HttpRequestMessage(HttpMethod.Post,
             "https://exemplo.invalido" + "/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/PostGoodsIssue");
         await Assert.ThrowsAnyAsync<Exception>(() => client.SendAsync(pedido, CancellationToken.None));

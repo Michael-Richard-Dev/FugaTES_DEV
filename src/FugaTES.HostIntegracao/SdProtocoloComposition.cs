@@ -49,10 +49,10 @@ public static class SdProtocoloComposition
         if (!OperatingSystem.IsLinux())
             throw new InvalidOperationException("SD_MOTOR_SOMENTE_LINUX");
 
-        if (config["Sap:BaseUrl"] != OrigemSapAprovada)
-            throw new InvalidOperationException("SD_MOTOR_SAP_ORIGEM_NAO_APROVADA");
-        if (string.IsNullOrWhiteSpace(config["Sap:SapClient"]))
-            throw new InvalidOperationException("SD_MOTOR_SAP_CLIENT_AUSENTE");
+        // O par origem+client decide o ambiente deste processo. Conferido junto: host de um
+        // ambiente com client do outro nao e ambiente nenhum.
+        var ambiente = FugaTES.Aplicacao.Configuracao.AmbientesSap.Por(config["Sap:BaseUrl"], config["Sap:SapClient"])
+            ?? throw new InvalidOperationException("SD_MOTOR_SAP_AMBIENTE_NAO_APROVADO");
         if (config["Guardian:BaseUrl"] != GuardianAprovado)
             throw new InvalidOperationException("SD_MOTOR_GUARDIAN_ORIGEM_NAO_APROVADA");
 
@@ -69,7 +69,7 @@ public static class SdProtocoloComposition
         // Um HttpClient por destino, cada um com a sua guarda: a do SAP so deixa passar GET na
         // colecao de ordens; a do Guardian so POST em token e protocolo.
         services.AddKeyedSingleton("sap", (_, _) =>
-            new HttpClient(new MotorSdSapGuard(new HttpClientHandler { AllowAutoRedirect = false })));
+            new HttpClient(new MotorSdSapGuard(new HttpClientHandler { AllowAutoRedirect = false }, ambiente.Origem)));
         services.AddKeyedSingleton("guardian", (_, _) =>
             new HttpClient(new MotorSdGuardianGuard(new HttpClientHandler { AllowAutoRedirect = false })));
 
@@ -80,15 +80,15 @@ public static class SdProtocoloComposition
             Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY")
             ?? throw new InvalidOperationException("SD_MOTOR_CREDENCIAIS_SYSTEMD_AUSENTES")));
         services.AddSingleton<IAutenticacaoSap>(sp =>
-            new MotorSdSapAuthentication(new Uri(OrigemSapAprovada),
+            new MotorSdSapAuthentication(new Uri(ambiente.Origem),
                 sp.GetRequiredService<MotorSdCredenciais>()));
 
         services.AddSingleton(sp => new SapODataHttpExecutor(
             sp.GetRequiredKeyedService<HttpClient>("sap"),
             new OpcoesSap
             {
-                BaseUrl = new Uri(OrigemSapAprovada),
-                SapClient = config["Sap:SapClient"],
+                BaseUrl = new Uri(ambiente.Origem),
+                SapClient = ambiente.SapClient,
                 Timeout = TimeSpan.FromSeconds(60)
             },
             sp.GetRequiredService<IAutenticacaoSap>(),
@@ -159,7 +159,12 @@ public static class SdProtocoloComposition
 }
 
 /// <summary>Do motor sai GET, e so na colecao de ordens de venda do SAP.</summary>
-public sealed class MotorSdSapGuard(HttpMessageHandler inner) : DelegatingHandler(inner)
+/// <summary>
+/// A origem vem do processo, nao de uma constante: o motor de DEV110 e o de QAS120 rodam o MESMO
+/// binario e so se distinguem pelo que tem configurado. Uma constante aqui deixaria os dois
+/// guardando o mesmo endereco - e o de QAS recusaria as proprias chamadas.
+/// </summary>
+public sealed class MotorSdSapGuard(HttpMessageHandler inner, string origemAprovada) : DelegatingHandler(inner)
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
@@ -167,7 +172,7 @@ public sealed class MotorSdSapGuard(HttpMessageHandler inner) : DelegatingHandle
         var uri = request.RequestUri;
         var origemOk = uri is not null
             && uri.Scheme == "https" && uri.UserInfo.Length == 0 && uri.Fragment.Length == 0
-            && uri.GetLeftPart(UriPartial.Authority) == SdProtocoloComposition.OrigemSapAprovada;
+            && uri.GetLeftPart(UriPartial.Authority) == origemAprovada;
         var caminho = origemOk ? uri!.AbsolutePath : "";
 
         // Colecao: a rota exata. Entidade: a rota seguida da chave entre parenteses. A distincao

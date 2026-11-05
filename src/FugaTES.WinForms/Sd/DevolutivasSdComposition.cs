@@ -67,13 +67,14 @@ public static class DevolutivasSdComposition
             var config = CarrierDesktopProfile.Load(
                 Path.Combine(AppContext.BaseDirectory, "FugaTES.carrier.json"));
             OrdensVendaSdComposition.Validar(config);
-            http = new HttpClient(new RemessaSdHttpGuard(new HttpClientHandler { AllowAutoRedirect = false }));
+            var ambiente = OrdensVendaSdComposition.Ambiente(config);
+            http = new HttpClient(new RemessaSdHttpGuard(new HttpClientHandler { AllowAutoRedirect = false }, ambiente.Origem));
             var executor = new SapODataHttpExecutor(
                 http,
                 new OpcoesSap
                 {
-                    BaseUrl = new Uri(OrdensVendaSdComposition.OrigemAprovada),
-                    SapClient = OrdensVendaSdComposition.SapClientAprovado,
+                    BaseUrl = new Uri(ambiente.Origem),
+                    SapClient = ambiente.SapClient,
                     Timeout = TimeSpan.FromSeconds(60)
                 },
                 new CarrierServiceSapAuthentication(config),
@@ -104,7 +105,8 @@ public static class DevolutivasSdComposition
 /// inclusive um redirecionamento que apontasse para fora. Em particular, saida de mercadoria e
 /// picking (passo 6) ainda NAO saem daqui.
 /// </summary>
-public sealed class RemessaSdHttpGuard(HttpMessageHandler inner) : DelegatingHandler(inner)
+/// <summary>A origem vem do processo: o mesmo binario serve DEV110 e QAS120.</summary>
+public sealed class RemessaSdHttpGuard(HttpMessageHandler inner, string origemAprovada) : DelegatingHandler(inner)
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
@@ -112,7 +114,7 @@ public sealed class RemessaSdHttpGuard(HttpMessageHandler inner) : DelegatingHan
         var uri = request.RequestUri;
         var origemOk = uri is not null
             && uri.Scheme == "https" && uri.UserInfo.Length == 0 && uri.Fragment.Length == 0
-            && uri.GetLeftPart(UriPartial.Authority) == OrdensVendaSdComposition.OrigemAprovada;
+            && uri.GetLeftPart(UriPartial.Authority) == origemAprovada;
         var caminho = origemOk ? uri!.AbsolutePath : "";
 
         // Colecao: a rota exata. Entidade: a rota seguida da chave entre parenteses.
