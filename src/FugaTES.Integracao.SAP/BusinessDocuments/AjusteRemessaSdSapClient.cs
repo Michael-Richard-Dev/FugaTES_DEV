@@ -80,11 +80,46 @@ public sealed class AjusteRemessaSdSapClient(SapODataHttpExecutor executor) : IA
             }
 
             var corpoItem = MapeadorAjusteRemessaSd.Serializar(MapeadorAjusteRemessaSd.MontarItemZerado());
-            foreach (var item in remessa.Itens)
+            var itens = remessa.Itens;
+            for (var i = 0; i < itens.Count; i++)
             {
+                var item = itens[i];
+                var etag = item.ETag;
+
+                // RELEITURA ENTRE OS ITENS. Gravar um item muda a versao do DOCUMENTO, e com ela o
+                // ETag dos OUTROS itens - nao so o do cabecalho. O ETag lido antes do laco vale
+                // para o primeiro PATCH e envelhece no instante em que ele e aceito.
+                //
+                // Ate 04/11/2026 isso nunca apareceu porque a remessa de biodiesel tinha UM item.
+                // Na remessa 80003910, em 05/11, a criacao passou a trazer tambem as linhas da
+                // ordem em aberto: o item 000010 gravou com HTTP 204 e o 000020 foi recusado com
+                // 412 "State of the resource (entity) was already changed (If-Match)". E o mesmo
+                // 412 que a releitura abaixo ja evitava para o cabecalho - faltava estende-la aqui.
+                //
+                // O primeiro item segue usando o ETag que o chamador leu, sem GET extra: assim a
+                // remessa de um item unico - todos os outros setores - continua fazendo
+                // exatamente as mesmas chamadas de antes.
+                if (i > 0)
+                {
+                    var relido = await LerAsync(remessa.DeliveryDocument, ct).ConfigureAwait(false);
+                    var atualizado = relido?.Itens.FirstOrDefault(x => string.Equals(
+                        x.DeliveryDocumentItem, item.DeliveryDocumentItem, StringComparison.Ordinal));
+                    if (atualizado is null)
+                    {
+                        // Sem o ETag do estado atual nao da para gravar com seguranca: o velho
+                        // daria 412, e "*" passaria por cima de uma alteracao de terceiro.
+                        etapas.Add(new($"item {item.DeliveryDocumentItem}", false, 0,
+                            [new MensagemSap("SD_AJUSTE_RELEITURA_ITEM_FALHOU", "error",
+                                $"O item {item.DeliveryDocumentItem} não pôde ser lido de novo "
+                                + "para gravar com a precondição atual. Tente o ajuste outra vez.")]));
+                        return etapas;
+                    }
+                    etag = atualizado.ETag;
+                }
+
                 var uriItem = executor.ConstruirUri(ChaveItem(item.DeliveryDocument, item.DeliveryDocumentItem));
                 var etapa = await EnviarAsync($"item {item.DeliveryDocumentItem}", uriItem, corpoItem,
-                    token, item.ETag, ct).ConfigureAwait(false);
+                    token, etag, ct).ConfigureAwait(false);
                 etapas.Add(etapa);
                 // Para no primeiro item recusado: seguir deixaria a remessa com parte dos itens
                 // zerada e parte nao, e o cabecalho sem o peso da balanca.
