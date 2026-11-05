@@ -24,7 +24,8 @@ public static class MapeadorTextoNfeSd
         // As DUAS placas no mesmo rotulo, que ja nasce no plural no texto da ordem.
         (TextoNfeSd.RotuloPlaca, c => c.Placas),
         (TextoNfeSd.RotuloMotorista, c => c.Motorista),
-        (TextoNfeSd.RotuloCpf, c => c.Cpf)
+        (TextoNfeSd.RotuloCpf, c => c.Cpf),
+        (TextoNfeSd.RotuloTransportadora, c => c.Transportadora)
     ];
 
     /// <summary>
@@ -144,60 +145,139 @@ public static class MapeadorTextoNfeSd
             var raiz = doc.RootElement;
             if (raiz.ValueKind != JsonValueKind.Object) return new();
             return new(
-                Lacre: CampoAdicional(raiz, CamposProtocoloSd.Lacre, "Lacre") ?? Texto(raiz, "Lacre"),
+                Lacre: Complemento(raiz, CamposProtocoloSd.Lacre, NomesLacre),
                 Placa: Texto(raiz, "Placa"),
                 Motorista: Texto(raiz, "NomeMotorista"),
                 Cpf: Texto(raiz, "CpfMotorista"),
-                PlacaCarreta: PlacaCarreta(raiz));
+                PlacaCarreta: Complemento(raiz, CamposProtocoloSd.PlacaCarreta, NomesCarreta),
+                // O numero reservado leva o NOME: o codigo so chega por chave propria.
+                TransportadoraCodigo: Complemento(raiz, numero: -1, NomesTransportadoraCodigo),
+                TransportadoraNome: Complemento(raiz, CamposProtocoloSd.Transportadora,
+                    NomesTransportadoraNome));
         }
         catch (JsonException) { return new(); }
     }
 
+    // ------------------------------------------------------------------------------------------
+    // O CONTRATO COM O GUARDIAN, para os tres dados que ele passara a enviar.
+    //
+    // Em 05/11/2026 ficou provado, no banco, que a devolutiva trazia APENAS os campos adicionais
+    // 1003 (ordem) e 1009 (linha) - nenhum lacre, transportadora ou carreta, em nenhuma pesagem, e
+    // com "Observacao" vazia em todas. Nao era defeito de leitura: o dado nao vinha.
+    //
+    // Como o operador vai acrescenta-los do lado do Guardian, estas listas deixam de ser palpite e
+    // passam a ser CONTRATO: e isto que o FugaTES le, e basta o Guardian mandar em qualquer uma
+    // das formas. Cada dado e procurado em tres lugares, nesta ordem:
+    //
+    //   1. campo adicional pelo NUMERO reservado (a forma preferida - e como 1003 e 1009 chegam);
+    //   2. campo adicional pelo NOME, para quando o Guardian nomear em vez de numerar;
+    //   3. chave solta na raiz, como ja acontece com Placa, NomeMotorista e CpfMotorista.
+    //
+    // Nada e truncado em lugar nenhum: o valor vai para o texto como veio ("nao precisa limitar a
+    // quantidade de caracteres" - o operador, 05/11/2026).
+    // ------------------------------------------------------------------------------------------
+
+    private static readonly string[] NomesLacre = ["Lacre", "Lacres", "NumeroLacre"];
+
+    private static readonly string[] NomesCarreta =
+        ["PlacaCarreta", "PlacaReboque", "PlacaSemiReboque", "PlacaVagao", "PlacaCarretaVagao",
+         "Placa da Carreta", "Placa Carreta", "Placa da Carreta / Vagao", "Placa da Carreta / Vagão"];
+
+    // O Guardian manda transportadora em DOIS campos, e o operador quer os dois no texto
+    // (05/11/2026): "14300001 - Transporte Jabuti". Por isso duas listas, e nao uma.
+    private static readonly string[] NomesTransportadoraCodigo =
+        ["IdTransportadora", "CodigoTransportadora"];
+
+    private static readonly string[] NomesTransportadoraNome =
+        ["NomeTransportadora", "RazaoSocialTransportadora", "Transportadora", "Transportador"];
+
     /// <summary>
-    /// Placa da CARRETA. Pedida pelo operador em 04/11/2026.
-    ///
-    /// O nome do campo na devolutiva ainda NAO foi visto em payload real: as pesagens recebidas
-    /// ate agora trazem so "Placa". O monitor do Guardian tem a coluna "Placa da Carreta / Vagao",
-    /// entao o dado existe la - falta saber como ele chega aqui. Por isso esta leitura aceita as
-    /// formas plausiveis, do jeito que a correlacao do SD ja faz, em vez de fixar um palpite:
-    /// nome solto na raiz ou campo adicional por nome.
-    ///
-    /// Nao encontrar nao quebra nada: o texto sai so com a placa do veiculo, como hoje. Quando um
-    /// payload real com a carreta preenchida aparecer, esta lista deve ser trocada pelo nome
-    /// verdadeiro - um palpite que acerta por sorte e pior do que um nome conferido.
+    /// Um dado do complemento, procurado nas tres formas do contrato acima. A primeira que
+    /// responder vence; nao achar devolve nulo, e nulo apenas nao entra no texto.
     /// </summary>
-    private static string? PlacaCarreta(JsonElement raiz)
+    private static string? Complemento(JsonElement raiz, int numero, string[] nomes)
     {
-        foreach (var nome in new[]
-                 { "PlacaCarreta", "PlacaCarreta1", "PlacaReboque", "PlacaSemiReboque",
-                   "PlacaVagao", "PlacaCarretaVagao" })
-            if (Texto(raiz, nome) is string achado) return achado;
-
-        foreach (var nome in new[]
-                 { "Placa da Carreta", "Placa Carreta", "Placa da Carreta / Vagao",
-                   "Placa da Carreta / Vagão", "PlacaCarreta" })
-            if (CampoAdicional(raiz, numero: -1, nome) is string achado) return achado;
-
+        if (SemZero(CampoAdicionalPorNumero(raiz, numero)) is string porNumero) return porNumero;
+        foreach (var nome in nomes)
+            if (SemZero(CampoAdicionalPorNome(raiz, nome)) is string porNome) return porNome;
+        foreach (var nome in nomes)
+            if (SemZero(Texto(raiz, nome)) is string naRaiz) return naRaiz;
         return null;
     }
 
-    /// <summary>Campo adicional por numero ou por nome, nas duas formas que o Guardian aceita.</summary>
-    private static string? CampoAdicional(JsonElement raiz, int numero, string nome)
+    /// <summary>
+    /// ZERO NAO E DADO. O protocolo que enviamos preenche os campos adicionais que nao se aplicam
+    /// com "0" (<c>CamposProtocoloSd.NaoSeAplica</c>) - inclusive o 1006 do lacre, que no envio
+    /// ainda nao existe. Se o Guardian devolver esse campo sem ninguem ter digitado nada, ele volta
+    /// como "0", e sem este corte a NF-e sairia com "Lacres: 0" impresso.
+    ///
+    /// E a mesma licao que custou caro em 03/11/2026, quando zeros nos campos 1003 e 1009 viraram
+    /// a ordem de venda "0/0" e gravaram pesagens correlacionadas com uma ordem que nao existe.
+    /// </summary>
+    private static string? SemZero(string? valor)
     {
-        if (!raiz.TryGetProperty("camposAdicionais", out var lista)
-            || lista.ValueKind != JsonValueKind.Array) return null;
+        var limpo = valor?.Trim();
+        if (string.IsNullOrEmpty(limpo)) return null;
+        return limpo.All(c => c == '0') ? null : limpo;
+    }
 
+    /// <summary>
+    /// A lista de campos adicionais da devolutiva.
+    ///
+    /// O NOME DELA E "CamposAdicionais", com C maiusculo - conferido no payload real em
+    /// 05/11/2026. Ate aqui o codigo procurava "camposAdicionais", e TryGetProperty diferencia
+    /// maiusculas: a lista nunca era encontrada e o lacre nunca entrava no texto, mesmo quando
+    /// viesse. As duas grafias sao aceitas porque o protocolo que ENVIAMOS usa a minuscula, e um
+    /// leitor que so entende uma das duas quebra no dia em que a outra aparecer.
+    /// </summary>
+    private static JsonElement? Lista(JsonElement raiz)
+    {
+        foreach (var nome in new[] { "CamposAdicionais", "camposAdicionais" })
+            if (raiz.TryGetProperty(nome, out var lista) && lista.ValueKind == JsonValueKind.Array)
+                return lista;
+        return null;
+    }
+
+    /// <summary>
+    /// Valor do campo adicional com este numero. As chaves internas sao minusculas - "numero" e
+    /// "valor" -, conferido no mesmo payload; o numero chega como numero JSON, nao como texto.
+    /// </summary>
+    private static string? CampoAdicionalPorNumero(JsonElement raiz, int numero)
+    {
+        // Negativo significa "este dado nao tem numero reservado" - e o caso do codigo da
+        // transportadora, que so chega por chave propria. Explicito para nao parecer descuido.
+        if (numero < 0) return null;
+        if (Lista(raiz) is not { } lista) return null;
         foreach (var campo in lista.EnumerateArray())
         {
             if (campo.ValueKind != JsonValueKind.Object) continue;
-            var bate = campo.TryGetProperty("numero", out var n)
-                    && n.ValueKind == JsonValueKind.Number && n.TryGetInt32(out var v) && v == numero;
-            if (!bate && Texto(campo, "nome") is string texto)
-                bate = texto.Equals(nome, StringComparison.OrdinalIgnoreCase);
-            if (bate) return Texto(campo, "valor");
+            if (!campo.TryGetProperty("numero", out var n) && !campo.TryGetProperty("Numero", out n))
+                continue;
+            var bate = n.ValueKind switch
+            {
+                JsonValueKind.Number => n.TryGetInt32(out var v) && v == numero,
+                JsonValueKind.String => int.TryParse(n.GetString(), out var v) && v == numero,
+                _ => false
+            };
+            if (bate && Valor(campo) is string texto) return texto;
         }
         return null;
     }
+
+    private static string? CampoAdicionalPorNome(JsonElement raiz, string nome)
+    {
+        if (Lista(raiz) is not { } lista) return null;
+        foreach (var campo in lista.EnumerateArray())
+        {
+            if (campo.ValueKind != JsonValueKind.Object) continue;
+            var achado = Texto(campo, "nome") ?? Texto(campo, "Nome");
+            if (achado is not null && achado.Equals(nome, StringComparison.OrdinalIgnoreCase)
+                && Valor(campo) is string texto) return texto;
+        }
+        return null;
+    }
+
+    private static string? Valor(JsonElement campo) => Texto(campo, "valor") ?? Texto(campo, "Valor");
 
     private static string? Etag(JsonElement item)
         => item.TryGetProperty("__metadata", out var meta) && meta.ValueKind == JsonValueKind.Object

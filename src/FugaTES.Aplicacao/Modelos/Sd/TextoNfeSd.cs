@@ -28,7 +28,7 @@ public static class TextoNfeSd
         "Temperatura do CT:", "Temperatura:", "Densidade a 20 C:", "Densidade:",
         "Fator Correcao:", "LAUDO DE CERTIFICACAO:", "Lacres:",
         "N dos envelopes de seguranca das amostrastestemunhas:",
-        "Mot.:", "CPF:", "Placas:"
+        "Mot.:", "CPF:", "Placas:", "Transportadora:"
     ];
 
     /// <summary>Rotulo de cada dado da balanca, na ordem em que sao acrescentados ao fim.</summary>
@@ -36,6 +36,13 @@ public static class TextoNfeSd
     public const string RotuloPlaca = "Placas:";
     public const string RotuloMotorista = "Mot.:";
     public const string RotuloCpf = "CPF:";
+
+    /// <summary>
+    /// Transportadora, pedida pelo operador em 05/11/2026. Diferente dos quatro acima, este
+    /// rotulo pode NAO existir no texto que vem da ordem - e tudo bem: quem nao acha o seu espaco
+    /// vai numa linha ao fim, que e a regra 3 da composicao. O dado nao se perde.
+    /// </summary>
+    public const string RotuloTransportadora = "Transportadora:";
 }
 
 /// <summary>O que a balanca tem a acrescentar. Campo nulo ou vazio significa "nao tenho".</summary>
@@ -43,11 +50,33 @@ public sealed record ComplementoTextoNfeSd(
     string? Lacre = null, string? Placa = null, string? Motorista = null, string? Cpf = null,
     // Placa da CARRETA, pedida pelo operador em 04/11/2026. Vai junto com a do veiculo, no mesmo
     // rotulo "Placas:" - que ja nasce no plural no texto da ordem de venda.
-    string? PlacaCarreta = null)
+    string? PlacaCarreta = null,
+    // Transportadora, pedida em 05/11/2026: CODIGO E NOME, os dois no mesmo rotulo proprio -
+    // "14300001 - Transporte Jabuti". O Guardian manda os dois campos separados.
+    string? TransportadoraCodigo = null,
+    string? TransportadoraNome = null)
 {
     public bool TemAlgo => !string.IsNullOrWhiteSpace(Lacre) || !string.IsNullOrWhiteSpace(Placa)
         || !string.IsNullOrWhiteSpace(Motorista) || !string.IsNullOrWhiteSpace(Cpf)
-        || !string.IsNullOrWhiteSpace(PlacaCarreta);
+        || !string.IsNullOrWhiteSpace(PlacaCarreta) || !string.IsNullOrWhiteSpace(Transportadora);
+
+    /// <summary>
+    /// A transportadora como vai para o texto: "codigo - nome". So um deles, vai sozinho - perder
+    /// o dado seria pior do que mostra-lo incompleto, a mesma regra das duas placas.
+    /// </summary>
+    public string? Transportadora
+    {
+        get
+        {
+            var codigo = TransportadoraCodigo?.Trim();
+            var nome = TransportadoraNome?.Trim();
+            if (string.IsNullOrEmpty(codigo)) return string.IsNullOrEmpty(nome) ? null : nome;
+            if (string.IsNullOrEmpty(nome)) return codigo;
+            // Codigo e nome iguais nao viram "X - X".
+            return string.Equals(codigo, nome, StringComparison.OrdinalIgnoreCase)
+                ? nome : codigo + " - " + nome;
+        }
+    }
 
     /// <summary>
     /// As duas placas como vao para o texto: "veiculo / carreta". So uma delas, vai sozinha; a

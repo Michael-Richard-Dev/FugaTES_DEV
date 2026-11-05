@@ -44,6 +44,18 @@ public static class CamposProtocoloSd
     public const int Quadrante = 1008;
     public const int LinhaDaOrdem = 1009;
 
+    /// <summary>
+    /// Transportadora e placa da carreta, pedidas pelo operador em 05/11/2026 para o texto da
+    /// NF-e. Diferentes de todos os campos acima: o FugaTES NAO as envia no protocolo - ele as
+    /// RECEBE na devolutiva. Sao dados que so existem no momento da pesagem.
+    ///
+    /// Os numeros sao nossos e estao reservados aqui para que ninguem os reaproveite para outra
+    /// coisa. Em 05/11/2026 a devolutiva trazia apenas 1003 e 1009; estes tres - com o lacre em
+    /// 1006 - serao acrescentados do lado do Guardian.
+    /// </summary>
+    public const int Transportadora = 1010;
+    public const int PlacaCarreta = 1011;
+
     /// <summary>Os dez campos, na ordem do mapeamento. Nem um a mais, nem um a menos.</summary>
     public static readonly int[] Todos =
         [TipoDocumento, Centro, Operacao, OrdemVenda, Remessa,
