@@ -16,6 +16,7 @@ public partial class PainelInicialForm : Form
     {
         this.carrier=carrier;this.demo=demo;this.unified=unified;
         InitializeComponent();
+        Text=Runtime.AmbienteDesktop.Titulo("v"+typeof(PainelInicialForm).Assembly.GetName().Version?.ToString(3));
         SelecionarBotaoMenu(BtnInicio);
         if(unified is not null)
         {
@@ -84,7 +85,8 @@ public partial class PainelInicialForm : Form
         using var contratos = new FrmIntegracoes(carrier,demo,unified is null?null:new Func<FrmMonitorMvp>(unified.CreateMonitor),
             unified is null?null:new Func<FrmContratosAcm>(unified.CreateContracts),unified is null?null:new Func<Transportadoras.MasterdataR3.FrmTransportadoraMasterdata>(unified.CreateCarriers),
             unified is null?null:new Func<Guardian.FrmProtocolosPreCadastro>(unified.CreateProtocols),
-            unified is null?null:new Func<Toledo.FrmRecebimentosToledo>(unified.CreateToledoReceipts));
+            unified is null?null:new Func<Toledo.FrmRecebimentosToledo>(unified.CreateToledoReceipts),
+            unified is null?null:new Func<FrmPedidosCompraMm>(unified.CreateMm));
         contratos.ShowDialog(this);
     }
 
@@ -110,7 +112,8 @@ public partial class PainelInicialForm : Form
     {
         if(unified is null)return;
         MinimumSize=new Size(960,760);Size=new Size(1100,760);
-        Text="FugaTES DEV110 — UNIFICADO — v"+Monitor.UnifiedDesktopSession.Version;
+        // O ambiente vinha ESCRITO aqui: um desktop de QAS mostraria DEV110.
+        Text=Runtime.AmbienteDesktop.Titulo("UNIFICADO — v"+Monitor.UnifiedDesktopSession.Version);
         LblVersao.Text="v"+Monitor.UnifiedDesktopSession.Version;
         LblAmbiente.Text="DEV110 — unificado";
         LblSubtituloSistema.Text="Monitor ACM, contratos e integrações consolidados";
