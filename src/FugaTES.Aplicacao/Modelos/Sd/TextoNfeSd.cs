@@ -27,7 +27,13 @@ public static class TextoNfeSd
         "VENDEDOR:", "BANCO:", "PEDIDO(S):", "Contrato Nro:", "Agendamento:",
         "Temperatura do CT:", "Temperatura:", "Densidade a 20 C:", "Densidade:",
         "Fator Correcao:", "LAUDO DE CERTIFICACAO:", "Lacres:",
-        "N dos envelopes de seguranca das amostrastestemunhas:",
+        // "amostras testemunhas", separado. Estava grudado aqui, e o texto do SAP traz com espaco:
+        // o rotulo nao era reconhecido, o espaco do lacre se estendia por cima dele ate "Mot.:",
+        // parecia ja preenchido, e o lacre era descartado em silencio. Foi o que aconteceu na
+        // remessa 80003915, em 05/11/2026, com o lacre 0150059,0150060 chegando e nao entrando.
+        // A comparacao agora tolera diferenca de espaco (ver MapeadorTextoNfeSd.Casa), entao a
+        // forma grudada de eventuais ordens antigas tambem continua sendo reconhecida.
+        "N dos envelopes de seguranca das amostras testemunhas:",
         "Mot.:", "CPF:", "Placas:", "Transportadora:"
     ];
 

@@ -75,9 +75,8 @@ public static class MapeadorTextoNfeSd
     /// </summary>
     private static (int Inicio, int Fim)? PosicaoDoEspaco(string texto, string rotulo)
     {
-        var achado = texto.IndexOf(rotulo, StringComparison.Ordinal);
-        if (achado < 0) return null;
-        var inicio = achado + rotulo.Length;
+        if (Achar(texto, rotulo, 0) is not { } alvo) return null;
+        var inicio = alvo.Inicio + alvo.Tamanho;
 
         var fim = texto.IndexOf('\n', inicio);
         if (fim < 0) fim = texto.Length;
@@ -85,12 +84,54 @@ public static class MapeadorTextoNfeSd
         foreach (var outro in TextoNfeSd.Rotulos)
         {
             if (outro == rotulo) continue;
-            var proximo = texto.IndexOf(outro, inicio, StringComparison.Ordinal);
             // So conta o que estiver entre o inicio do espaco e o fim da linha.
-            if (proximo >= inicio && proximo < fim) fim = proximo;
+            if (Achar(texto, outro, inicio) is { } seguinte && seguinte.Inicio < fim)
+                fim = seguinte.Inicio;
         }
 
         return (inicio, fim);
+    }
+
+    /// <summary>
+    /// Onde um rotulo comeca no texto, e QUANTO ele ocupou - que pode diferir do tamanho do
+    /// proprio rotulo, porque a comparacao tolera diferenca de espaco em branco.
+    ///
+    /// A tolerancia existe por um caso real: o rotulo dos envelopes estava escrito
+    /// "amostrastestemunhas" e o SAP devolve "amostras testemunhas". O rotulo deixava de ser
+    /// reconhecido, o espaco do LACRE passava por cima dele ate o rotulo seguinte, parecia ja
+    /// preenchido, e o lacre era descartado sem uma linha de aviso (remessa 80003915, 05/11/2026).
+    ///
+    /// Um caractere de espaco no rotulo casa com QUALQUER quantidade de espaco no texto, inclusive
+    /// nenhuma. Rotulo sem espaco - "Mot.:", "CPF:", "Placas:" - compara exatamente como antes.
+    /// </summary>
+    private static (int Inicio, int Tamanho)? Achar(string texto, string rotulo, int desde)
+    {
+        for (var i = Math.Max(desde, 0); i <= texto.Length; i++)
+        {
+            var tamanho = Casa(texto, i, rotulo);
+            if (tamanho >= 0) return (i, tamanho);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Quantos caracteres do texto o rotulo ocupa a partir de <paramref name="inicio"/>, ou -1
+    /// quando nao casa.
+    /// </summary>
+    private static int Casa(string texto, int inicio, string rotulo)
+    {
+        var t = inicio;
+        foreach (var c in rotulo)
+        {
+            if (char.IsWhiteSpace(c))
+            {
+                while (t < texto.Length && char.IsWhiteSpace(texto[t])) t++;
+                continue;
+            }
+            if (t >= texto.Length || texto[t] != c) return -1;
+            t++;
+        }
+        return t - inicio;
     }
 
     private static string? Limpar(string? valor)
