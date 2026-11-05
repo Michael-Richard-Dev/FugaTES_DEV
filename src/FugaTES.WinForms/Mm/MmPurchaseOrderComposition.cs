@@ -20,11 +20,23 @@ public static class MmPurchaseOrderComposition
     {
         if(!Uri.TryCreate(config["Sap:BaseUrl"],UriKind.Absolute,out var origin)||origin.Scheme!="https"||origin.UserInfo.Length!=0||origin.GetLeftPart(UriPartial.Authority)!=PedidosCompraMmConsultaAdapter.Origem)
             throw new DesktopStartupException("MM_SAP_ORIGIN_NOT_APPROVED");
-        if(config["Sap:SapClient"]!="110")throw new DesktopStartupException("MM_SAP_CLIENT_NOT_APPROVED");
+        if(!FugaTES.Aplicacao.Configuracao.AmbientesSap.Aprovados.Any(a=>a.SapClient==config["Sap:SapClient"]))throw new DesktopStartupException("MM_SAP_CLIENT_NOT_APPROVED");
         if(string.IsNullOrWhiteSpace(config["Carrier:Secrets:SapUser"])||string.IsNullOrWhiteSpace(config["Carrier:Secrets:SapCredentialTarget"]))throw new DesktopStartupException("MM_SAP_PROVIDER_NOT_REFERENCED");
+    }
+    public static bool IsVmObserver(string directory)
+    {
+        var file=Path.Combine(directory,"FugaTES.mm-host.json");if(!File.Exists(file))return false;
+        try
+        {
+            using var doc=System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
+            var mode=doc.RootElement.GetProperty("Mode").GetString();
+            return mode switch{"VmObserver"=>true,"WindowsCollector"=>false,_=>throw new InvalidOperationException()};
+        }
+        catch{throw new InvalidOperationException("MM_HOST_BINDING_INVALID");}
     }
     public static void EnsureStarted()
     {
+        if(IsVmObserver(AppContext.BaseDirectory))return;
         // A file lease, not a GUI lifetime/mutex, decides whether a collector is already running.
         var store=new MmSnapshotStore(MmSnapshotStore.DefaultDirectory);
         using(var probe=store.TryAcquireLease()){if(probe is null)return;}
@@ -35,6 +47,7 @@ public static class MmPurchaseOrderComposition
     public static int RunCollector(string[] args)
     {
         if(args.Length!=1||args[0]!="--mm-purchase-orders")return 2;
+        if(IsVmObserver(AppContext.BaseDirectory))return 4;
         if(!OperatingSystem.IsWindows()||WindowsIdentity.GetCurrent().IsSystem)return 3;
         MmSnapshotStore? store=null;
         try
@@ -42,7 +55,8 @@ public static class MmPurchaseOrderComposition
             store=new(MmSnapshotStore.DefaultDirectory);
             using var lease=store.TryAcquireLease();if(lease is null)return 0;
             using var session=CreateSapSession(AppContext.BaseDirectory);
-            new MmPurchaseOrderCollector(session.Query,store).RunAsync(TimeSpan.FromSeconds(30),CancellationToken.None).GetAwaiter().GetResult();
+            using var guardian=MmGuardianComposition.CreateAsync(AppContext.BaseDirectory,store,CancellationToken.None).GetAwaiter().GetResult();
+            new MmPurchaseOrderCollector(session.Query,store,guardian).RunAsync(FugaTES.Aplicacao.Modelos.Mm.MmCollectionPolicy.Interval,CancellationToken.None).GetAwaiter().GetResult();
             return 0;
         }
         catch

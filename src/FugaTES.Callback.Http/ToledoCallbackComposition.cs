@@ -23,12 +23,12 @@ public static class ToledoCallbackComposition
         // Admission requires a proven supplier before any new receipt commit, independently of the send window.
         ToledoSapReturnComposition.ConfigureAuthentication(services,configuration);
         if(!Uri.TryCreate(configuration["Sap:BaseUrl"],UriKind.Absolute,out var sap)||sap.Scheme!="https"||sap.UserInfo.Length!=0||sap.Query.Length!=0||sap.Fragment.Length!=0||
-           sap.GetLeftPart(UriPartial.Authority)!="https://vhfufds4ci.sap.fugacouros.com.br:44300"||configuration["Sap:SapClient"]!="110")
+           !FugaTES.Aplicacao.Configuracao.AmbientesSap.EhAprovado(sap.GetLeftPart(UriPartial.Authority),configuration["Sap:SapClient"]))
             throw new InvalidOperationException("TOLEDO_SAP_AUTHORIZED_DEV_ENDPOINT_REQUIRED");
         services.AddKeyedScoped<ToledoSapHttpTransport>("TOLEDO_SUPPLIER_READ",(_,_)=>new());
         services.TryAddScoped<FugaTES.Aplicacao.Servicos.Recebimento.IToledoSupplierLookup>(sp=>new ToledoSupplierSapLookup(new(
             sp.GetRequiredKeyedService<ToledoSapHttpTransport>("TOLEDO_SUPPLIER_READ").Client,
-            new(){BaseUrl=sap,SapClient="110",Timeout=TimeSpan.FromSeconds(20)},sp.GetRequiredService<FugaTES.Integracao.SAP.Autenticacao.IAutenticacaoSap>(),new System.Net.CookieContainer())));
+            new(){BaseUrl=sap,SapClient=configuration["Sap:SapClient"]!,Timeout=TimeSpan.FromSeconds(20)},sp.GetRequiredService<FugaTES.Integracao.SAP.Autenticacao.IAutenticacaoSap>(),new System.Net.CookieContainer())));
         services.TryAddScoped<RegistrarPesagemToledoCasoDeUso>();
         services.TryAddSingleton<IToledoCallbackAdmission>(new ProtectedToledoCallbackAdmission(ToledoCallbackAdmissionOptions.Parse(configuration)));
         // No ordinary NpgsqlDataSource registration, legacy provider change, host or worker.

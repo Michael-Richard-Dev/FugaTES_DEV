@@ -19,10 +19,12 @@ public static class ToledoSapReturnComposition
     public const string Key = "TOLEDO_SAP_RETURN";
     public static ToledoSapAdmissionWindow? Configure(IServiceCollection services, IConfiguration config)
     {
+        var ackMode=config["ToledoSapReturn:GuardianAckMode"];
+        if(ackMode is not(null or "Receipt" or "SapConfirmed"))throw new InvalidOperationException("TOLEDO_SAP_ACK_MODE_INVALID");
         var flag=config["ToledoSapReturn:Enabled"];
-        if(flag is null)return null;
+        if(flag is null){if(ackMode=="SapConfirmed")throw new InvalidOperationException("TOLEDO_SAP_ACK_REQUIRES_EXISTING_WORKER");return null;}
         if(!bool.TryParse(flag,out var enabled))throw new InvalidOperationException("TOLEDO_SAP_EXPLICIT_ACTIVATION_REQUIRED");
-        if(!enabled)return null;
+        if(!enabled){if(ackMode=="SapConfirmed")throw new InvalidOperationException("TOLEDO_SAP_ACK_REQUIRES_EXISTING_WORKER");return null;}
         static bool True(string? v)=>bool.TryParse(v,out var value)&&value;
         if(config["ToledoSapReturn:Environment"]!="DEV" || !True(config["ToledoSapReturn:ExecutionAuthorized"]) ||
            !True(config["ToledoSapReturn:AutomaticProcessingEnabled"]) || !True(config["ToledoSapReturn:OriginalDocumentApproved"]))
@@ -45,13 +47,19 @@ public static class ToledoSapReturnComposition
         var window=new ToledoSapAdmissionWindow(start,end,config["ToledoSapReturn:ApprovedSourceIdentity"]??"",config["ToledoSapReturn:AuthorizationReference"]??"",True(config["ToledoSapReturn:CompleteDocumentAuthorized"])){ContinuoAutorizado=continuous};
         if(!window.Valida)throw new InvalidOperationException("TOLEDO_SAP_BOUNDED_AUTHORIZATION_REQUIRED");
         if(!Uri.TryCreate(config["Sap:BaseUrl"],UriKind.Absolute,out var sap)||sap.Scheme!="https"||sap.UserInfo.Length!=0||sap.Query.Length!=0||sap.Fragment.Length!=0||
-           config["Sap:SapClient"]!="110"||sap.GetLeftPart(UriPartial.Authority)!="https://vhfufds4ci.sap.fugacouros.com.br:44300")throw new InvalidOperationException("TOLEDO_SAP_AUTHORIZED_DEV_ENDPOINT_REQUIRED");
+           !FugaTES.Aplicacao.Configuracao.AmbientesSap.EhAprovado(sap.GetLeftPart(UriPartial.Authority),config["Sap:SapClient"]))throw new InvalidOperationException("TOLEDO_SAP_AUTHORIZED_DEV_ENDPOINT_REQUIRED");
         services.AddSingleton(window);
+        if(ackMode=="SapConfirmed")
+        {
+            services.AddSingleton(ToledoSapCallbackAckOptions.Approved);
+            services.AddScoped<IToledoSapCallbackOutcomeRead>(sp=>new ToledoSapCallbackOutcomeRead(sp.GetRequiredKeyedService<NpgsqlDataSource>(ToledoCallbackComposition.DataSourceKey)));
+            services.AddScoped<ToledoSapCallbackAcknowledgement>();
+        }
         services.AddKeyedScoped<DevolutivaToledoSapPostgreSql>(Key,(sp,_)=>new(sp.GetRequiredKeyedService<NpgsqlDataSource>(ToledoCallbackComposition.DataSourceKey),window));
         services.AddKeyedScoped<MotorIntegracaoServico>(Key,(sp,_)=>
         {
             var db=sp.GetRequiredKeyedService<NpgsqlDataSource>(ToledoCallbackComposition.DataSourceKey);
-            var options=new OpcoesSap{BaseUrl=sap,SapClient="110",Timeout=TimeSpan.FromSeconds(25)};
+            var options=new OpcoesSap{BaseUrl=sap,SapClient=config["Sap:SapClient"]!,Timeout=TimeSpan.FromSeconds(25)};
             // Dispose the client when its DI scope is disposed, rather than create one per receipt.
             var transport=sp.GetRequiredKeyedService<ToledoSapHttpTransport>(Key);
             var gateway=new DocumentoToledoSapGateway(new(transport.Client,options,sp.GetRequiredService<IAutenticacaoSap>(),new CookieContainer()),new(config["ToledoSapReturn:WeighingTimeZone"]??"America/Sao_Paulo"));
