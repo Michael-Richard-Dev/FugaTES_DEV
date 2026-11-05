@@ -34,7 +34,8 @@ public static class TextoNfeSd
         // A comparacao agora tolera diferenca de espaco (ver MapeadorTextoNfeSd.Casa), entao a
         // forma grudada de eventuais ordens antigas tambem continua sendo reconhecida.
         "N dos envelopes de seguranca das amostras testemunhas:",
-        "Mot.:", "CPF:", "Placas:", "Transportadora:"
+        // Os dois modelos. A comparacao ignora caixa, entao "MOTORISTA:" cai em "Motorista:".
+        "Mot.:", "Motorista:", "CPF:", "Placas:", "Placa:", "Lacre:", "Transportadora:"
     ];
 
     /// <summary>Rotulo de cada dado da balanca, na ordem em que sao acrescentados ao fim.</summary>
@@ -42,6 +43,27 @@ public static class TextoNfeSd
     public const string RotuloPlaca = "Placas:";
     public const string RotuloMotorista = "Mot.:";
     public const string RotuloCpf = "CPF:";
+
+    /// <summary>
+    /// EXISTEM DOIS MODELOS DE TEXTO no cadastro, confirmados pelo operador em 05/11/2026.
+    ///
+    /// Um escreve "Lacres:", "Placas:" e "Mot.:" numa linha so; o outro escreve "LACRES:",
+    /// "PLACA:" e "MOTORISTA:", cada um na sua linha. Na remessa 80003917 - ordem 4292, setor 65 -
+    /// nenhum rotulo nosso casou, e os valores foram todos para o fim do texto como linhas
+    /// pendentes: a nota ficava com "PLACA:" vazio em cima e "Placas: JAK3F79" embaixo.
+    ///
+    /// A comparacao ignora caixa (ver MapeadorTextoNfeSd.Casa), entao "LACRES:" e "Lacres:" sao o
+    /// mesmo rotulo e nao precisam de duas entradas. O que precisa de entrada propria e a palavra
+    /// diferente: "PLACA:" no singular nao e "Placas:", e "MOTORISTA:" nao e "Mot.:".
+    ///
+    /// O PRIMEIRO de cada lista e o canonico: e ele que vai ao texto quando nenhum dos rotulos
+    /// existe e o dado precisa ser acrescentado ao fim.
+    /// </summary>
+    public static readonly string[] RotulosLacre = [RotuloLacre, "Lacre:"];
+    public static readonly string[] RotulosPlaca = [RotuloPlaca, "Placa:"];
+    public static readonly string[] RotulosMotorista = [RotuloMotorista, "Motorista:"];
+    public static readonly string[] RotulosCpf = [RotuloCpf];
+    public static readonly string[] RotulosTransportadora = [RotuloTransportadora];
 
     /// <summary>
     /// Transportadora, pedida pelo operador em 05/11/2026. Diferente dos quatro acima, este

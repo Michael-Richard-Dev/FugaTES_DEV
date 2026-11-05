@@ -73,6 +73,31 @@ public sealed class TextoNfeSdSapClient(SapODataHttpExecutor executor) : IGravar
                 criar ? HttpMethod.Post : HttpMethod.Patch, uri, conteudo, token,
                 criar ? null : atual.ETag ?? "*", cancelamento).ConfigureAwait(false);
 
+            // 404 NO PATCH: a leitura disse que havia texto, e a escrita diz que nao ha. Quem
+            // decide e a escrita - entao cria.
+            //
+            // Aconteceu na remessa 80003917, em 05/11/2026. A navegacao to_DeliveryDocumentText
+            // devolveu o texto que vem da ordem, com os rotulos vazios, e por isso escolhemos
+            // PATCH; mas a ENTIDADE por chave ainda nao existia, e o SAP respondeu 404 "Resource
+            // not found". A chave estava certa: um GET nela, depois que alguem salvou o texto a
+            // mao, devolveu 200 na mesma URL.
+            //
+            // A chave e composta por remessa, elemento e idioma - unica. Um POST aqui cria o que
+            // falta ou conflita; nao ha como duplicar.
+            if (!criar && resposta.Status == HttpStatusCode.NotFound)
+            {
+                using var criacao = new ByteArrayContent(Encoding.UTF8.GetBytes(
+                    MapeadorTextoNfeSd.Serializar(
+                        new CriarTextoNfeSdRequest(TextoNfeSd.Elemento, TextoNfeSd.Idioma, texto))));
+                criacao.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                var depois = await executor.EnviarComCsrfAsync(HttpMethod.Post,
+                    executor.ConstruirUri(RotaNavegacao(numeroRemessa)), criacao, token, null,
+                    cancelamento).ConfigureAwait(false);
+                var criado = depois.Status is HttpStatusCode.Created or HttpStatusCode.OK;
+                return new GravacaoTextoNfeSd(criado, (int)depois.Status, true,
+                    criado ? [] : LeitorErroSapOData.Ler(depois.Body));
+            }
+
             var ok = criar
                 ? resposta.Status is HttpStatusCode.Created or HttpStatusCode.OK
                 : resposta.Status is HttpStatusCode.NoContent or HttpStatusCode.OK;

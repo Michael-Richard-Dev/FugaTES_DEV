@@ -18,14 +18,16 @@ public static class MapeadorTextoNfeSd
 
     public static string Serializar<T>(T corpo) => JsonSerializer.Serialize(corpo, JsonOpcoes);
 
-    private static readonly (string Rotulo, Func<ComplementoTextoNfeSd, string?> Valor)[] Campos =
+    // Cada dado aceita mais de um rotulo, porque existem dois modelos de texto no cadastro. O
+    // primeiro da lista e o canonico: e o que vai ao texto quando nenhum deles existe.
+    private static readonly (string[] Rotulos, Func<ComplementoTextoNfeSd, string?> Valor)[] Campos =
     [
-        (TextoNfeSd.RotuloLacre, c => c.Lacre),
-        // As DUAS placas no mesmo rotulo, que ja nasce no plural no texto da ordem.
-        (TextoNfeSd.RotuloPlaca, c => c.Placas),
-        (TextoNfeSd.RotuloMotorista, c => c.Motorista),
-        (TextoNfeSd.RotuloCpf, c => c.Cpf),
-        (TextoNfeSd.RotuloTransportadora, c => c.Transportadora)
+        (TextoNfeSd.RotulosLacre, c => c.Lacre),
+        // As DUAS placas no mesmo rotulo, que ja nasce no plural num dos modelos.
+        (TextoNfeSd.RotulosPlaca, c => c.Placas),
+        (TextoNfeSd.RotulosMotorista, c => c.Motorista),
+        (TextoNfeSd.RotulosCpf, c => c.Cpf),
+        (TextoNfeSd.RotulosTransportadora, c => c.Transportadora)
     ];
 
     /// <summary>
@@ -41,20 +43,21 @@ public static class MapeadorTextoNfeSd
 
         if (string.IsNullOrWhiteSpace(textoAtual))
             return string.Join("\n", Campos
-                .Select(c => (c.Rotulo, Valor: Limpar(c.Valor(complemento))))
+                .Select(c => (Rotulo: c.Rotulos[0], Valor: Limpar(c.Valor(complemento))))
                 .Where(c => c.Valor is not null)
                 .Select(c => c.Rotulo + " " + c.Valor));
 
         var texto = textoAtual;
         var pendentes = new List<string>();
 
-        foreach (var (rotulo, obter) in Campos)
+        foreach (var (rotulos, obter) in Campos)
         {
             var valor = Limpar(obter(complemento));
             if (valor is null) continue;
 
-            var posicao = PosicaoDoEspaco(texto, rotulo);
-            if (posicao is null) { pendentes.Add(rotulo + " " + valor); continue; }
+            var posicao = PosicaoDoEspaco(texto, rotulos);
+            // Nenhum dos rotulos existe no texto: o dado vai ao fim, com o canonico.
+            if (posicao is null) { pendentes.Add(rotulos[0] + " " + valor); continue; }
 
             var (inicio, fim) = posicao.Value;
             // Ja preenchido pela ordem: nao se toca. Regra 2.
@@ -73,17 +76,26 @@ public static class MapeadorTextoNfeSd
     /// Onde comeca e termina o espaco de um rotulo: do fim dele ate o proximo rotulo conhecido,
     /// ou ate o fim da linha. Devolve nulo quando o rotulo nao existe no texto.
     /// </summary>
-    private static (int Inicio, int Fim)? PosicaoDoEspaco(string texto, string rotulo)
+    /// <summary>
+    /// O espaco do primeiro <paramref name="rotulos"/> que existir no texto. Varios porque o mesmo
+    /// dado tem rotulo diferente em cada um dos dois modelos de texto do cadastro.
+    /// </summary>
+    private static (int Inicio, int Fim)? PosicaoDoEspaco(string texto, string[] rotulos)
     {
-        if (Achar(texto, rotulo, 0) is not { } alvo) return null;
-        var inicio = alvo.Inicio + alvo.Tamanho;
+        (int Inicio, int Tamanho)? alvo = null;
+        foreach (var rotulo in rotulos)
+            if (Achar(texto, rotulo, 0) is { } achado) { alvo = achado; break; }
+        if (alvo is not { } encontrado) return null;
+
+        var inicio = encontrado.Inicio + encontrado.Tamanho;
 
         var fim = texto.IndexOf('\n', inicio);
         if (fim < 0) fim = texto.Length;
 
         foreach (var outro in TextoNfeSd.Rotulos)
         {
-            if (outro == rotulo) continue;
+            // Um rotulo do PROPRIO campo nao delimita o espaco dele.
+            if (rotulos.Contains(outro, StringComparer.OrdinalIgnoreCase)) continue;
             // So conta o que estiver entre o inicio do espaco e o fim da linha.
             if (Achar(texto, outro, inicio) is { } seguinte && seguinte.Inicio < fim)
                 fim = seguinte.Inicio;
@@ -128,7 +140,10 @@ public static class MapeadorTextoNfeSd
                 while (t < texto.Length && char.IsWhiteSpace(texto[t])) t++;
                 continue;
             }
-            if (t >= texto.Length || texto[t] != c) return -1;
+            // Sem distinguir caixa: um modelo escreve "LACRES:" e o outro "Lacres:", e sao o
+            // mesmo rotulo. Decisao do operador em 05/11/2026.
+            if (t >= texto.Length || char.ToUpperInvariant(texto[t]) != char.ToUpperInvariant(c))
+                return -1;
             t++;
         }
         return t - inicio;
