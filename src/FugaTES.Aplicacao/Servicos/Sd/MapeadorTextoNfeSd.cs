@@ -21,7 +21,8 @@ public static class MapeadorTextoNfeSd
     private static readonly (string Rotulo, Func<ComplementoTextoNfeSd, string?> Valor)[] Campos =
     [
         (TextoNfeSd.RotuloLacre, c => c.Lacre),
-        (TextoNfeSd.RotuloPlaca, c => c.Placa),
+        // As DUAS placas no mesmo rotulo, que ja nasce no plural no texto da ordem.
+        (TextoNfeSd.RotuloPlaca, c => c.Placas),
         (TextoNfeSd.RotuloMotorista, c => c.Motorista),
         (TextoNfeSd.RotuloCpf, c => c.Cpf)
     ];
@@ -146,9 +147,38 @@ public static class MapeadorTextoNfeSd
                 Lacre: CampoAdicional(raiz, CamposProtocoloSd.Lacre, "Lacre") ?? Texto(raiz, "Lacre"),
                 Placa: Texto(raiz, "Placa"),
                 Motorista: Texto(raiz, "NomeMotorista"),
-                Cpf: Texto(raiz, "CpfMotorista"));
+                Cpf: Texto(raiz, "CpfMotorista"),
+                PlacaCarreta: PlacaCarreta(raiz));
         }
         catch (JsonException) { return new(); }
+    }
+
+    /// <summary>
+    /// Placa da CARRETA. Pedida pelo operador em 04/11/2026.
+    ///
+    /// O nome do campo na devolutiva ainda NAO foi visto em payload real: as pesagens recebidas
+    /// ate agora trazem so "Placa". O monitor do Guardian tem a coluna "Placa da Carreta / Vagao",
+    /// entao o dado existe la - falta saber como ele chega aqui. Por isso esta leitura aceita as
+    /// formas plausiveis, do jeito que a correlacao do SD ja faz, em vez de fixar um palpite:
+    /// nome solto na raiz ou campo adicional por nome.
+    ///
+    /// Nao encontrar nao quebra nada: o texto sai so com a placa do veiculo, como hoje. Quando um
+    /// payload real com a carreta preenchida aparecer, esta lista deve ser trocada pelo nome
+    /// verdadeiro - um palpite que acerta por sorte e pior do que um nome conferido.
+    /// </summary>
+    private static string? PlacaCarreta(JsonElement raiz)
+    {
+        foreach (var nome in new[]
+                 { "PlacaCarreta", "PlacaCarreta1", "PlacaReboque", "PlacaSemiReboque",
+                   "PlacaVagao", "PlacaCarretaVagao" })
+            if (Texto(raiz, nome) is string achado) return achado;
+
+        foreach (var nome in new[]
+                 { "Placa da Carreta", "Placa Carreta", "Placa da Carreta / Vagao",
+                   "Placa da Carreta / Vagão", "PlacaCarreta" })
+            if (CampoAdicional(raiz, numero: -1, nome) is string achado) return achado;
+
+        return null;
     }
 
     /// <summary>Campo adicional por numero ou por nome, nas duas formas que o Guardian aceita.</summary>

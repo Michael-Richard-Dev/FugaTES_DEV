@@ -40,10 +40,32 @@ public static class TextoNfeSd
 
 /// <summary>O que a balanca tem a acrescentar. Campo nulo ou vazio significa "nao tenho".</summary>
 public sealed record ComplementoTextoNfeSd(
-    string? Lacre = null, string? Placa = null, string? Motorista = null, string? Cpf = null)
+    string? Lacre = null, string? Placa = null, string? Motorista = null, string? Cpf = null,
+    // Placa da CARRETA, pedida pelo operador em 04/11/2026. Vai junto com a do veiculo, no mesmo
+    // rotulo "Placas:" - que ja nasce no plural no texto da ordem de venda.
+    string? PlacaCarreta = null)
 {
     public bool TemAlgo => !string.IsNullOrWhiteSpace(Lacre) || !string.IsNullOrWhiteSpace(Placa)
-        || !string.IsNullOrWhiteSpace(Motorista) || !string.IsNullOrWhiteSpace(Cpf);
+        || !string.IsNullOrWhiteSpace(Motorista) || !string.IsNullOrWhiteSpace(Cpf)
+        || !string.IsNullOrWhiteSpace(PlacaCarreta);
+
+    /// <summary>
+    /// As duas placas como vao para o texto: "veiculo / carreta". So uma delas, vai sozinha; a
+    /// carreta sem o veiculo tambem - perder o dado seria pior do que mostra-lo incompleto.
+    /// </summary>
+    public string? Placas
+    {
+        get
+        {
+            var veiculo = Placa?.Trim();
+            var carreta = PlacaCarreta?.Trim();
+            if (string.IsNullOrEmpty(veiculo)) return string.IsNullOrEmpty(carreta) ? null : carreta;
+            if (string.IsNullOrEmpty(carreta)) return veiculo;
+            // Mesma placa nos dois campos nao vira "ABC1234 / ABC1234".
+            return string.Equals(veiculo, carreta, StringComparison.OrdinalIgnoreCase)
+                ? veiculo : veiculo + " / " + carreta;
+        }
+    }
 }
 
 /// <summary>O texto como esta hoje no SAP. Nulo em <see cref="Texto"/> significa que nao existe.</summary>

@@ -58,7 +58,16 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
         // Situacao da ordem entra no $filter para o SAP nao mandar o que vai ser descartado.
         // A conferencia local em Mapear permanece: se o servico ignorar a clausula, a linha ainda
         // nao aparece.
-        sb.Append(" and OverallSDProcessStatus eq ").Append(Literal(filtro.SituacaoOrdemAprovada));
+        // Situacoes aceitas do cabecalho: "A" e "B". Entram como OR entre parenteses - sem eles,
+        // o "or" se misturaria com os "and" vizinhos e o filtro mudaria de significado.
+        sb.Append(" and (");
+        for (var i = 0; i < OrdensVendaSdFiltro.SituacoesAprovadas.Length; i++)
+        {
+            if (i > 0) sb.Append(" or ");
+            sb.Append("OverallSDProcessStatus eq ")
+              .Append(Literal(OrdensVendaSdFiltro.SituacoesAprovadas[i]));
+        }
+        sb.Append(')');
         // A clausula de tipo entra SEMPRE: lista vazia no filtro significa os cinco tipos do
         // fluxo, nunca "todos". Antes ela sumia quando a lista vinha vazia, e a varredura
         // alcancava a base de vendas inteira.
@@ -125,7 +134,8 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
             // Fecha por ausencia: ordem sem a situacao esperada - inclusive sem o campo - nao
             // entra. O operador pediu somente "A", e adivinhar aqui traria o que ele excluiu.
             var situacao = Texto(ordem, "OverallSDProcessStatus");
-            if (!string.Equals(situacao, filtro.SituacaoOrdemAprovada, StringComparison.OrdinalIgnoreCase))
+            if (situacao is null || !OrdensVendaSdFiltro.SituacoesAprovadas
+                    .Contains(situacao, StringComparer.OrdinalIgnoreCase))
                 continue;
 
             var (emissor, recebedor) = Parceiros(ordem, filtro);
@@ -135,6 +145,13 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
                 var centro = Texto(item, "ShippingPoint");
                 // O recorte por centro acontece aqui porque ShippingPoint e campo de item.
                 if (!filtro.ShippingPoints.Contains(centro, StringComparer.Ordinal)) continue;
+
+                // Linha JA CONCLUIDA no SAP nao aparece, mesmo com a ordem aberta em "B". Tambem
+                // e conferido aqui, e nao no $filter, porque SDProcessStatus e campo de item e o
+                // OData V2 nao filtra dentro de colecao expandida.
+                if (string.Equals(Texto(item, "SDProcessStatus"),
+                        OrdensVendaSdFiltro.SituacaoItemConcluida, StringComparison.OrdinalIgnoreCase))
+                    continue;
 
                 yield return new OrdemVendaSdLeitura(
                     Centro: centro,
@@ -179,6 +196,7 @@ public sealed class OrdensVendaSdConsultaAdapter(SapODataHttpExecutor executor)
             ["PurchaseOrderByCustomer"] = Texto(item, "PurchaseOrderByCustomer")
                 ?? Texto(ordem, "PurchaseOrderByCustomer"),
             ["OverallSDProcessStatus"] = Texto(ordem, "OverallSDProcessStatus"),
+            ["SDProcessStatus"] = Texto(item, "SDProcessStatus"),
             ["SalesOrderType"] = Texto(ordem, "SalesOrderType"),
             ["SalesOrganization"] = Texto(ordem, "SalesOrganization"),
             ["OrganizationDivision"] = Texto(ordem, "OrganizationDivision") ?? Texto(item, "OrganizationDivision"),

@@ -43,7 +43,16 @@ public static class MapeadorAjusteRemessaSd
             throw new RemessaSdBloqueadaException("SD_AJUSTE_PESO_INCOERENTE",
                 $"Peso líquido ({Peso(pesoLiquido)}) maior que o bruto ({Peso(pesoBruto)}).");
 
-        return pedido with { PesoBruto = Peso(pesoBruto), PesoLiquido = Peso(pesoLiquido) };
+        // OS DOIS CAMPOS DO CABECALHO LEVAM O PESO LIQUIDO. Decisao do operador em 04/11/2026:
+        // onde ia o bruto passa a ir o liquido tambem.
+        //
+        // O peso bruto continua sendo lido e conferido acima - ele e que diz se a pesagem faz
+        // sentido (liquido maior que bruto e balanca com problema, e isso ainda bloqueia). O que
+        // mudou e so o que viaja para o SAP.
+        //
+        // A propriedade continua se chamando PesoBruto porque o campo do SAP e HeaderGrossWeight;
+        // o nome e do contrato deles, o valor e nosso.
+        return pedido with { PesoBruto = Peso(pesoLiquido), PesoLiquido = Peso(pesoLiquido) };
     }
 
     /// <summary>Corpo fixo do item zerado. Existe para a previa mostrar exatamente o que vai.</summary>

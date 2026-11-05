@@ -17,15 +17,33 @@ public sealed class AjusteRemessaSdTests
     private const decimal Bruto = 27_400m;
     private const decimal Liquido = 25_400m;
 
+    /// <summary>
+    /// Os DOIS campos de peso do cabecalho levam o LIQUIDO. Decisao do operador em 04/11/2026:
+    /// onde ia o bruto passa a ir o liquido tambem.
+    ///
+    /// Antes daqui iam 27400 no bruto e 25400 no liquido; agora vao 25400 nos dois. O bruto
+    /// continua sendo lido e conferido - e ele que denuncia pesagem incoerente -, so nao viaja.
+    /// </summary>
     [Fact]
-    public void Biodiesel_leva_pesos_e_transporte_ao_cabecalho()
+    public void Biodiesel_leva_o_peso_liquido_nos_dois_campos_do_cabecalho()
     {
         var pedido = MapeadorAjusteRemessaSd.MontarCabecalho(
             SetorAtividadeSd.Biodiesel, Bruto, Liquido, "ABC1024");
-        Assert.Equal("27400.000", pedido.PesoBruto);
+        Assert.Equal("25400.000", pedido.PesoBruto);
         Assert.Equal("25400.000", pedido.PesoLiquido);
+        Assert.Equal(pedido.PesoLiquido, pedido.PesoBruto);
         Assert.Equal("ABC1024", pedido.MeioDeTransporte);
         Assert.Equal("YN04", pedido.TipoDeTransporte);
+    }
+
+    [Fact]
+    public void O_bruto_da_balanca_nao_viaja_mais_para_o_SAP()
+    {
+        var json = MapeadorAjusteRemessaSd.Serializar(MapeadorAjusteRemessaSd.MontarCabecalho(
+            SetorAtividadeSd.Biodiesel, Bruto, Liquido, "ABC1024"));
+        Assert.Contains("\"HeaderGrossWeight\":\"25400.000\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"HeaderNetWeight\":\"25400.000\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("27400", json, StringComparison.Ordinal);
     }
 
     [Theory]

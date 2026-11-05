@@ -242,3 +242,74 @@ public sealed class TextoNfeSdTests
     public async Task Rota_de_texto_fora_do_passo_5_nao_sai(string metodo, string caminho)
         => Assert.False(await Passa(new HttpMethod(metodo), caminho));
 }
+
+/// <summary>
+/// A placa da CARRETA no texto da NF-e, pedida pelo operador em 04/11/2026. Vai junto com a do
+/// veiculo, no mesmo rotulo "Placas:" - que ja nasce no plural no texto da ordem de venda.
+/// </summary>
+public sealed class PlacaDaCarretaNoTextoSdTests
+{
+    [Fact]
+    public void As_duas_placas_vao_juntas()
+        => Assert.Equal("ABC1234 / XYZ5678",
+            new ComplementoTextoNfeSd(Placa: "ABC1234", PlacaCarreta: "XYZ5678").Placas);
+
+    [Fact]
+    public void So_o_veiculo_vai_sozinho()
+        => Assert.Equal("ABC1234", new ComplementoTextoNfeSd(Placa: "ABC1234").Placas);
+
+    [Fact]
+    public void So_a_carreta_tambem_vai_sozinha()
+        // Perder o dado seria pior do que mostra-lo incompleto.
+        => Assert.Equal("XYZ5678", new ComplementoTextoNfeSd(PlacaCarreta: "XYZ5678").Placas);
+
+    [Fact]
+    public void Placa_repetida_nao_vira_duas()
+        => Assert.Equal("ABC1234",
+            new ComplementoTextoNfeSd(Placa: "ABC1234", PlacaCarreta: "abc1234").Placas);
+
+    [Fact]
+    public void Sem_placa_nenhuma_nao_ha_o_que_escrever()
+        => Assert.Null(new ComplementoTextoNfeSd(Motorista: "FULANO").Placas);
+
+    [Fact]
+    public void A_carreta_sozinha_ja_e_motivo_para_compor()
+        => Assert.True(new ComplementoTextoNfeSd(PlacaCarreta: "XYZ5678").TemAlgo);
+
+    [Fact]
+    public void O_texto_final_traz_as_duas()
+    {
+        var texto = MapeadorTextoNfeSd.Compor(null,
+            new ComplementoTextoNfeSd(Placa: "ABC1234", PlacaCarreta: "XYZ5678"));
+        Assert.Contains("Placas: ABC1234 / XYZ5678", texto, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void O_espaco_vazio_da_ordem_recebe_as_duas()
+    {
+        // Regra 1: nada do texto existente e removido. As placas entram no espaco que a ordem
+        // deixou em branco.
+        const string daOrdem = "VENDEDOR: BIOFUGA BANCO: ABC\nLacres: 123 Mot.: JOAO CPF: 111\nPlacas:";
+        var texto = MapeadorTextoNfeSd.Compor(daOrdem,
+            new ComplementoTextoNfeSd(Placa: "ABC1234", PlacaCarreta: "XYZ5678"));
+        Assert.Contains("ABC1234 / XYZ5678", texto, StringComparison.Ordinal);
+        Assert.Contains("VENDEDOR: BIOFUGA", texto, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("""{"Placa":"ABC1234","PlacaCarreta":"XYZ5678"}""")]
+    [InlineData("""{"Placa":"ABC1234","PlacaReboque":"XYZ5678"}""")]
+    [InlineData("""{"Placa":"ABC1234","camposAdicionais":[{"nome":"Placa da Carreta","valor":"XYZ5678"}]}""")]
+    public void A_leitura_aceita_as_formas_plausiveis(string payload)
+        // O nome do campo na devolutiva ainda nao foi visto em payload real - ver PlacaCarreta.
+        => Assert.Equal("XYZ5678", MapeadorTextoNfeSd.LerComplemento(payload).PlacaCarreta);
+
+    [Fact]
+    public void Sem_a_carreta_o_texto_sai_como_antes()
+    {
+        // Nao encontrar o campo nao pode quebrar o passo 5: sai so a placa do veiculo.
+        var complemento = MapeadorTextoNfeSd.LerComplemento("""{"Placa":"ABC1234"}""");
+        Assert.Null(complemento.PlacaCarreta);
+        Assert.Equal("ABC1234", complemento.Placas);
+    }
+}

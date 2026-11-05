@@ -22,7 +22,8 @@ public sealed class OrdensVendaSdConsultaTests
     {
         Assert.True(Filtro(tipos: []).EhValido());
         var query = OrdensVendaSdConsultaAdapter.MontarQuery(Filtro(tipos: []));
-        Assert.Equal("$filter=SalesOrganization eq '3000' and OverallSDProcessStatus eq 'A'"
+        Assert.Equal("$filter=SalesOrganization eq '3000'"
+            + " and (OverallSDProcessStatus eq 'A' or OverallSDProcessStatus eq 'B')"
             + " and (SalesOrderType eq 'ZVSP' or SalesOrderType eq 'ZVBI'"
             + " or SalesOrderType eq 'ZVSC' or SalesOrderType eq 'ZRMS'"
             + " or SalesOrderType eq 'ZVNE')"
@@ -310,18 +311,29 @@ public sealed class OrdensVendaSdConsultaTests
     }
 
     // A situacao da ordem e regra, nao conveniencia: vai no $filter para o SAP nao mandar o que
-    // seria descartado.
+    // seria descartado. Desde 04/11/2026 sao duas - "A" e "B" -, entre parenteses, senao o "or"
+    // se misturaria com os "and" vizinhos.
     [Fact]
     public void Situacao_da_ordem_entra_na_query()
-        => Assert.Contains("and OverallSDProcessStatus eq 'A'",
+        => Assert.Contains("and (OverallSDProcessStatus eq 'A' or OverallSDProcessStatus eq 'B')",
             OrdensVendaSdConsultaAdapter.MontarQuery(Filtro()), StringComparison.Ordinal);
 
-    // Se o servico ignorar a clausula e mandar outra situacao, a linha ainda nao pode aparecer.
+    /// <summary>
+    /// "B" e ordem PARCIALMENTE processada, e passou a entrar em 04/11/2026. O caso real: a ordem
+    /// 4274 teve a linha 10 processada, o cabecalho virou "C" e a ordem inteira sumiu da
+    /// varredura - junto com uma linha nova que nunca tinha ido a balanca.
+    /// </summary>
+    [Fact]
+    public void Ordem_parcialmente_processada_entra()
+        => Assert.NotEmpty(Mapear(
+            RespostaV2.Replace("\"OverallSDProcessStatus\":\"A\"", "\"OverallSDProcessStatus\":\"B\"",
+                StringComparison.Ordinal), Filtro()));
+
+    // "C" e concluida: fica de fora, e e isso que distingue "tem linha pendente" de "acabou".
     [Theory]
-    [InlineData("\"OverallSDProcessStatus\":\"B\"")]
     [InlineData("\"OverallSDProcessStatus\":\"C\"")]
     [InlineData("\"OverallSDProcessStatus\":\"\"")]
-    public void Ordem_com_outra_situacao_e_descartada(string situacao)
+    public void Ordem_concluida_ou_sem_situacao_e_descartada(string situacao)
         => Assert.Empty(Mapear(
             RespostaV2.Replace("\"OverallSDProcessStatus\":\"A\"", situacao, StringComparison.Ordinal), Filtro()));
 
@@ -341,7 +353,9 @@ public sealed class OrdensVendaSdConsultaTests
             ["SalesOrder", "SalesOrderItem", "ShippingPoint", "Material",
              // PurchaseOrderByCustomer entrou em 04/11/2026, a pedido do operador.
              "PurchaseOrderByCustomer",
-             "OverallSDProcessStatus", "SalesOrderType", "SalesOrganization", "OrganizationDivision",
+             // SDProcessStatus e a situacao do ITEM: e ela que diz se a linha ja foi.
+             "OverallSDProcessStatus", "SDProcessStatus",
+             "SalesOrderType", "SalesOrganization", "OrganizationDivision",
              "Emissor", "RecebedorMercadoria"],
             json.RootElement.EnumerateObject().Select(p => p.Name));
         Assert.Equal("20000051", json.RootElement.GetProperty("Emissor").GetProperty("Customer").GetString());
@@ -478,5 +492,70 @@ public sealed class PedidoDoClienteSdTests
         """;
         var linha = Assert.Single(OrdensVendaSdConsultaAdapter.LerResposta(soNoCabecalho, Filtro));
         Assert.Equal("77777", linha.PedidoDoCliente);
+    }
+}
+
+/// <summary>
+/// O caso real da ordem 4274, em 04/11/2026: o fluxo foi feito na linha 10, o usuario acrescentou
+/// a linha 20 depois, e o FugaTES nao a trouxe.
+///
+/// Eram duas coisas, e as duas de recorte. O cabecalho virou "C" e a varredura so aceitava "A",
+/// entao a ordem INTEIRA sumiu - a linha nova junto. E, com a ordem de volta, faltava distinguir
+/// a linha que ja foi da que esta pendente: o campo do cabecalho nao serve para isso, porque a
+/// nossa granularidade e a linha.
+/// </summary>
+public sealed class OrdemComLinhaNovaDepoisDeConcluidaTests
+{
+    // Cabecalho em "B" - parcialmente processada, que e como o SAP deixa a ordem quando uma linha
+    // foi entregue e outra nao. Item 10 concluido, item 20 pendente.
+    private const string Resposta = """
+    {"d":{"results":[
+      {"SalesOrder":"4274","SalesOrderType":"ZVBI","SalesOrganization":"3000",
+       "OverallSDProcessStatus":"B","OrganizationDivision":"63",
+       "to_Item":{"results":[
+         {"SalesOrderItem":"10","Material":"4000561","ShippingPoint":"3008",
+          "SDProcessStatus":"C","DeliveryStatus":"C","PurchaseOrderByCustomer":"49580"},
+         {"SalesOrderItem":"20","Material":"4000561","ShippingPoint":"3008",
+          "SDProcessStatus":"A","DeliveryStatus":"A","PurchaseOrderByCustomer":"49580"}]},
+       "to_Partner":{"results":[
+         {"Customer":"20000777","PartnerFunctionInternalCode":"WE"},
+         {"Customer":"20000217","PartnerFunctionInternalCode":"AG"}]}}
+    ]}}
+    """;
+
+    private static readonly OrdensVendaSdFiltro Filtro = new("3000", ["3008"], ["ZVBI"]);
+
+    [Fact]
+    public void A_linha_nova_aparece()
+    {
+        var linha = Assert.Single(OrdensVendaSdConsultaAdapter.LerResposta(Resposta, Filtro));
+        Assert.Equal("20", linha.LinhaItem);
+        Assert.Equal("4274", linha.CodigoOrdemVenda);
+    }
+
+    [Fact]
+    public void A_linha_ja_concluida_nao_volta()
+        // Sem isto, a ordem reaberta traria de novo a linha que ja virou remessa. Quem segurava
+        // era so o registro de protocolos, um controle nosso; agora o SAP tambem diz.
+        => Assert.DoesNotContain(OrdensVendaSdConsultaAdapter.LerResposta(Resposta, Filtro),
+            l => l.LinhaItem == "10");
+
+    [Fact]
+    public void Com_todas_as_linhas_concluidas_nao_sobra_nada()
+    {
+        var tudoFeito = Resposta.Replace("\"SDProcessStatus\":\"A\"", "\"SDProcessStatus\":\"C\"",
+            StringComparison.Ordinal);
+        Assert.Empty(OrdensVendaSdConsultaAdapter.LerResposta(tudoFeito, Filtro));
+    }
+
+    [Fact]
+    public void Linha_sem_situacao_nao_e_descartada()
+    {
+        // Fecha para o lado de MOSTRAR: ausencia do campo nao prova que a linha foi concluida, e
+        // esconde-la deixaria a pesagem sem destino. O operador ve e decide.
+        var semCampo = Resposta.Replace(",\"SDProcessStatus\":\"A\",\"DeliveryStatus\":\"A\"", "",
+            StringComparison.Ordinal);
+        Assert.Contains(OrdensVendaSdConsultaAdapter.LerResposta(semCampo, Filtro),
+            l => l.LinhaItem == "20");
     }
 }

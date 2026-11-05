@@ -70,10 +70,6 @@ public sealed record OrdensVendaSdFiltro(
     // reprova o filtro.
     IReadOnlyList<string> SalesOrderTypes,
     int MaximoPorVarredura = 200,
-    // A_SalesOrder.OverallSDProcessStatus exigido - "Situacao da Ordem" na planilha. Decisao do
-    // operador em 31/10/2026: a varredura so considera "A". Fica como parametro para nao espalhar
-    // o literal, mas nao e editavel na tela - e regra, nao filtro de conveniencia.
-    string SituacaoOrdemAprovada = "A",
     // Funcoes de parceiro em A_SalesOrderHeaderPartner. Os padroes sao os do SAP: AG para quem
     // emite a ordem e WE para quem recebe a mercadoria. Ficam configuraveis porque nao foram
     // confirmados pela planilha - ela nomeia o campo, nao o valor da funcao.
@@ -97,6 +93,27 @@ public sealed record OrdensVendaSdFiltro(
     /// Por isso tipo de fora REPROVA o filtro, em vez de ser ignorado em silencio.
     /// </summary>
     public static readonly string[] TiposPermitidos = ["ZVSP", "ZVBI", "ZVSC", "ZRMS", "ZVNE"];
+
+    /// <summary>
+    /// Situacoes do CABECALHO que a varredura aceita (A_SalesOrder.OverallSDProcessStatus):
+    /// "A" nao processada e "B" parcialmente processada. "C" e concluida e fica de fora.
+    ///
+    /// Ate 04/11/2026 so "A" entrava, e isso tinha um efeito que ninguem previu: a ordem 4274 foi
+    /// processada na linha 10, o cabecalho virou "C" e a ordem INTEIRA sumiu da varredura -
+    /// inclusive uma linha nova, acrescentada depois, que nunca tinha ido a balanca. O campo e do
+    /// cabecalho; a nossa granularidade e a linha. Uma ordem com linha pendente volta a "B", e e
+    /// por isso que "B" precisa entrar.
+    /// </summary>
+    public static readonly string[] SituacoesAprovadas = ["A", "B"];
+
+    /// <summary>
+    /// Situacao do ITEM que significa "ja foi" (A_SalesOrderItem.SDProcessStatus). Linha com este
+    /// valor nao aparece, mesmo quando a ordem esta aberta: o que interessa e a linha pendente.
+    ///
+    /// Ate aqui quem evitava repetir uma linha ja processada era so o registro de protocolos, um
+    /// controle nosso. Conferir no SAP e mais honesto - e la que o fluxo acontece.
+    /// </summary>
+    public const string SituacaoItemConcluida = "C";
 
     /// <summary>
     /// Os tipos que realmente vao ao SAP. Vazio significa os cinco - nunca "todos": antes, lista
@@ -135,7 +152,7 @@ public sealed record OrdensVendaSdFiltro(
         SalesOrderTypes.All(Token) &&
         SalesOrderTypes.All(t => TiposPermitidos.Contains(t, StringComparer.Ordinal)) &&
         SalesOrderTypes.Distinct(StringComparer.Ordinal).Count() == SalesOrderTypes.Count &&
-        Token(FuncaoEmissor) && Token(FuncaoRecebedor) && Token(SituacaoOrdemAprovada) &&
+        Token(FuncaoEmissor) && Token(FuncaoRecebedor) &&
         MaximoPorVarredura is > 0 and <= 1000;
 
     private static bool Token(string? value) => !string.IsNullOrWhiteSpace(value) &&
