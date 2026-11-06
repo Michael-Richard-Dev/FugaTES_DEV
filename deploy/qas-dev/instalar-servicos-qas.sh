@@ -31,7 +31,7 @@ REL_MT="${REL_MT:-/opt/fugates/releases/FugaTES.HostIntegracao}"
 PACOTE_CB="${PACOTE_CB:-/home/michael/fugates-callback.tgz}"
 PACOTE_MT="${PACOTE_MT:-/home/michael/fugates-motor.tgz}"
 SHA_CB='a0a8486f710e491b249e64e8c447d03e7c58132c8702ff8dc0d7b1edf56e1914'
-SHA_MT='90bcfab098f4e59edd7bcb31e5745d528073e0ab4fd600126820b8923e68b84b'
+SHA_MT='e49e37bcc192bf426935ec08782f3bba66d3180ef64bb24da40d8195cd10c0d5'
 
 DEV_CB=fugates-toledo-callback
 DEV_MT=fugates-sd-protocolo
