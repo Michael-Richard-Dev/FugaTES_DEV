@@ -19,7 +19,7 @@ public partial class FrmPedidosCompraMm : Form
     public FrmPedidosCompraMm(Func<MmPurchaseOrderSnapshot>? read=null,Action? ensureStarted=null)
     {
         MmSnapshotStore? store=null;
-        this.read=read??(()=>MmPurchaseOrderComposition.IsVmObserver(AppContext.BaseDirectory)?throw new InvalidOperationException("MM_REMOTE_BINDING_REQUIRED"):(store??=new MmSnapshotStore(MmSnapshotStore.DefaultDirectory)).Read());
+        this.read=read??(()=>MmPurchaseOrderComposition.IsVmObserver(AppContext.BaseDirectory)?throw new InvalidOperationException("MM_REMOTE_BINDING_REQUIRED"):(store??=MmPurchaseOrderComposition.CreateStore(AppContext.BaseDirectory)).Read());
         this.ensureStarted=ensureStarted??MmPurchaseOrderComposition.EnsureStarted;
         InitializeComponent();MontarColunas();ConfigureRetryUi();
         var history=new Button{Name="historicoGuardianMm",Text="Histórico Guardian",Width=165,Height=32};
@@ -44,7 +44,7 @@ public partial class FrmPedidosCompraMm : Form
         FormClosed+=(_,_)=>{refresh.Stop();readingLifetime.Cancel();};
     }
     public FrmPedidosCompraMm(Func<CancellationToken,Task<MmRemoteReadback>> remoteRead):this(()=>throw new InvalidOperationException("MM_LOCAL_FALLBACK_FORBIDDEN"),()=>{})
-    {this.remoteRead=remoteRead;refresh.Interval=15000;Text="Pedidos de compra MM — motor na VM — PostgreSQL DEV5433";}
+    {this.remoteRead=remoteRead;refresh.Interval=15000;Text="Pedidos de compra MM — motor na VM — PostgreSQL5433";}
     public void AtualizarLeitura()
     {
         if(remoteRead is not null){_=AtualizarRemotaAsync();return;}
@@ -83,7 +83,7 @@ public partial class FrmPedidosCompraMm : Form
             var fresh=current.IsFresh(DateTimeOffset.UtcNow)&&(remoteRead is null||remoteView?.Fresh==true);
             var situation=fresh?"CONECTADO":"DESCONECTADO — LEITURA DESATUALIZADA";
             status.ForeColor=fresh?Color.DarkGreen:Color.DarkRed;
-            status.Text=$"{situation} — SAP REAL · cliente 110 · empresa 3000 · centros 3011/3008\r\n"
+            status.Text=$"{situation} — SAP REAL · cliente {current.Client} · empresa 3000 · centros 3011/3008\r\n"
                 +$"Último sucesso: {Local(current.LastSuccessUtc)} · última tentativa: {Local(current.LastAttemptUtc)} · próximo ciclo: {Local(current.NextPollUtc)}\r\n"
                 +$"{Descrever(current.State)} · HTTP {current.Http?.ToString()??"não consultado"} · {current.Pages} página(s) · ciclo {current.Cycles}.\r\nEnvio automático Guardian: {current.GuardianState}.";
             if(displayedSuccess!=current.LastSuccessUtc||displayedGuardianRevision!=current.GuardianRevision||grid.DataSource is null){displayedSuccess=current.LastSuccessUtc;displayedGuardianRevision=current.GuardianRevision;ExibirItens();}

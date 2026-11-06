@@ -1,10 +1,12 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using FugaTES.Infraestrutura.Mm;
 namespace FugaTES.WinForms.Mm;
 public sealed class MmSnapshotStore : MmFileSnapshotStore
 {
-    public MmSnapshotStore(string directory):base(directory)
+    public MmSnapshotStore(string directory):this(directory,null){}
+    public MmSnapshotStore(string directory,AmbienteSap? ambiente):base(directory,ambiente:ambiente)
     {
         if(OperatingSystem.IsWindows())
         {

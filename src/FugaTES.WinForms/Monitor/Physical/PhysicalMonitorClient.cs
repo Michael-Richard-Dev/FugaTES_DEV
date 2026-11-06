@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Text.Json;
 using System.Net.Http.Json;
 using FugaTES.Aplicacao.Consultas.Monitor;
@@ -15,6 +16,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
     private readonly PilotPlan plan;
     private readonly Guid id;
     private readonly bool unified;
+    private readonly AmbienteBanco ambiente;
     public bool IsPilotOnly=>!unified;
     private readonly Func<CancellationToken,Task>? prepareRead;
     public PhysicalReadConnection Connection{get;private set;}=new();
@@ -25,14 +27,14 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
     public string LockReason => "ENVIO MANUAL PROIBIDO - TESTE FISICO UNITARIO";
 
     public PhysicalMonitorClient(Uri endpoint, string readKey, PilotPlan plan, Guid id, HttpMessageHandler handler,
-        Func<CancellationToken,Task>? prepareRead=null,bool unified=false)
+        Func<CancellationToken,Task>? prepareRead=null,bool unified=false,AmbienteBanco? ambiente=null)
     {
         plan.Validate();
         if (endpoint.Scheme != "http" || endpoint.Host != "127.0.0.1" || endpoint.Port != 18761 ||
             endpoint.AbsolutePath != "/" || !string.IsNullOrEmpty(endpoint.Query) || !string.IsNullOrEmpty(endpoint.Fragment) ||
             !string.IsNullOrEmpty(endpoint.UserInfo) || string.IsNullOrWhiteSpace(readKey) || readKey.Any(char.IsControl) || id == Guid.Empty)
             throw new InvalidOperationException("R165AL_PRIVATE_READ_BINDING_REQUIRED");
-        this.plan = plan; this.id = id;this.prepareRead=prepareRead;this.unified=unified;
+        this.plan = plan; this.id = id;this.prepareRead=prepareRead;this.unified=unified;this.ambiente=ambiente??AmbientesBanco.Dev110;
         http = new HttpClient(handler, true) { BaseAddress = endpoint, Timeout = TimeSpan.FromSeconds(8), MaxResponseContentBufferSize = unified?4194304:262144 };
         http.DefaultRequestHeaders.Add("X-R165AL-Read-Key", readKey);
     }
@@ -49,7 +51,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
         response.EnsureSuccessStatusCode();
         var data = await response.Content.ReadFromJsonAsync<PhysicalFrame>(ct)
             ?? throw new InvalidOperationException("R165AL_READBACK_EMPTY");
-        data.Validate(plan, id);
+        data.Validate(plan, id,ambiente);
         Connection=new(){Connected=true,Cluster=data.Cluster,ServerPort=data.Port,Database=data.Database,Role=data.Role,
             LastSuccessUtc=data.CapturedUtc,Message="Leitura física validada pela API privada."};
         ConnectionChanged?.Invoke();
@@ -140,7 +142,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
         try { FugaTES.Infraestrutura.Mm.MmFileSnapshotStore.Validate(view.Snapshot); }
         catch(Exception error) when(error is InvalidOperationException or System.Text.Json.JsonException or ArgumentException or NullReferenceException)
         { throw new PhysicalConnectionException("MM_VM_OBSERVATION_DOCUMENT_REJECTED",resourceOnly:true); }
-        if(view.Provenance!="VM_SNAPSHOT_NOT_JOURNAL"||view.Snapshot.RuntimeMode!="VM"||view.Snapshot.Host!="vm-fugatesbio"||view.Snapshot.IntervalSeconds!=180||view.ReadAtUtc>DateTimeOffset.UtcNow.AddSeconds(5)||DateTimeOffset.UtcNow-view.ReadAtUtc>TimeSpan.FromSeconds(30))
+        if(AmbientesSap.Por(view.Snapshot.Origin,view.Snapshot.Client)?.Nome!=ambiente.Nome||view.Provenance!="VM_SNAPSHOT_NOT_JOURNAL"||view.Snapshot.RuntimeMode!="VM"||view.Snapshot.Host!="vm-fugatesbio"||view.Snapshot.IntervalSeconds!=180||view.ReadAtUtc>DateTimeOffset.UtcNow.AddSeconds(5)||DateTimeOffset.UtcNow-view.ReadAtUtc>TimeSpan.FromSeconds(30))
             throw new PhysicalConnectionException("MM_VM_OBSERVATION_SCOPE_REJECTED",resourceOnly:true);
         return view;
     }
@@ -180,7 +182,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
                 if(failure?.Scope=="mm"&&failure.Code is "MM_VM_OBSERVATION_SCOPE_REJECTED" or "MM_VM_OBSERVATION_DOCUMENT_REJECTED" or "MM_VM_OBSERVATION_UNAVAILABLE" or "MM_VM_OBSERVATION_NOT_CONFIGURED")
                 {
                     if(failure.Identity is null)throw new PhysicalConnectionException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
-                    failure.Identity.Validate();
+                    failure.Identity.Validate(ambiente);
                     throw new PhysicalConnectionException(failure.Code,resourceOnly:true);
                 }
             }
@@ -192,7 +194,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
                 var document=await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ct);
                 var identity=document.GetProperty("identity").Deserialize<DevDatabaseIdentity>(System.Text.Json.JsonSerializerOptions.Web)
                     ??throw new PhysicalConnectionException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
-                identity.Validate();
+                identity.Validate(ambiente);
                 try
                 {
                     var data=document.GetProperty("data").Deserialize<T>(System.Text.Json.JsonSerializerOptions.Web);
@@ -203,7 +205,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
                 {throw new PhysicalConnectionException("MM_VM_OBSERVATION_DOCUMENT_REJECTED",resourceOnly:true);}
             }
             else envelope=await response.Content.ReadFromJsonAsync<DevReadEnvelope<T>>(ct)??throw new InvalidOperationException("UNIFIED_DEV_EMPTY_RESPONSE");
-            envelope.Identity.Validate();if(envelope.Data is null)throw new InvalidOperationException("UNIFIED_DEV_EMPTY_RESPONSE");
+            envelope.Identity.Validate(ambiente);if(envelope.Data is null)throw new InvalidOperationException("UNIFIED_DEV_EMPTY_RESPONSE");
             Connection=new(){Connected=true,Cluster=envelope.Identity.Cluster,ServerPort=envelope.Identity.Port,Database=envelope.Identity.Database,
                 Role=envelope.Identity.Role,LastSuccessUtc=envelope.Identity.CapturedUtc,PilotOnly=false,Message="Leitura unificada DEV validada pela API privada."};
             ConnectionChanged?.Invoke();return envelope.Data;

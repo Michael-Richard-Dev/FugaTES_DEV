@@ -30,6 +30,9 @@ public sealed class MmPurchaseOrderScreenTests
     });
     [Fact] public void Closing_observer_does_not_dispose_or_cancel_background_collector()=>Sta(()=>
     {var starts=0;using(var form=Screen(()=>Fresh(),()=>starts++)){form.Show();Application.DoEvents();form.Close();}Assert.Equal(1,starts);});
+    [Theory][InlineData("https://vhfufds4ci.sap.fugacouros.com.br:44300","110")][InlineData("https://vhfufqs4ci.sap.fugacouros.com.br:44300","120")]
+    public void Screen_reports_the_SAP_client_of_the_observed_snapshot(string origin,string client)=>Sta(()=>
+    {using var form=Screen(()=>Fresh() with{Origin=origin,Client=client});form.Show();Application.DoEvents();form.GetType().GetMethod("AtualizarLeitura")!.Invoke(form,null);Assert.Contains(All(form).OfType<Label>(),x=>x.Text.Contains("cliente "+client));});
     static MmPurchaseOrderSnapshot Fresh()=>new(){LastSuccessUtc=DateTimeOffset.UtcNow,LastAttemptUtc=DateTimeOffset.UtcNow,NextPollUtc=DateTimeOffset.UtcNow.AddSeconds(30),State="MM_SAP_COMPLETE",Http=200,Pages=2,Items=[new("3000","4455000001","00010","ZCOL","3011","00001000249","L002",50000.123m,"KG","0000200001","05","{\"PurchaseOrder\":\"4455000001\",\"PurchaseOrderItem\":\"00010\"}")]};
     static Type Type(){var type=typeof(FrmIntegracoes).Assembly.GetType("FugaTES.WinForms.FrmPedidosCompraMm");Assert.NotNull(type);return type;}
     static Form Screen(Func<MmPurchaseOrderSnapshot> read,Action? started=null)=>(Form)Activator.CreateInstance(Type(),read,started??(()=>{}))!;

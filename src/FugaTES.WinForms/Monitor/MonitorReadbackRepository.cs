@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Globalization;
 using System.Text.Json;
 using FugaTES.Aplicacao.Consultas.Monitor;
@@ -16,7 +17,7 @@ internal sealed class MonitorReadbackRepository : IMonitorReadRepository
     public MonitorReadbackRepository(AcmMonitorProfile profile)
     {
         this.profile = profile;
-        if (profile.Enabled || profile.ReadbackIntegrationId == Guid.Empty || string.IsNullOrWhiteSpace(profile.ReadbackContract) ||
+        if (!profile.IdentityValid || profile.Enabled || profile.ReadbackIntegrationId == Guid.Empty || string.IsNullOrWhiteSpace(profile.ReadbackContract) ||
             profile.ReadbackMaxAgeSeconds is < 1 or > 86400 || !Path.IsPathFullyQualified(profile.ReadbackFile) ||
             Path.GetFileName(profile.ReadbackFile) != "ACM_MONITOR_READBACK.json")
             throw new InvalidOperationException("ACM_READBACK_CONFIGURATION_REQUIRED");
@@ -49,7 +50,7 @@ internal sealed class MonitorReadbackRepository : IMonitorReadRepository
             var age = DateTimeOffset.UtcNow - timestamp;
             if (Text(root, "schema") != "R165Y_ACM_MONITOR_READBACK_V1" || Text(root, "status") != "READ_ONLY_DURABLE_STATE_VERIFIED" ||
                 identity.GetProperty("port").GetInt32() != 5433 || Text(identity, "cluster") != "18/fugatesacmdev" ||
-                Text(identity, "database") != "fugates_dev" || Text(identity, "role") != "fugates_acm_hml_app" || Text(identity, "read_only") != "on" ||
+                AmbientesBanco.Por(Text(identity,"database"),Text(identity,"role"),profile.Ambiente!)!=profile.Ambiente || Text(identity,"role")!=profile.Ambiente!.PapelAcm || Text(identity, "read_only") != "on" ||
                 root.GetProperty("integration_id").GetGuid() != profile.ReadbackIntegrationId ||
                 integration.GetProperty("id").GetGuid() != profile.ReadbackIntegrationId || h4.GetProperty("integracao_id").GetGuid() != profile.ReadbackIntegrationId ||
                 Text(integration, "operacao") != "SAP_CONTRATO_TOLEDO" || Text(integration, "chave_negocio") != profile.ReadbackContract ||

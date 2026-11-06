@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Text.Json;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -95,10 +96,17 @@ public sealed class UnifiedDesktopSession:IDisposable
             Func<CancellationToken,Task>? prepare=null;
             if(profile.Tunnel is {Enabled:true} settings){LocalReadTunnel.BuildArguments(settings);tunnel=new(settings);prepare=tunnel.EnsureAsync;}
             reader=new(new("http://127.0.0.1:18761"),File.ReadAllText(keyFile.FullName).Trim(),plan,profile.IntegrationId,
-                new HttpClientHandler{UseProxy=false,AllowAutoRedirect=false,UseCookies=false,UseDefaultCredentials=false},prepare,profile.UnifiedDatabaseReadback);
+                new HttpClientHandler{UseProxy=false,AllowAutoRedirect=false,UseCookies=false,UseDefaultCredentials=false},prepare,profile.UnifiedDatabaseReadback,ReadEnvironment(directory));
             reader.ConnectionChanged+=RelayConnection;
             return reader;
         }
+    }
+    private static AmbienteBanco ReadEnvironment(string directory)
+    {
+        var file=Path.Combine(directory,"FugaTES.carrier.json");
+        if(!File.Exists(file))return AmbientesBanco.Dev110;
+        var config=FugaTES.WinForms.Transportadoras.CarrierDesktopProfile.Load(file);
+        return AmbientesBanco.PorNome(FugaTES.WinForms.Mm.MmPurchaseOrderComposition.Ambiente(config).Nome)!;
     }
     private void RelayConnection(){if(!disposed)ConnectionChanged?.Invoke();}
     public FrmMonitorMvp CreateMonitor()

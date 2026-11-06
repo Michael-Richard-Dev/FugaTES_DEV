@@ -36,7 +36,7 @@ public sealed class MmGuardianComposition:IDisposable,IMmGuardianDispatcher
             http=new HttpClient(new MmGuardianHttpGuard(new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false})){Timeout=Timeout.InfiniteTimeSpan};
             var guardianOptions=new GuardianHttpOptions{BaseUrl=new Uri("https://guardian.cloudprix.com.br"),Timeout=TimeSpan.FromSeconds(30)};
             var token=new GuardianTokenClient(http,guardianOptions,new CarrierServiceGuardianCredentials(profile));
-            db=await ConexaoMmPostgreSql.AbrirAsync(directory,ct);var registry=new RegistroProtocolosMmPostgreSql(db.Fonte);
+            db=await ConexaoMmPostgreSql.AbrirAsync(directory,ct);var registry=new RegistroProtocolosMmPostgreSql(db.Fonte,db.Ambiente);
             store.Update(x=>x with{GuardianState="MM_GUARDIAN_PRONTO"});
             return new(db,http,registry,new EnvioAutomaticoMm(registry,new GuardianProtocoloMmClient(http,token.ObterTokenAsync,TimeSpan.FromSeconds(30)),options.UrlParaRetorno));
         }

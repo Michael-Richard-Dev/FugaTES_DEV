@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -76,13 +77,15 @@ public sealed record PhysicalFrame
     public string? H4Protocol { get; init; }
     public bool RestartVerified { get; init; }
 
-    public void Validate(PilotPlan plan, Guid expectedId)
+    public void Validate(PilotPlan plan, Guid expectedId,params AmbienteBanco[] ambientesAceitos)
     {
         plan.Validate();
+        var aceitos=ambientesAceitos.Length==0?new[]{AmbientesBanco.Dev110}:ambientesAceitos;
+        var ambiente=AmbientesBanco.Por(Database,Role,aceitos);
         if (Schema != "R165AL_PHYSICAL_SIMULATED_GUARDIAN_V1" || RunId != plan.RunId ||
             IntegrationId == Guid.Empty || IntegrationId != expectedId || Contract != plan.Contract ||
             Description != plan.Description || H4Version != 1 || !ReadOnly || !GuardianSimulated ||
-            Cluster != "18/fugatesacmdev" || Port != 5433 || Database != "fugates_dev" || Role != "fugates_acm_hml_app" ||
+            Cluster != "18/fugatesacmdev" || Port != 5433 || ambiente is null || Database != ambiente.Banco || Role != ambiente.PapelAcm ||
             Fingerprint.Length != 64 || !Fingerprint.All(Uri.IsHexDigit) ||
             !CorrelationId.StartsWith("r165ag:cpi:" + plan.RunId.ToString("N") + ":", StringComparison.Ordinal) ||
             CorrelationId.Length != 76 || !Guid.TryParseExact(CorrelationId[^32..], "N", out var suffix) || suffix == Guid.Empty ||

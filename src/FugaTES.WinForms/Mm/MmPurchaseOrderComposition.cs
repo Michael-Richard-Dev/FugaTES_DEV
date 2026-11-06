@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Diagnostics;
 using System.Security.Principal;
 using FugaTES.HostIntegracao;
@@ -46,11 +47,19 @@ public static class MmPurchaseOrderComposition
         }
         catch{throw new InvalidOperationException("MM_HOST_BINDING_INVALID");}
     }
+    private static FugaTES.Aplicacao.Configuracao.AmbienteSap ConfiguredSap()=>Ambiente(CarrierDesktopProfile.Load(Path.Combine(AppContext.BaseDirectory,"FugaTES.carrier.json")));
+    public static MmSnapshotStore CreateStore(string directory)
+    {
+        var sap=Ambiente(CarrierDesktopProfile.Load(Path.Combine(directory,"FugaTES.carrier.json")));
+        return new(CacheDirectory(sap),sap);
+    }
+    private static string CacheDirectory(FugaTES.Aplicacao.Configuracao.AmbienteSap sap)=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FugaTES",sap.Nome,"mm-purchase-orders");
     public static void EnsureStarted()
     {
         if(IsVmObserver(AppContext.BaseDirectory))return;
         // A file lease, not a GUI lifetime/mutex, decides whether a collector is already running.
-        var store=new MmSnapshotStore(MmSnapshotStore.DefaultDirectory);
+        var ambiente=ConfiguredSap();
+        var store=new MmSnapshotStore(CacheDirectory(ambiente),ambiente);
         using(var probe=store.TryAcquireLease()){if(probe is null)return;}
         var exe=Path.Combine(AppContext.BaseDirectory,"FugaTES.exe");
         if(!File.Exists(exe))throw new InvalidOperationException("MM_OFFICIAL_EXE_REQUIRED");
@@ -64,7 +73,8 @@ public static class MmPurchaseOrderComposition
         MmSnapshotStore? store=null;
         try
         {
-            store=new(MmSnapshotStore.DefaultDirectory);
+            var ambiente=ConfiguredSap();
+            store=new(CacheDirectory(ambiente),ambiente);
             using var lease=store.TryAcquireLease();if(lease is null)return 0;
             using var session=CreateSapSession(AppContext.BaseDirectory);
             using var guardian=MmGuardianComposition.CreateAsync(AppContext.BaseDirectory,store,CancellationToken.None).GetAwaiter().GetResult();
