@@ -92,21 +92,59 @@ origens_de() {
   bloco_de "$1" "$2" | grep -E '^[[:space:]]*(allow|deny|satisfy)[[:space:]]' || true
 }
 
-montar_rota() {   # $1 rota do QAS, $2 caminho canonico, $3 origens
+# O bloco do QAS e o bloco do DEV COPIADO, com tres trocas pontuais - e nada mais.
+#
+# A PRIMEIRA VERSAO MONTAVA UM BLOCO NOVO a partir das linhas allow/deny que ela extraia. O
+# conferir na VM, em 06/11/2026, mostrou o que isso perdia no bloco real:
+#
+#   1. O "limit_except GET POST" INTERNO sumia, e as linhas dele vinham achatadas para o topo.
+#      No DEV, 192.168.254.101/32 pode GET e POST mas NAO outros metodos; no meu bloco nao havia
+#      restricao de metodo nenhuma. A lista de origens parecia a mesma - e era, para GET e POST -
+#      entao a perda nao apareceria em nenhuma conferencia de acesso.
+#
+#   2. 'proxy_set_header Authorization "";' sumia. O DEV LIMPA o Authorization antes de entregar
+#      ao aplicativo, de proposito. O meu repassava.
+#
+#   3. O DEV usa 'X-Forwarded-For $remote_addr' - o peer real, sem concatenar nada. Eu escrevi
+#      '$proxy_add_x_forwarded_for', que APENSA o cabecalho que o cliente mandou. E justamente o
+#      vetor de falsificacao que a forma do DEV evita.
+#
+# Nenhuma das tres daria erro. As tres sao afrouxamento silencioso de um controle que ja estava
+# certo. Copiar o bloco inteiro e mais simples e nao tem como esquecer o que eu nao sabia que
+# estava la.
+montar_rota() {   # $1 rota do QAS, $2 caminho canonico, $3 arquivo
   printf '\n'
   printf '    # QAS120 - acrescentado em %s pelo instalar-rotas-qas.sh\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  printf '    # As origens abaixo foram COPIADAS do bloco %s que estava no ar.\n' "$2"
-  printf '    # O proxy_pass leva o caminho CANONICO: a rota e constante no codigo, e quem\n'
-  printf '    # traduz o sufixo -qas e este bloco.\n'
-  printf '    location = %s {\n' "$1"
-  printf '%s\n' "$3" | sed 's/^[[:space:]]*/        /'
-  printf '        proxy_pass http://127.0.0.1:%s%s;\n' "$PORTA_QAS" "$2"
-  printf '        proxy_http_version 1.1;\n'
-  printf '        proxy_set_header Host $host;\n'
-  printf '        proxy_set_header X-Real-IP $remote_addr;\n'
-  printf '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n'
-  printf '        client_max_body_size 2m;\n'
-  printf '    }\n'
+  printf '    # Este bloco e o de %s COPIADO. Mudam tres coisas:\n' "$2"
+  printf '    #   o location (sufixo -qas), o proxy_pass (porta %s + caminho canonico, porque a\n' "$PORTA_QAS"
+  printf '    #   rota e constante no codigo) e o arquivo de log. O controle de acesso, o\n'
+  printf '    #   limit_except e o tratamento de cabecalhos sao os mesmos do DEV, de proposito.\n'
+  bloco_de "$2" "$3" \
+    | sed -E "1s#location[[:space:]]*=[[:space:]]*[^ {]+#location = $1#" \
+    | sed -E "s#proxy_pass[[:space:]]+http://127\.0\.0\.1:[0-9]+[^;]*;#proxy_pass http://127.0.0.1:$PORTA_QAS$2;#" \
+    | sed -E "s#(access_log[[:space:]]+[^ ]+)\.log#\1-qas.log#"
+}
+
+# O bloco gerado perdeu alguma diretiva do original?
+#
+# Conferir o EFEITO, e nao confiar no sed: contar cada diretiva nos dois e exigir igualdade. Se
+# um sed falhar calado - como tres falharam hoje - a contagem acusa.
+conferir_copia() {   # $1 rota do QAS, $2 caminho canonico, $3 arquivo
+  local d orig novo faltou=0
+  for d in allow deny limit_except proxy_set_header access_log proxy_http_version client_max_body_size; do
+    orig="$(bloco_de "$2" "$3" | grep -cE "^[[:space:]]*$d[[:space:]]" || true)"
+    novo="$(montar_rota "$1" "$2" "$3" | grep -cE "^[[:space:]]*$d[[:space:]]" || true)"
+    if [ "$orig" != "$novo" ]; then
+      printf '   %s: o DEV tem %s, o bloco do QAS ficou com %s\n' "$d" "$orig" "$novo"; faltou=1
+    fi
+  done
+  # O location e o proxy_pass TEM de ter mudado - se nao mudaram, o sed nao casou e o bloco do
+  # QAS seria um clone do DEV, servindo a rota do DEV numa porta que nao e a dele.
+  montar_rota "$1" "$2" "$3" | grep -qE "location[[:space:]]*=[[:space:]]*$1[[:space:]]*\{" || {
+    printf '   o location NAO virou %s: o sed nao casou\n' "$1"; faltou=1; }
+  montar_rota "$1" "$2" "$3" | grep -qE "proxy_pass[[:space:]]+http://127\.0\.0\.1:$PORTA_QAS$2;" || {
+    printf '   o proxy_pass NAO aponta para %s%s\n' "$PORTA_QAS" "$2"; faltou=1; }
+  return $faltou
 }
 
 case "${1:-}" in
@@ -131,7 +169,12 @@ conferir)
   retratar | sed 's/^/   /'
   echo
   echo "como as rotas do QAS ficariam:"
-  montar_rota /venda-qas "$CANONICA_VENDA" "$o" | sed 's/^/   /'
+  montar_rota /venda-qas "$CANONICA_VENDA" "$A" | sed "s/^/   /"
+  echo
+  echo "o bloco do QAS perdeu alguma diretiva do original?"
+  if conferir_copia /venda-qas "$CANONICA_VENDA" "$A"; then
+    echo "   nenhuma: contagem igual em allow, deny, limit_except, proxy_set_header e access_log"
+  fi
   CONCLUIDO=1
   ;;
 
@@ -151,7 +194,19 @@ aplicar)
     echo "O bloco $CANONICA_VENDA nao tem allow/deny: as rotas do QAS nasceriam ABERTAS."
     echo "Isto exige decisao sua, nao um padrao meu. Nada foi alterado."
     CONCLUIDO=1; exit 1; }
-  echo "== $(printf '%s\n' "$ORIGENS" | grep -c .) linha(s) de origem copiadas do bloco /venda"
+  echo "== $(printf '%s
+' "$ORIGENS" | grep -c .) linha(s) de controle de acesso no bloco /venda"
+
+  # A COPIA PRESERVOU TUDO? Se um sed falhar calado, o bloco do QAS sai com menos controle do que
+  # o do DEV - e um allow a menos nao da erro, so deixa entrar menos; um limit_except a menos
+  # deixa entrar MAIS. Conferir antes de escrever no arquivo que esta em producao.
+  for par in "/venda-qas:$CANONICA_VENDA" "/recebimento-qas:$CANONICA_RECEB"; do
+    if ! conferir_copia "${par%%:*}" "${par##*:}" "$A"; then
+      echo "A copia do bloco ${par##*:} perdeu diretiva. Nada foi alterado."
+      CONCLUIDO=1; exit 1
+    fi
+  done
+  echo "== os dois blocos do QAS tem as mesmas diretivas de controle que os do DEV"
 
   # O fim do bloco /venda do DEV: e depois dele que as rotas novas entram. Ficar ao lado da rota
   # irma e proposital - quem for ler isto em janeiro acha as quatro juntas.
@@ -173,8 +228,8 @@ aplicar)
   NOVO="$(mktemp)"
   {
     sed -n "1,${FIM}p" "$A"
-    montar_rota /venda-qas       "$CANONICA_VENDA" "$ORIGENS"
-    montar_rota /recebimento-qas "$CANONICA_RECEB" "$ORIGENS"
+    montar_rota /venda-qas       "$CANONICA_VENDA" "$A"
+    montar_rota /recebimento-qas "$CANONICA_RECEB" "$A"
     sed -n "$((FIM+1)),\$p" "$A"
   } > "$NOVO"
   cat "$NOVO" > "$A"
