@@ -221,11 +221,32 @@ preparar)
             echo "$k=${v%/}-qas120"
             TROCADAS="$TROCADAS $k" ;;
 
-          # A rota de retorno define em QUAL ambiente a devolutiva cai: so o CAMINHO muda, o host
-          # e o mesmo (e a mesma VM). Trocar aqui e o que impede o motor do QAS de gravar no DEV.
+          # A rota de retorno vai DENTRO do pre-cadastro que o FugaTES manda ao Guardian: e ela
+          # que diz para onde devolver a pesagem. Por isso define em qual ambiente a devolutiva
+          # cai, e por isso nao pode ser herdada.
+          #
+          # O QUE ELA TEM NO DEV NAO E NECESSARIAMENTE DERIVAVEL. Em 06/11/2026 o motor do DEV
+          # tinha "https://webhook.site/<uuid>" aqui - um servico publico de captura, sem caminho
+          # /venda nenhum. A troca por sufixo nao casou, e o valor foi copiado inteiro para o
+          # QAS: o motor do QAS mandaria o Guardian devolver as pesagens dele para um endereco
+          # publico na internet. A guarda do aplicar pegou, mas tarde demais para ser util.
+          #
+          # Entao: converte quando reconhece o caminho, e PEDE quando nao reconhece. Nunca copia.
           *UrlParaRetorno|*UrlRetorno|*CallbackUrl)
-            echo "# QAS120: mesmo host, caminho do QAS."
-            echo "$k=$(printf '%s' "$v" | sed -E 's#/(venda|recebimento)$#/\1-qas#')"
+            convertida="$(printf '%s' "$v" | sed -E 's#/(venda|recebimento)/?$#/\1-qas#')"
+            if [ "$convertida" != "$v" ]; then
+              echo "# QAS120: mesmo host, caminho do QAS."
+              echo "$k=$convertida"
+            else
+              echo "# QAS120: NAO consegui converter o valor que o DEV tem aqui - ele nao termina"
+              echo "# em /venda nem /recebimento, entao nao da para saber qual e o equivalente no"
+              echo "# QAS. Copiar o do DEV faria o motor do QAS devolver no endereco do DEV (ou"
+              echo "# no que estiver configurado la), entao ele nao foi copiado."
+              echo "#"
+              echo "# Ponha o endereco que o Guardian usa para alcancar ESTA VM, com o caminho do"
+              echo "# QAS. O aplicar confere que termina em -qas."
+              echo "$k=http://<PREENCHER_HOST>/venda-qas"
+            fi
             TROCADAS="$TROCADAS $k" ;;
 
           *) printf '%s=%s\n' "$k" "$v"; HERDADAS=$((HERDADAS+1)) ;;
@@ -461,7 +482,16 @@ aplicar)
     for p in Type NoNewPrivileges PrivateTmp ProtectSystem ProtectHome ProtectKernelTunables \
              RestrictAddressFamilies LimitNOFILE SyslogIdentifier StandardOutput StandardError; do
       v="$(systemctl show "$u" -p "$p" --value 2>/dev/null)"
-      case "$v" in ""|no|"[not set]"|infinity) continue ;; esac
+      # O QUE O "systemctl show" RELATA NEM SEMPRE SE ESCREVE DE VOLTA NUM ARQUIVO DE UNIDADE.
+      #
+      # Em 06/11/2026 as unidades do QAS nasceram com "RestrictAddressFamilies=~": e assim que o
+      # show representa uma lista negada VAZIA, nao e um valor que se digita. Copiar a saida do
+      # relatorio como se fosse entrada e o mesmo erro de ler um estado e trata-lo como comando.
+      # "inherit" e "[not set]" sao da mesma familia.
+      #
+      # Na duvida, NAO escrever: a diretiva ausente deixa o systemd usar o padrao dele, que e o
+      # que a unidade do DEV tem quando o show relata esses valores.
+      case "$v" in ""|no|"[not set]"|infinity|"~"|inherit|null) continue ;; esac
       # O rotulo do journal e a UNICA diretiva que NAO deve ser herdada igual: com os dois
       # ambientes gravando sob "fugates-callback", a linha do QAS seria lida como linha do DEV -
       # e e justamente no journal que se diagnostica qual ambiente recusou o que.
