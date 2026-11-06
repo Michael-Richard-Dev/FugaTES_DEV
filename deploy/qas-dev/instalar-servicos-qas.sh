@@ -522,9 +522,40 @@ aplicar)
   #
   # Entao cada diretiva vem da unidade do DEV, e so e escrita se o DEV a tiver de fato.
   herdar() {
-    local u="$1" p
+    local u="$1" p item
+
+    # LoadCredential PRIMEIRO, E EM LINHA PROPRIA CADA UMA.
+    #
+    # E a diretiva que faz o systemd montar o diretorio de credenciais e definir
+    # CREDENTIALS_DIRECTORY. Sem ela o motor nao acha as credenciais do SAP e morre em
+    # SD_MOTOR_CREDENCIAIS_SYSTEMD_AUSENTES - o que aconteceu em 06/11/2026, porque minha lista
+    # de diretivas era aquilo de que eu tinha LEMBRADO. Enumerar de cabeca o que uma unidade usa
+    # e o mesmo erro de escrever a configuracao do nginx em vez de copiar a que esta no ar.
+    #
+    # NAO entra junto o SetCredential: ele carrega o VALOR da credencial dentro da unidade, e
+    # copiar valor de credencial nao e coisa que este script faz. Se o DEV usar SetCredential, o
+    # QAS vai faltar credencial e dizer isso - que e melhor do que eu espalhar segredo por ai.
+    #
+    # O show devolve as entradas separadas por espaco; cada uma precisa da sua linha.
+    for item in $(systemctl show "$u" -p LoadCredential --value 2>/dev/null); do
+      case "$item" in ""|"[not set]") continue ;; esac
+      printf 'LoadCredential=%s\n' "$item"
+    done
+
+    # Diretivas de LISTA: o show devolve todas numa linha so, separadas por espaco, e cada uma
+    # precisa da sua. ReadWritePaths importa de verdade quando ProtectSystem=strict - sem ele o
+    # processo nao escreve em lugar nenhum.
+    for p in ReadWritePaths RuntimeDirectory StateDirectory; do
+      for item in $(systemctl show "$u" -p "$p" --value 2>/dev/null); do
+        case "$item" in ""|"[not set]") continue ;; esac
+        printf '%s=%s\n' "$p" "$item"
+      done
+    done
+
+    # Diretivas de valor unico.
     for p in Type NoNewPrivileges PrivateTmp ProtectSystem ProtectHome ProtectKernelTunables \
-             RestrictAddressFamilies LimitNOFILE SyslogIdentifier StandardOutput StandardError; do
+             RestrictAddressFamilies LimitNOFILE SyslogIdentifier StandardOutput StandardError \
+             UMask TimeoutStartSec KillSignal; do
       v="$(systemctl show "$u" -p "$p" --value 2>/dev/null)"
       # O QUE O "systemctl show" RELATA NEM SEMPRE SE ESCREVE DE VOLTA NUM ARQUIVO DE UNIDADE.
       #
@@ -620,6 +651,35 @@ aplicar)
     echo "[Install]"
     echo "WantedBy=multi-user.target"
   } > "$UNIDADES/$QAS_MT.service"
+
+  # A UNIDADE DO QAS LEVOU O QUE A DO DEV TEM? Conferir contando, e nao confiando no herdar.
+  #
+  # Em 06/11/2026 o motor do QAS subiu sem LoadCredential, porque minha lista de diretivas era o
+  # que eu tinha LEMBRADO de enumerar. O erro que chegou foi
+  # SD_MOTOR_CREDENCIAIS_SYSTEMD_AUSENTES, do lado do APLICATIVO - a unidade parecia correta, e
+  # nada no systemd acusava a falta. Uma diretiva ausente nao gera aviso nenhum: ela so deixa de
+  # acontecer.
+  #
+  # Nenhum VALOR de credencial e lido ou impresso aqui - so quantas entradas existem de cada lado.
+  FALTOU_DIRETIVA=0
+  for par in "$QAS_CB:$DEV_CB" "$QAS_MT:$DEV_MT"; do
+    qas="${par%%:*}"; dev="${par##*:}"
+    for p in LoadCredential ReadWritePaths RuntimeDirectory StateDirectory; do
+      n_dev="$(systemctl show "$dev" -p "$p" --value 2>/dev/null | wc -w)"
+      n_qas="$(grep -cE "^$p=" "$UNIDADES/$qas.service" 2>/dev/null || true)"
+      if [ "$n_dev" != "$n_qas" ]; then
+        printf '   %s: %s - o DEV tem %s entrada(s), a unidade do QAS ficou com %s\n' \
+               "$qas" "$p" "$n_dev" "$n_qas"
+        FALTOU_DIRETIVA=1
+      fi
+    done
+  done
+  if [ "$FALTOU_DIRETIVA" != 0 ]; then
+    echo "A unidade do QAS nao levou tudo que a do DEV tem. As unidades foram escritas mas NAO"
+    echo "subiram. Me mande estas linhas: e defeito do herdar, nao do seu ambiente."
+    CONCLUIDO=1; exit 1
+  fi
+  echo "== as unidades do QAS levaram as mesmas diretivas de lista que as do DEV"
 
   echo "   as duas unidades, para voce conferir antes de subirem:"
   for u in "$QAS_CB" "$QAS_MT"; do
