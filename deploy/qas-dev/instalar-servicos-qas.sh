@@ -48,6 +48,7 @@ SAP_QAS_CLI='120'
 BANCO_QAS='fugates_qas'
 PAPEL_SD='fugates_qas_sd_app'
 PAPEL_ACM='fugates_qas_acm_app'
+PASSFILE="${PASSFILE:-/etc/fugates/qas120/pg.pass}"
 
 [ "$(id -u)" = 0 ] || { echo "Rode com sudo."; exit 1; }
 
@@ -85,6 +86,23 @@ argv_de() {
 # erro de aplicacao. Derivar custa uma linha; adivinhar custa uma hora.
 tipo_de() { systemctl show "$1" -p Type --value 2>/dev/null; }
 dir_de()  { systemctl show "$1" -p WorkingDirectory --value 2>/dev/null; }
+
+# O valor EFETIVO de uma chave na unidade do DEV: os EnvironmentFile sao aplicados em ordem e a
+# ultima definicao vence, igual ao systemd. O receptor do DEV tem 14 drop-ins acumulados; ler o
+# primeiro que casa daria o valor ERRADO para qualquer chave que tenha sido corrigida depois.
+#
+# O valor NUNCA e impresso: ele vai direto para o arquivo do QAS, root para root. Isto nao
+# contraria a regra de nao exportar credencial - exportar e eu ver ou mandar para fora, e nada
+# aqui sai do disco da VM nem passa pela tela.
+valor_efetivo() {
+  local u="$1" k="$2" achado="" f v
+  while read -r f; do
+    [ -f "$f" ] || continue
+    v="$( { grep -E "^[[:space:]]*${k}=" "$f" 2>/dev/null | tail -1 | cut -d= -f2-; } || true )"
+    if [ -n "$v" ]; then achado="$v"; fi
+  done <<< "$(systemctl show "$u" -p EnvironmentFiles --value 2>/dev/null | tr ' ' '\n' | grep -E '^/' || true)"
+  printf '%s' "$achado"
+}
 
 case "${1:-}" in
 
@@ -141,68 +159,119 @@ preparar)
 
   install -d -m 0750 "$ENV_QAS"
 
-  # O ambiente do QAS, montado a partir das CHAVES do DEV. Valor nenhum e copiado.
   for alvo in cb mt; do
     case "$alvo" in
-      cb) DEV="$DEV_CB"; ARQ="$ENV_QAS/callback.env" ;;
-      mt) DEV="$DEV_MT"; ARQ="$ENV_QAS/motor.env" ;;
+      cb) DEV="$DEV_CB"; ARQ="$ENV_QAS/callback.env"; PAPEL="$PAPEL_ACM" ;;
+      mt) DEV="$DEV_MT"; ARQ="$ENV_QAS/motor.env";    PAPEL="$PAPEL_SD" ;;
     esac
     if [ -f "$ARQ" ]; then echo "== $ARQ ja existe, preservado"; continue; fi
+
+    HERDADAS=0; TROCADAS=""
     {
-      echo "# Ambiente do QAS120 - gerado em $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-      echo "# As chaves vieram das que o $DEV usa HOJE. Nenhum valor foi copiado de la."
-      echo "# <PREENCHER> e seu: o aplicar recusa subir enquanto houver um."
+      echo "# Ambiente do QAS120 - gerado em $(date -u +%Y-%m-%dT%H:%M:%SZ) a partir do $DEV."
+      echo "#"
+      echo "# OS VALORES FORAM HERDADOS, e so os que TEM de diferir foram trocados. O receptor do"
+      echo "# DEV tem 59 chaves, a maioria campo de aprovacao (ApprovalReference, NotBeforeUtc,"
+      echo "# ExecutionAuthorized, SecurityMode). Pedir 50 delas preenchidas a mao e como se"
+      echo "# desliga uma guarda sem perceber - e voce ja decidiu reaproveitar as aprovacoes do"
+      echo "# DEV110 neste ambiente."
+      echo "#"
+      echo "# O que foi trocado esta marcado com QAS120 na linha acima da chave."
       echo
-      chaves_de "$DEV" | while read -r k; do
+      while IFS= read -r k; do
+        v="$(valor_efetivo "$DEV" "$k")"
         case "$k" in
-          # A PORTA. Se o receptor pega a porta do ambiente (ASPNETCORE_URLS, Kestrel) e nao da
-          # linha de comando, e aqui que ela tem de ser trocada - senao a unidade do QAS tenta
-          # abrir a MESMA porta do DEV e morre em "address already in use", que ninguem le como
-          # "esqueci de trocar a porta".
-          ASPNETCORE_URLS|ASPNETCORE_HTTP_PORTS|Urls|Kestrel__*)
-            echo "$k=http://127.0.0.1:$PORTA_QAS" ;;
-          Sap__BaseUrl)                  echo "$k=$SAP_QAS_URL" ;;
-          # A URL DE RETORNO. O motor diz ao SAP/Guardian para onde devolver, e esse endereco
-          # define em QUAL ambiente a devolutiva cai. Um motor do QAS devolvendo para /venda
-          # grava a devolutiva do QAS no banco do DEV - com credencial valida e sem erro nenhum.
-          # E o mesmo cruzamento que o par (banco, papel) passou o dia fechando, so que pela rede.
-          # O caminho ja vem certo aqui; o host e seu. O aplicar confere que termina em -qas.
-          *UrlParaRetorno*|*UrlRetorno*|*CallbackUrl*)
-            echo "# o caminho TEM de ser o do QAS (-qas); so o host e seu"
-            echo "$k=http://<PREENCHER_HOST>/venda-qas" ;;
-          # A devolutiva de SD e justamente o que o QAS120 precisa exercer: nasce ligada.
-          SdInbound__DevolutivaEnabled)  echo "$k=true" ;;
-          Sap__SapClient)                echo "$k=$SAP_QAS_CLI" ;;
-          *ConnectionString*|ConnectionStrings__*)
-            echo "# banco do QAS120. O papel e a senha que voce definiu com \\password."
-            echo "$k=Host=127.0.0.1;Port=5433;Database=$BANCO_QAS;Username=<PREENCHER_PAPEL>;Password=<PREENCHER_SENHA>" ;;
-          *)                             echo "$k=<PREENCHER>" ;;
+          ASPNETCORE_URLS|ASPNETCORE_HTTP_PORTS|Urls)
+            echo "# QAS120: porta propria. Sem isto a unidade do QAS disputaria a porta do DEV."
+            echo "$k=http://127.0.0.1:$PORTA_QAS"
+            TROCADAS="$TROCADAS $k" ;;
+
+          *PrivateListenerPort)
+            echo "# QAS120: a porta deste receptor."
+            echo "#"
+            echo "# ATENCAO: a admissao do /recebimento compara a porta local com 18086 ESCRITO NO"
+            echo "# CODIGO (ToledoCallbackAdmission, linhas 36 e 60), e exige Environment=DEV. Com"
+            echo "# $PORTA_QAS ela recusa com TOLEDO_SOURCE_NOT_ALLOWED. Isso NAO afeta o SD: a rota"
+            echo "# /venda nao passa por essa porteira - ela e a lista do nginx mais o loopback."
+            echo "# Para o /recebimento-qas funcionar, o par (Environment, porta) precisa ser"
+            echo "# estendido no codigo, do mesmo jeito que o par (banco, papel) foi hoje."
+            echo "$k=$PORTA_QAS"
+            TROCADAS="$TROCADAS $k" ;;
+
+          Sap__BaseUrl)   echo "# QAS120"; echo "$k=$SAP_QAS_URL"; TROCADAS="$TROCADAS $k" ;;
+          Sap__SapClient) echo "# QAS120"; echo "$k=$SAP_QAS_CLI"; TROCADAS="$TROCADAS $k" ;;
+
+          # A fabrica exige Passfile e Password NULO (HasExplicitAcmPassfile), e Search Path
+          # fugates. Senha na cadeia faz recusar com R165R_EXPLICIT_ACM_PASSFILE_REQUIRED.
+          *ConnectionString|ConnectionStrings__*)
+            echo "# QAS120: banco e papel do QAS. A senha NAO vem aqui - vem do $PASSFILE,"
+            echo "# porque a fabrica exige Passfile com Password nulo."
+            echo "$k=Host=127.0.0.1;Port=5433;Database=$BANCO_QAS;Search Path=fugates;Username=$PAPEL;Passfile=$PASSFILE"
+            TROCADAS="$TROCADAS $k" ;;
+
+          PGPASSFILE)
+            echo "# QAS120: o passfile deste ambiente."
+            echo "$k=$PASSFILE"
+            TROCADAS="$TROCADAS $k" ;;
+
+          # Diretorio de armazenamento compartilhado entre os dois ambientes seria o cruzamento
+          # pelo disco: um grava o que o outro le, os dois com permissao legitima.
+          *StoreDirectory|*Directory)
+            echo "# QAS120: diretorio proprio - compartilhar com o DEV seria cruzar pelo disco."
+            echo "$k=${v%/}-qas120"
+            TROCADAS="$TROCADAS $k" ;;
+
+          # A rota de retorno define em QUAL ambiente a devolutiva cai: so o CAMINHO muda, o host
+          # e o mesmo (e a mesma VM). Trocar aqui e o que impede o motor do QAS de gravar no DEV.
+          *UrlParaRetorno|*UrlRetorno|*CallbackUrl)
+            echo "# QAS120: mesmo host, caminho do QAS."
+            echo "$k=$(printf '%s' "$v" | sed -E 's#/(venda|recebimento)$#/\1-qas#')"
+            TROCADAS="$TROCADAS $k" ;;
+
+          *) printf '%s=%s\n' "$k" "$v"; HERDADAS=$((HERDADAS+1)) ;;
         esac
-      done
+      done < <(chaves_de "$DEV")
     } > "$ARQ"
     chmod 0640 "$ARQ"
-    echo "== $ARQ criado"
+    chown root:"$U" "$ARQ" 2>/dev/null || true
+
+    echo "== $(basename "$ARQ"): $HERDADAS chave(s) herdada(s) do DEV, $(printf '%s' "$TROCADAS" | wc -w) trocada(s):"
+    for k in $TROCADAS; do printf '      %s\n' "$k"; done
   done
+
+  # O PASSFILE. A senha e sua: voce a definiu com \password, e eu nao a leio nem a escrevo.
+  # Formato do libpq: host:porta:banco:usuario:senha, uma linha por papel, modo 0600.
+  if [ -f "$PASSFILE" ]; then
+    echo "== $PASSFILE ja existe, preservado"
+  else
+    {
+      echo "# Passfile do QAS120. Formato do libpq: host:porta:banco:usuario:senha"
+      echo "# Modo 0600 e obrigatorio - o libpq ignora o arquivo em silencio se estiver mais aberto."
+      echo "127.0.0.1:5433:$BANCO_QAS:$PAPEL_ACM:<PREENCHER_SENHA>"
+      echo "127.0.0.1:5433:$BANCO_QAS:$PAPEL_SD:<PREENCHER_SENHA>"
+    } > "$PASSFILE"
+    chmod 0600 "$PASSFILE"
+    chown "$U":"$U" "$PASSFILE" 2>/dev/null || true
+    echo "== $PASSFILE criado (modo 0600, dono $U)"
+  fi
 
   echo
   echo "=============================================================="
-  echo " FALTA VOCE PREENCHER"
+  echo " FALTA VOCE PREENCHER - um arquivo so"
   echo "=============================================================="
-  echo "  sudo nano $ENV_QAS/callback.env"
-  echo "  sudo nano $ENV_QAS/motor.env"
+  echo "  sudo nano $PASSFILE"
   echo
-  echo "  No callback.env, o papel do banco e: $PAPEL_ACM"
-  echo "  No motor.env,    o papel do banco e: $PAPEL_SD"
+  echo "  Duas linhas, as senhas que voce definiu com \password para:"
+  echo "     $PAPEL_ACM   (receptor)"
+  echo "     $PAPEL_SD    (motor)"
   echo
-  echo "  O restante das chaves veio do DEV: a maioria tem o MESMO valor nos dois"
-  echo "  ambientes (o Guardian e o mesmo, as credenciais SAP sao as mesmas)."
-  echo "  Compare com o DEV e copie o que for igual."
+  echo "  Os dois .env ja estao completos: nada de <PREENCHER> neles."
+  echo "  Confira se quiser:  sudo diff <(sudo cat $ENV_QAS/motor.env) /dev/null | head -40"
   echo
-  echo "  Marca deste release, para o aplicar:  $MARCA"
+  echo "  Marca deste release:  $MARCA"
   echo "  Depois:  sudo $0 aplicar MARCA=$MARCA"
   CONCLUIDO=1
   ;;
-
 aplicar)
   MARCA="${MARCA:-}"
   [ -n "$MARCA" ] || { echo "Informe a marca: sudo $0 aplicar MARCA=QAS120_..."; CONCLUIDO=1; exit 1; }
@@ -223,6 +292,48 @@ aplicar)
   done
   echo "== ambiente preenchido nos dois arquivos"
 
+  # O PASSFILE. Agora e o UNICO arquivo que depende de voce, e por isso o unico onde o
+  # <PREENCHER> importa de verdade.
+  [ -f "$PASSFILE" ] || { echo "Falta $PASSFILE. Rode preparar."; CONCLUIDO=1; exit 1; }
+  if grep -v '^[[:space:]]*#' "$PASSFILE" | grep -q '<PREENCHER'; then
+    echo "O $PASSFILE ainda tem <PREENCHER>."
+    echo "Preencha as senhas dos dois papeis do QAS120 e rode aplicar de novo. Nada foi alterado."
+    CONCLUIDO=1; exit 1
+  fi
+  # 0600 OU O LIBPQ IGNORA EM SILENCIO. Esta e a pior falha possivel aqui: o arquivo existe,
+  # esta certo, e simplesmente nao e lido - e o erro que aparece e "autenticacao falhou", que
+  # manda a gente procurar senha errada em vez de permissao errada.
+  MODO="$(stat -c '%a' "$PASSFILE" 2>/dev/null || echo '?')"
+  if [ "$MODO" != 600 ]; then
+    echo "O $PASSFILE esta em modo $MODO; o libpq exige 600 e IGNORA o arquivo em silencio se"
+    echo "estiver mais aberto - o erro apareceria como 'autenticacao falhou'. Corrija com:"
+    echo "   sudo chmod 600 $PASSFILE"
+    echo "Nada foi alterado."
+    CONCLUIDO=1; exit 1
+  fi
+  # Uma linha por papel, com os cinco campos, e sem senha vazia. Nenhuma senha e impressa:
+  # o que se confere e a CONTAGEM de campos e se o quinto nao esta vazio.
+  for pp in "$PAPEL_ACM" "$PAPEL_SD"; do
+    linha="$(grep -E "^127\.0\.0\.1:5433:$BANCO_QAS:$pp:" "$PASSFILE" | tail -1 || true)"
+    if [ -z "$linha" ]; then
+      echo "O $PASSFILE nao tem linha para 127.0.0.1:5433:$BANCO_QAS:$pp"; FALTA=1; continue
+    fi
+    if [ -z "${linha##*:}" ]; then
+      echo "A linha de $pp no $PASSFILE esta com a senha vazia."; FALTA=1
+    fi
+  done
+  echo "== passfile em modo 600, com linha para os dois papeis do QAS120"
+
+  # PGPASSWORD DEFINIDO FAZ A FABRICA RECUSAR (R165R_EXPLICIT_ACM_PASSFILE_REQUIRED): uma senha
+  # no ambiente poderia sobrepor o passfile, e o codigo prefere nao subir a subir sem saber de
+  # onde veio a credencial.
+  for a in "$ENV_QAS/callback.env" "$ENV_QAS/motor.env"; do
+    if grep -qE '^[[:space:]]*PGPASSWORD=' "$a"; then
+      echo "$(basename "$a") define PGPASSWORD: a fabrica recusa com"
+      echo "   R165R_EXPLICIT_ACM_PASSFILE_REQUIRED. Remova a linha."; FALTA=1
+    fi
+  done
+
   # O PAR (banco, papel) E A ROTA DE RETORNO, CONFERIDOS ANTES DE SUBIR.
   #
   # As guardas no codigo ja recusam um par cruzado - o servico simplesmente nao sobe. Mas a
@@ -242,7 +353,24 @@ aplicar)
           case "$p" in
             fugates_qas_*) ;;
             *) echo "$(basename "$a"): Username=\"$p\" nao e papel do QAS120 (fugates_qas_*)."; FALTA=1 ;;
-          esac ;;
+          esac
+          # SENHA NA CADEIA FAZ RECUSAR. HasExplicitAcmPassfile exige Password NULO e um Passfile
+          # absoluto; com senha na cadeia o servico nao sobe, e a mensagem e
+          # R165R_EXPLICIT_ACM_PASSFILE_REQUIRED - que nao diz "tire a senha da cadeia".
+          if printf '%s' "$valor" | tr ';' '\n' | grep -qiE '^ *Password *='; then
+            echo "$(basename "$a"): a cadeia tem Password=. A fabrica exige Password NULO e"
+            echo "   Passfile=; com senha na cadeia o servico recusa subir. A senha vai no passfile."
+            FALTA=1
+          fi
+          if ! printf '%s' "$valor" | tr ';' '\n' | grep -qiE '^ *Passfile *= *\/'; then
+            echo "$(basename "$a"): a cadeia nao tem Passfile= absoluto. Esperado: $PASSFILE"; FALTA=1
+          fi
+          # Search Path: CriarAcm (receptor) EXIGE "fugates". O motor SD aceita ausente, mas aqui
+          # as duas cadeias nascem com ele, entao divergir e sinal de edicao a mao.
+          sp="$(printf '%s' "$valor" | tr ';' '\n' | grep -iE '^ *Search ?Path *=' | cut -d= -f2- | tr -d ' ' || true)"
+          if [ -n "$sp" ] && [ "$sp" != fugates ]; then
+            echo "$(basename "$a"): Search Path=\"$sp\"; o esperado e \"fugates\"."; FALTA=1
+          fi ;;
         *UrlParaRetorno=*|*UrlRetorno=*|*CallbackUrl=*)
           case "$valor" in
             *-qas) ;;

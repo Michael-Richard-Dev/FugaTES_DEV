@@ -227,6 +227,15 @@ aplicar)
   echo "Pronto. O Guardian do QAS pode apontar para:"
   echo "   http://<este-host>/venda-qas          (devolutiva de SD)"
   echo "   http://<este-host>/recebimento-qas    (pesagem de recebimento)"
+  echo
+  echo "  SOBRE O /recebimento-qas: a rota existe e o nginx a entrega, mas a admissao do"
+  echo "  /recebimento compara a porta local com 18086 ESCRITO NO CODIGO e exige Environment=DEV"
+  echo "  (ToledoCallbackAdmission, linhas 36 e 60). Em $PORTA_QAS ela recusa com"
+  echo "  TOLEDO_SOURCE_NOT_ALLOWED - nao e defeito desta rota nem do ambiente."
+  echo "  O SD NAO depende disso: a rota /venda nao passa por essa porteira; o controle dela e"
+  echo "  esta lista do nginx mais o listener em loopback."
+  echo "  Para o recebimento do QAS andar, o par (Environment, porta) precisa ser estendido no"
+  echo "  codigo - mesma forma do par (banco, papel) de hoje. Nao e trabalho de hoje."
   CONCLUIDO=1
   ;;
 
