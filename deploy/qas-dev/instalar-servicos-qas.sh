@@ -16,7 +16,7 @@
 #   arquivo, montado a partir das CHAVES que o DEV usa hoje - o estado, nao o historico.
 #
 #   O NGINX REESCREVE o caminho. As rotas sao constantes no codigo (/venda e /recebimento), entao
-#   o receptor do QAS serve os MESMOS caminhos, na porta dele. Quem traduz /venda-qas para /venda
+#   o receptor do QAS serve os MESMOS caminhos, na porta dele. Quem traduz /venda-qas120 para /venda
 #   e o nginx - ver instalar-rotas-qas.sh. Mexer na constante criaria duas verdades no codigo.
 #
 # NENHUM SEGREDO E LIDO OU COPIADO. Do ambiente do DEV saem so os NOMES das chaves; todo valor
@@ -193,7 +193,7 @@ preparar)
             echo "# CODIGO (ToledoCallbackAdmission, linhas 36 e 60), e exige Environment=DEV. Com"
             echo "# $PORTA_QAS ela recusa com TOLEDO_SOURCE_NOT_ALLOWED. Isso NAO afeta o SD: a rota"
             echo "# /venda nao passa por essa porteira - ela e a lista do nginx mais o loopback."
-            echo "# Para o /recebimento-qas funcionar, o par (Environment, porta) precisa ser"
+            echo "# Para o /recebimento-qas120 funcionar, o par (Environment, porta) precisa ser"
             echo "# estendido no codigo, do mesmo jeito que o par (banco, papel) foi hoje."
             echo "$k=$PORTA_QAS"
             TROCADAS="$TROCADAS $k" ;;
@@ -233,7 +233,7 @@ preparar)
           #
           # Entao: converte quando reconhece o caminho, e PEDE quando nao reconhece. Nunca copia.
           *UrlParaRetorno|*UrlRetorno|*CallbackUrl)
-            convertida="$(printf '%s' "$v" | sed -E 's#/(venda|recebimento)/?$#/\1-qas#')"
+            convertida="$(printf '%s' "$v" | sed -E 's#/(venda|recebimento)/?$#/\1-qas120#')"
             if [ "$convertida" != "$v" ]; then
               echo "# QAS120: mesmo host, caminho do QAS."
               echo "$k=$convertida"
@@ -244,8 +244,8 @@ preparar)
               echo "# no que estiver configurado la), entao ele nao foi copiado."
               echo "#"
               echo "# Ponha o endereco que o Guardian usa para alcancar ESTA VM, com o caminho do"
-              echo "# QAS. O aplicar confere que termina em -qas."
-              echo "$k=http://<PREENCHER_HOST>/venda-qas"
+              echo "# QAS. O aplicar confere que termina em -qas120."
+              echo "$k=http://<PREENCHER_HOST>/venda-qas120"
             fi
             TROCADAS="$TROCADAS $k" ;;
 
@@ -451,8 +451,8 @@ aplicar)
           fi ;;
         *UrlParaRetorno=*|*UrlRetorno=*|*CallbackUrl=*)
           case "$valor" in
-            *-qas) ;;
-            *) echo "$(basename "$a"): a URL de retorno nao termina em -qas: \"$valor\""
+            *-qas120) ;;
+            *) echo "$(basename "$a"): a URL de retorno nao termina em -qas120: \"$valor\""
                echo "   Um motor do QAS devolvendo na rota do DEV grava no banco do DEV."; FALTA=1 ;;
           esac ;;
         Sap__SapClient=*)

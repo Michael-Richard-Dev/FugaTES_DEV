@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Acrescenta ao nginx as duas rotas do QAS120: /venda-qas e /recebimento-qas.
+# Acrescenta ao nginx as duas rotas do QAS120: /venda-qas120 e /recebimento-qas120.
 #
 # POR QUE ROTAS COM SUFIXO, E NAO UM SERVER PROPRIO. As rotas do receptor sao CONSTANTES no
 # codigo (DevolutivaSdEndpoint.Route e GuardianCallbackEndpoint.Route). O receptor do QAS serve os
-# mesmos caminhos, na porta dele. Entao quem traduz /venda-qas para /api/guardian/set26/callback/
+# mesmos caminhos, na porta dele. Entao quem traduz /venda-qas120 para /api/guardian/set26/callback/
 # venda e o nginx - o proxy_pass leva o caminho canonico no fim. Mexer na constante criaria duas
 # verdades no codigo, uma por ambiente, e seria a origem do proximo cruzamento.
 #
@@ -25,15 +25,31 @@ NGINX="${NGINX:-nginx}"
 
 CANONICA_VENDA=/api/guardian/set26/callback/venda
 CANONICA_RECEB=/api/guardian/set26/callback/recebimento
+# A rota de ENTRADA do SAP: e por ela que o SAP manda contrato para o FugaTES. Nao e do Guardian,
+# mas o desenho e o mesmo - constante no codigo, sufixo traduzido pelo nginx.
+CANONICA_SAP=/api/v1/integracoes/sap/contratos
+
+# UMA LISTA SO, "rota do QAS : caminho canonico do DEV".
+#
+# Antes eram tres lugares repetindo o mesmo par - a declaracao, a conferencia da copia e a
+# montagem. Acrescentar a rota do SAP exigiria lembrar dos tres; esquecer um deixaria a rota
+# existir sem ser conferida, ou ser conferida sem existir.
+PARES=(
+  "/venda-qas120:$CANONICA_VENDA"
+  "/recebimento-qas120:$CANONICA_RECEB"
+  "/contratos-sap-qas120:$CANONICA_SAP"
+)
 
 # As rotas do DEV, que NAO podem mudar de resposta.
 ROTAS_DEV=(
   /api/guardian/set26/callback/
   "$CANONICA_RECEB"
   "$CANONICA_VENDA"
+  "$CANONICA_SAP"
   /api/guardian/masterdata/transportadoras/callback
 )
-ROTAS_QAS=(/venda-qas /recebimento-qas)
+ROTAS_QAS=()
+for par in "${PARES[@]}"; do ROTAS_QAS+=("${par%%:*}"); done
 
 [ "$(id -u)" = 0 ] || { echo "Rode com sudo."; exit 1; }
 
@@ -116,13 +132,13 @@ montar_rota() {   # $1 rota do QAS, $2 caminho canonico, $3 arquivo
   printf '\n'
   printf '    # QAS120 - acrescentado em %s pelo instalar-rotas-qas.sh\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '    # Este bloco e o de %s COPIADO. Mudam tres coisas:\n' "$2"
-  printf '    #   o location (sufixo -qas), o proxy_pass (porta %s + caminho canonico, porque a\n' "$PORTA_QAS"
+  printf '    #   o location (sufixo -qas120), o proxy_pass (porta %s + caminho canonico, porque a\n' "$PORTA_QAS"
   printf '    #   rota e constante no codigo) e o arquivo de log. O controle de acesso, o\n'
   printf '    #   limit_except e o tratamento de cabecalhos sao os mesmos do DEV, de proposito.\n'
   bloco_de "$2" "$3" \
     | sed -E "1s#location[[:space:]]*=[[:space:]]*[^ {]+#location = $1#" \
     | sed -E "s#proxy_pass[[:space:]]+http://127\.0\.0\.1:[0-9]+[^;]*;#proxy_pass http://127.0.0.1:$PORTA_QAS$2;#" \
-    | sed -E "s#(access_log[[:space:]]+[^ ]+)\.log#\1-qas.log#"
+    | sed -E "s#(access_log[[:space:]]+[^ ]+)\.log#\1-qas120.log#"
 }
 
 # O bloco gerado perdeu alguma diretiva do original?
@@ -171,14 +187,14 @@ conferir)
     echo "   junto na copia, com o limit_except e o tratamento de cabecalhos."
   fi
   echo
-  echo "as rotas, agora (as -qas devem dar 404: ainda nao existem):"
+  echo "as rotas, agora (as -qas120 devem dar 404: ainda nao existem):"
   retratar | sed 's/^/   /'
   echo
   echo "como as rotas do QAS ficariam:"
-  montar_rota /venda-qas "$CANONICA_VENDA" "$A" | sed "s/^/   /"
+  montar_rota /venda-qas120 "$CANONICA_VENDA" "$A" | sed "s/^/   /"
   echo
   echo "o bloco do QAS perdeu alguma diretiva do original?"
-  if conferir_copia /venda-qas "$CANONICA_VENDA" "$A"; then
+  if conferir_copia /venda-qas120 "$CANONICA_VENDA" "$A"; then
     echo "   nenhuma: contagem igual em allow, deny, limit_except, proxy_set_header e access_log"
   fi
   CONCLUIDO=1
@@ -206,13 +222,13 @@ aplicar)
   # A COPIA PRESERVOU TUDO? Se um sed falhar calado, o bloco do QAS sai com menos controle do que
   # o do DEV - e um allow a menos nao da erro, so deixa entrar menos; um limit_except a menos
   # deixa entrar MAIS. Conferir antes de escrever no arquivo que esta em producao.
-  for par in "/venda-qas:$CANONICA_VENDA" "/recebimento-qas:$CANONICA_RECEB"; do
+  for par in "${PARES[@]}"; do
     if ! conferir_copia "${par%%:*}" "${par##*:}" "$A"; then
       echo "A copia do bloco ${par##*:} perdeu diretiva. Nada foi alterado."
       CONCLUIDO=1; exit 1
     fi
   done
-  echo "== os dois blocos do QAS tem as mesmas diretivas de controle que os do DEV"
+  echo "== os ${#PARES[@]} blocos do QAS tem as mesmas diretivas de controle que os do DEV"
 
   # O fim do bloco /venda do DEV: e depois dele que as rotas novas entram. Ficar ao lado da rota
   # irma e proposital - quem for ler isto em janeiro acha as quatro juntas.
@@ -221,7 +237,7 @@ aplicar)
   # A primeira versao fazia FIM = INICIO + (linhas do bloco) - 1, contando as linhas com
   # "grep -c ." - que conta so as NAO VAZIAS. O bloco /venda real tem linhas em branco dentro,
   # entao o FIM saia curto e as rotas do QAS eram inseridas DENTRO do location do DEV. O nginx
-  # recusou com "location /venda-qas cannot be inside the exact location .../venda", e o desfazer
+  # recusou com "location /venda-qas120 cannot be inside the exact location .../venda", e o desfazer
   # devolveu o arquivo - funcionou, mas e uma falha que nao deveria ter chegado na VM.
   #
   # O ENSAIO NAO TINHA COMO PEGAR: o meu "nginx -t" falso respondia sucesso para qualquer
@@ -254,8 +270,7 @@ aplicar)
   NOVO="$(mktemp)"
   {
     sed -n "1,${FIM}p" "$A"
-    montar_rota /venda-qas       "$CANONICA_VENDA" "$A"
-    montar_rota /recebimento-qas "$CANONICA_RECEB" "$A"
+    for par in "${PARES[@]}"; do montar_rota "${par%%:*}" "${par##*:}" "$A"; done
     sed -n "$((FIM+1)),\$p" "$A"
   } > "$NOVO"
   cat "$NOVO" > "$A"
@@ -306,10 +321,11 @@ aplicar)
 
   echo
   echo "Pronto. O Guardian do QAS pode apontar para:"
-  echo "   http://<este-host>/venda-qas          (devolutiva de SD)"
-  echo "   http://<este-host>/recebimento-qas    (pesagem de recebimento)"
+  echo "   http://<este-host>/venda-qas120           (devolutiva de SD - Guardian)"
+  echo "   http://<este-host>/contratos-sap-qas120   (contrato - SAP)"
+  echo "   http://<este-host>/recebimento-qas120     (pesagem de recebimento - Guardian)"
   echo
-  echo "  SOBRE O /recebimento-qas: a rota existe e o nginx a entrega, mas a admissao do"
+  echo "  SOBRE O /recebimento-qas120: a rota existe e o nginx a entrega, mas a admissao do"
   echo "  /recebimento compara a porta local com 18086 ESCRITO NO CODIGO e exige Environment=DEV"
   echo "  (ToledoCallbackAdmission, linhas 36 e 60). Em $PORTA_QAS ela recusa com"
   echo "  TOLEDO_SOURCE_NOT_ALLOWED - nao e defeito desta rota nem do ambiente."
