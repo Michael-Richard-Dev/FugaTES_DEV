@@ -123,7 +123,22 @@ ensaio)
   ;;
 
 aplicar)
-  existe_banco "$DB_QAS" && { echo "$DB_QAS ja existe. Use reverter antes, ou outro DB_QAS."; exit 1; }
+  if existe_banco "$DB_QAS"; then
+    n="$(pg_q "$DB_QAS" "select count(*) from pg_tables where schemaname in ('fugates','masterdata')")"
+    echo "$DB_QAS ja existe, com $n tabela(s)."
+    echo
+    if [ "$n" = "0" ]; then
+      echo "Vazio: provavelmente um aplicar que parou no meio. Como nao ha dado a perder,"
+      echo "o caminho limpo e recomecar - o reverter derruba o banco e os papeis do QAS,"
+      echo "e nao toca no $DB_DEV:"
+      echo
+      echo "  sudo $0 reverter"
+      echo "  sudo $0 aplicar"
+    else
+      echo "TEM TABELAS. Nao vou por nada por cima: confira o que ha ali antes de decidir."
+    fi
+    exit 1
+  fi
 
   echo "== extraindo a estrutura de $DB_DEV (somente leitura)"
   extrair_estrutura
@@ -154,8 +169,13 @@ aplicar)
     pg postgres -c "GRANT CONNECT ON DATABASE $DB_QAS TO $papel"
   done
 
+  # POR STDIN, e nao por -f: o diretorio temporario e do root, em modo 700, e o psql roda como
+  # postgres - ele nao leria o arquivo ("Permission denied", em 06/11/2026). Com o redirecionamento
+  # o arquivo e aberto pelo ROOT, antes de o sudo baixar privilegio, e o postgres recebe o
+  # descritor ja aberto. Afrouxar o diretorio resolveria tambem, e deixaria a estrutura do banco
+  # legivel por qualquer um na maquina - o que nao e preciso.
   echo "== carregando a estrutura"
-  pg "$DB_QAS" -f "$TMP/estrutura-qas.sql" >/dev/null
+  pg "$DB_QAS" -f - < "$TMP/estrutura-qas.sql" >/dev/null
 
   echo "== concedendo privilegios, espelhando o DEV"
   for linha in "${PAPEIS[@]}"; do
@@ -235,6 +255,17 @@ validar)
 
 blindar-dev)
   # SEPARADA DE PROPOSITO: isto ALTERA o banco do DEV, que esta em uso.
+  #
+  # Em 06/11/2026 esta rotina nasceu de uma SUPOSICAO minha - a de que o PUBLIC alcancava o
+  # fugates_dev. O conferir mostrou que nao alcanca: o banco do DEV ja estava fechado. A rotina
+  # fica porque o dia em que alguem conceder CONNECT ao PUBLIC por engano ela resolve, mas agora
+  # ela confere ANTES, em vez de agir sobre a suposicao.
+  if pg_q postgres "select has_database_privilege('public','$DB_DEV','CONNECT')" | grep -qi '^f'; then
+    echo "Nada a fazer: o PUBLIC ja NAO tem CONNECT em $DB_DEV."
+    echo "Os dois bancos ja estao separados por credencial, nos dois sentidos."
+    exit 0
+  fi
+
   echo "Esta rotina revoga CONNECT do PUBLIC em $DB_DEV e concede explicitamente aos papeis do DEV."
   echo
   echo "POR QUE: hoje o PUBLIC tem CONNECT em $DB_DEV, entao QUALQUER papel do cluster - inclusive"
