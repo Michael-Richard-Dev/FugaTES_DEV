@@ -1,0 +1,15 @@
+# Script de shell NUNCA pode sair do Git com CRLF.
+#
+# POR QUE. Estes .sh sao escritos no Windows e rodam no Linux da VM. Sem esta regra, um clone
+# novo recebe CRLF, e o kernel tenta executar o interpretador "/usr/bin/env bash\r" - que nao
+# existe. O erro que aparece e "bad interpreter: no such file or directory", apontando para um
+# caminho que esta visivelmente correto na tela.
+#
+# Em 06/11/2026 um shebang foi corrompido por outro motivo (um perl que eu tinha dado por
+# fracassado) e o "bash -n" passou, porque CRLF e sintaxe valida. O diagnostico levou tempo que
+# nao havia. Esta regra fecha a versao do mesmo problema que vem de graca com o Git no Windows.
+*.sh text eol=lf
+*.bash text eol=lf
+
+# .ps1 roda no Windows: CRLF e o natural ali.
+*.ps1 text eol=crlf
