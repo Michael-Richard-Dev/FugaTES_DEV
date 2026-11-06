@@ -41,7 +41,21 @@ $marcadores = @(
     # no assembly, fica no PDB. Conferido empiricamente contra a publicacao - "loteRemessa" dava
     # ausente num binario que a tinha. Marcador que nao se encontra nunca reprova tudo, inclusive
     # o que esta certo.
-    @{ Arquivo = 'FugaTES.dll';                Marca = '/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/$batch'; Porque = 'a guarda de rota conhece o lote' }
+    @{ Arquivo = 'FugaTES.dll';                Marca = '/sap/opu/odata/sap/API_OUTBOUND_DELIVERY_SRV;v=2/$batch'; Porque = 'a guarda de rota conhece o lote' },
+
+    # 06/11/2026, noite. Estes nasceram de uma janela de QAS120 mostrando dados do DEV110: o
+    # titulo dizia o ambiente certo e a tela de dentro lia o banco errado, que e pior do que nao
+    # abrir. Sem marcador, a publicacao seguinte confirmaria as correcoes da MANHA e nada diria
+    # sobre a que motivou esta.
+    @{ Arquivo = 'FugaTES.Aplicacao.dll';      Marca = 'QAS120';                    Porque = 'o segundo ambiente existe para o desktop' },
+    @{ Arquivo = 'FugaTES.Aplicacao.dll';      Marca = 'fugates_qas_sd_app';        Porque = 'o par banco+papel do QAS e conhecido' },
+    # SO ASCII NOS MARCADORES. A primeira versao deste usava "ambiente nao identificado" COM til,
+    # e o PowerShell 5.1 leu este arquivo (UTF-8 sem BOM) como ANSI: o marcador virou outra
+    # sequencia de bytes e deu AUSENTE num binario que tem a correcao. Marcador que nunca casa
+    # reprova para sempre - e um "o desktop esta atrasado" permanente ensina a ignorar o aviso.
+    @{ Arquivo = 'FugaTES.dll';                Marca = 'AmbienteDesktop';           Porque = 'o titulo sai do par do carrier.json, e nao de um literal' },
+    @{ Arquivo = 'FugaTES.dll';                Marca = 'SD_AMBIENTE_DA_JANELA_NAO_IDENTIFICADO'; Porque = 'a tela do SD nao cai no DEV por omissao' },
+    @{ Arquivo = 'FugaTES.dll';                Marca = 'SD_BANCO_INVALIDO';         Porque = 'a tela do SD recusa banco de outro ambiente' }
 )
 
 # Procura nas DUAS codificacoes: nome de tipo e de membro ficam em UTF-8 no assembly, literal de
