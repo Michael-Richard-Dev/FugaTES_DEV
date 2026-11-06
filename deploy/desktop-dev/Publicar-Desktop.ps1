@@ -34,6 +34,7 @@ $marcadores = @(
     @{ Arquivo = 'FugaTES.Aplicacao.dll';      Marca = 'LacresPorTipo';             Porque = 'lacre de carga e de testemunha separados' },
     @{ Arquivo = 'FugaTES.Aplicacao.dll';      Marca = 'JsonDoGuardian';            Porque = 'Enter cru na observacao aceito' },
     @{ Arquivo = 'FugaTES.Aplicacao.dll';      Marca = 'TipoAusente';               Porque = 'pesagem sem pre-cadastro nao e recusa' },
+    @{ Arquivo = 'FugaTES.Aplicacao.dll';      Marca = 'PedacoDeRotuloMaior';       Porque = 'placa entra, e a transportadora nao vai no campo de placa' },
     @{ Arquivo = 'FugaTES.Integracao.SAP.dll'; Marca = 'SapODataLoteV2';            Porque = 'itens da remessa numa transacao so' },
     @{ Arquivo = 'FugaTES.Integracao.SAP.dll'; Marca = 'currently being processed'; Porque = 'a trava da remessa e reconhecida' },
     # A rota do lote, e NAO o nome da variavel que a guarda usa: nome de variavel LOCAL nao fica
