@@ -3,6 +3,7 @@
 #   inventariar-cluster.sh   - so LE catalogo do PostgreSQL, nunca altera
 #   inventariar-servicos.sh  - so LE systemd, nginx e portas, nunca altera
 #   criar-banco-qas.sh       - "conferir" e "ensaio" nao alteram nada; "aplicar" cria
+#   limpar-nginx.sh          - "conferir" nao altera nada; "aplicar" tira as copias .bak
 #
 # Uso:  .\Enviar-Banco.ps1
 
@@ -13,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host 'enviando os scripts do QAS120'
-scp inventariar-cluster.sh criar-banco-qas.sh inventariar-servicos.sh "${Destino}:~/"
+scp inventariar-cluster.sh criar-banco-qas.sh inventariar-servicos.sh limpar-nginx.sh "${Destino}:~/"
 if ($LASTEXITCODE -ne 0) { throw "scp falhou com codigo $LASTEXITCODE." }
 
 Write-Host ''
@@ -23,4 +24,7 @@ Write-Host '  sudo ~/criar-banco-qas.sh conferir   # nao altera nada'
 Write-Host '  sudo ~/criar-banco-qas.sh ensaio     # nao altera nada'
 Write-Host '  sudo ~/criar-banco-qas.sh aplicar'
 Write-Host ''
-Write-Host '  chmod +x ~/inventariar-servicos.sh && sudo ~/inventariar-servicos.sh   # nao altera nada'
+Write-Host '  chmod +x ~/inventariar-servicos.sh ~/limpar-nginx.sh'
+Write-Host '  sudo ~/inventariar-servicos.sh      # nao altera nada'
+Write-Host '  sudo ~/limpar-nginx.sh conferir     # nao altera nada'
+Write-Host '  sudo ~/limpar-nginx.sh aplicar'
