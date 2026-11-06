@@ -14,7 +14,7 @@ public sealed partial class AcmManualRetryPostgreSql
  public async Task<AcmExternalContractReconciliationResult> ReconcileExternalContractAsync(AcmExternalContractReconciliationProof proof,IAcmR57NormalPreparacao sourcePreparation,CancellationToken ct)
  {
   if(proof.OperationId==Guid.Empty||proof.IntegrationId==Guid.Empty||proof.Desired is null)throw new InvalidOperationException("EXTERNAL_RECONCILIATION_PROOF_REQUIRED");
-  await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct);
+  await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct,expectedRole:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).PapelAcm,expectedDatabase:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).Banco);
   await using var tx=await c.BeginTransactionAsync(IsolationLevel.Serializable,ct);var committed=false;
   try
   {

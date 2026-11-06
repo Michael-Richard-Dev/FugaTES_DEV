@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Text;
 using System.Text.Json;
 using FugaTES.Aplicacao.Contratos.MotorIntegracao;
@@ -58,7 +59,7 @@ public static class AcmManualRetryCommandHost
             ConfigureApprovedRuntime(builder.Services,runtime,normal);
             builder.Services.RemoveAll<IIdentidadeWorkerProvider>();
             builder.Services.AddSingleton<IIdentidadeWorkerProvider>(new FixedCommandWorker(profile.WorkerIdentity));
-            builder.Services.AddScoped<AcmManualRetryPostgreSql>();
+            builder.Services.AddScoped(sp=>new AcmManualRetryPostgreSql(sp.GetRequiredService<NpgsqlDataSource>(),AcmEnvironmentBinding.Banco(runtime)));
             builder.Services.AddScoped<IAcmManualRetryStore>(sp => new CommittedAcmRetryStore(sp.GetRequiredService<AcmManualRetryPostgreSql>(), sp.GetRequiredService<AcmRetryDispatchQueue>()));
             builder.Services.AddSingleton(_ => CreateDispatchQueue(profile, approvals));
             builder.Services.AddSingleton<IAcmApprovedRetryExecutor, AcmApprovedRetryExecutor>();
@@ -110,10 +111,17 @@ public static class AcmManualRetryCommandHost
             .ToArray();
     }
 
+    public static AmbienteBanco ReadEnvironment(AcmManualRetryCommandProfile profile)
+    {
+        using var file=new MemoryStream(PrivateCommandFile.Read(profile.BaseConfigurationFile,1048576,privateContent:false));
+        return AcmEnvironmentBinding.Banco(new ConfigurationBuilder().AddJsonStream(file).Build());
+    }
+
     public static IConfigurationRoot BuildRuntimeConfiguration(AcmManualRetryCommandProfile profile, IConfiguration baseline)
     {
-        var connection = new NpgsqlConnectionStringBuilder { Host = "127.0.0.1", Port = 5433, Database = "fugates_dev", SearchPath = "fugates",
-            Username = NpgsqlDataSourceFactory.AcmApplicationRole, Passfile = profile.Passfile, Enlist = false,
+        var ambiente=AcmEnvironmentBinding.Banco(baseline);
+        var connection = new NpgsqlConnectionStringBuilder { Host = "127.0.0.1", Port = 5433, Database = ambiente.Banco, SearchPath = "fugates",
+            Username = ambiente.PapelAcm, Passfile = profile.Passfile, Enlist = false,
             IncludeErrorDetail = false, ApplicationName = "FugaTES.AcmManualRetry.Command" };
         var result = new ConfigurationBuilder().AddInMemoryCollection(baseline.AsEnumerable()).Build();
         // Explicit per-process overrides. Never inherit a pilot/window or any global worker switch.

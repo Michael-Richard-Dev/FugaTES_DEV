@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Data;
 using FugaTES.Aplicacao.Consultas.ContratosAcm;
 using Npgsql;
@@ -5,7 +6,7 @@ using Npgsql;
 namespace FugaTES.Persistencia.Consultas.ContratosAcm;
 
 // roleEsperada nula mantem o comportamento historico: identidade fixa na role ACM compartilhada.
-public sealed class ContratosAcmPostgreSqlReadRepository(NpgsqlDataSource source,bool exigirIdentidadeAcm=false,string? roleEsperada=null) : IContratosAcmReadRepository
+public sealed class ContratosAcmPostgreSqlReadRepository(NpgsqlDataSource source,bool exigirIdentidadeAcm=false,string? roleEsperada=null,AmbienteBanco? ambiente=null) : IContratosAcmReadRepository
 {
     public const string ConsultaSql = """
         select v.payload_contrato->>'Centro', v.numero_contrato, v.versao, v.criado_em,
@@ -29,7 +30,7 @@ public sealed class ContratosAcmPostgreSqlReadRepository(NpgsqlDataSource source
             await readOnly.ExecuteNonQueryAsync(ct);
         if(exigirIdentidadeAcm)
         {
-            await using var identity=FugaTES.Persistencia.Consultas.Monitor.MonitorPostgreSqlReadRepository.ComandoIdentidade(roleEsperada,connection,tx);
+            await using var identity=FugaTES.Persistencia.Consultas.Monitor.MonitorPostgreSqlReadRepository.ComandoIdentidade(roleEsperada,connection,tx,ambiente);
             if(await identity.ExecuteScalarAsync(ct) is not true)throw new InvalidOperationException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
         }
         await using var command = new NpgsqlCommand(ConsultaSql, connection, tx) { CommandTimeout = 10 };

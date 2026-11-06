@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Text.Json;
 using FugaTES.Aplicacao.Consultas.ContratosAcm;
 using FugaTES.Aplicacao.Consultas.Monitor;
@@ -13,17 +14,18 @@ public sealed record DevDatabaseIdentity(string Cluster,int Port,string Database
     // Sem argumento: aceita qualquer uma das identidades de LEITURA autorizadas. Usado pelo cliente
     // (DEV110), que recebe a identidade pela API e nao sabe qual das duas o servidor foi configurado
     // para usar. A role de escrita do receptor SAP nunca esta nessa lista.
-    public void Validate()
-        => Validate(MonitorPostgreSqlReadRepository.RolesDeLeituraAutorizadas);
-
-    // Com a role esperada: usado pelo servidor, que sabe exatamente qual identidade configurou.
-    public void Validate(string roleEsperada)
-        => Validate([roleEsperada]);
-
-    void Validate(string[] rolesAceitas)
+    public void Validate(params AmbienteBanco[] ambientesAceitos)
     {
-        if(Cluster!="18/fugatesacmdev"||Port!=5433||Database!="fugates_dev"||!ReadOnly||
-            !rolesAceitas.Contains(Role,StringComparer.Ordinal)||
+        var aceitos=ambientesAceitos.Length==0?new[]{AmbientesBanco.Dev110}:ambientesAceitos;
+        var ambiente=AmbientesBanco.Por(Database,Role,aceitos);
+        ValidateCore(ambiente,Role);
+    }
+    public void Validate(string roleEsperada,AmbienteBanco? ambiente=null)
+        =>ValidateCore(AmbientesBanco.Por(Database,Role,ambiente??AmbientesBanco.Dev110),roleEsperada);
+    void ValidateCore(AmbienteBanco? ambiente,string roleEsperada)
+    {
+        if(ambiente is null||Database!=ambiente.Banco||Role!=roleEsperada||Role!=ambiente.PapelAcm&&Role!=ambiente.PapelLeitura||
+            Cluster!="18/fugatesacmdev"||Port!=5433||!ReadOnly||
             DateTimeOffset.UtcNow-CapturedUtc>TimeSpan.FromSeconds(15)||CapturedUtc>DateTimeOffset.UtcNow.AddSeconds(5))
             throw new InvalidOperationException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
     }
@@ -46,10 +48,10 @@ public interface IDevUnifiedReadStore
 // Facade over the canonical repositories. One application datasource, GET-only consumers, no writes.
 // roleEsperada e a identidade com que a API foi configurada. Nula mantem o comportamento historico
 // (role ACM compartilhada). O valor e validado contra a lista branca de leitura.
-public sealed class DevUnifiedReadStore(NpgsqlDataSource source,string? roleEsperada=null):IDevUnifiedReadStore
+public sealed class DevUnifiedReadStore(NpgsqlDataSource source,string? roleEsperada=null,AmbienteBanco? ambiente=null):IDevUnifiedReadStore
 {
-    readonly MonitorPostgreSqlReadRepository monitor=new(source,exigirIdentidadeAcm:true,roleEsperada:roleEsperada);
-    readonly ContratosAcmPostgreSqlReadRepository contracts=new(source,exigirIdentidadeAcm:true,roleEsperada:roleEsperada);
+    readonly MonitorPostgreSqlReadRepository monitor=new(source,exigirIdentidadeAcm:true,roleEsperada:roleEsperada,ambiente:ambiente);
+    readonly ContratosAcmPostgreSqlReadRepository contracts=new(source,exigirIdentidadeAcm:true,roleEsperada:roleEsperada,ambiente:ambiente);
     public async Task<DevDatabaseIdentity> IdentityAsync(CancellationToken ct)
     {
         await using var connection=await source.OpenConnectionAsync(ct);
@@ -62,13 +64,13 @@ public sealed class DevUnifiedReadStore(NpgsqlDataSource source,string? roleEspe
             await using var r=await command.ExecuteReaderAsync(ct);await r.ReadAsync(ct);
             var identity=new DevDatabaseIdentity(r.GetString(0),r.GetInt32(1),r.GetString(2),r.GetString(3),r.GetBoolean(4),r.GetFieldValue<DateTimeOffset>(5));
             // O servidor exige exatamente a identidade que configurou, nao "uma das aceitas".
-            identity.Validate(roleEsperada??MonitorPostgreSqlReadRepository.RoleAcmCompartilhada);return identity;
+            identity.Validate(roleEsperada??(ambiente??AmbientesBanco.Dev110).PapelAcm,ambiente);return identity;
         }
         finally{await tx.RollbackAsync(CancellationToken.None);}
     }
     async Task Guard(NpgsqlConnection c,NpgsqlTransaction tx,CancellationToken ct)
     {
-        await using var cmd=MonitorPostgreSqlReadRepository.ComandoIdentidade(roleEsperada,c,tx);
+        await using var cmd=MonitorPostgreSqlReadRepository.ComandoIdentidade(roleEsperada,c,tx,ambiente);
         if(await cmd.ExecuteScalarAsync(ct) is not true)throw new InvalidOperationException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
     }
     public async Task<object> ReadAsync(string resource,string? selector,CancellationToken ct)
@@ -93,11 +95,11 @@ public sealed class DevUnifiedReadStore(NpgsqlDataSource source,string? roleEspe
                 return new DevReadEnvelope<DevProtocolView>(identity,new(row,detail.Acm,origin=="SIMULACAO_CONFIRMADA",origin));
             case "masterdata":return new DevReadEnvelope<DevMasterdataSnapshot>(identity,await MasterdataAsync(selector,ct));
             case "toledo":return new DevReadEnvelope<FugaTES.Aplicacao.Consultas.RecebimentosToledo.RecebimentosToledoSnapshot>(identity,
-                await new FugaTES.Persistencia.Consultas.RecebimentosToledo.RecebimentosToledoPostgreSqlReadRepository(source,roleEsperada).ConsultarRecebimentosAsync(selector,ct));
+                await new FugaTES.Persistencia.Consultas.RecebimentosToledo.RecebimentosToledoPostgreSqlReadRepository(source,roleEsperada,ambiente).ConsultarRecebimentosAsync(selector,ct));
             case "toledo-json":return new DevReadEnvelope<FugaTES.Aplicacao.Consultas.RecebimentosToledo.RecebimentoToledoDocumento>(identity,
-                await new FugaTES.Persistencia.Consultas.RecebimentosToledo.RecebimentosToledoPostgreSqlReadRepository(source,roleEsperada).ObterJsonRecebidoAsync(ParseId(selector),ct));
+                await new FugaTES.Persistencia.Consultas.RecebimentosToledo.RecebimentosToledoPostgreSqlReadRepository(source,roleEsperada,ambiente).ObterJsonRecebidoAsync(ParseId(selector),ct));
             case "toledo-sap-json":return new DevReadEnvelope<FugaTES.Aplicacao.Consultas.RecebimentosToledo.ToledoSapJsonFonte>(identity,
-                await new FugaTES.Persistencia.Consultas.RecebimentosToledo.RecebimentosToledoPostgreSqlReadRepository(source,roleEsperada).ObterFonteJsonSapAsync(ParseId(selector),ct));
+                await new FugaTES.Persistencia.Consultas.RecebimentosToledo.RecebimentosToledoPostgreSqlReadRepository(source,roleEsperada,ambiente).ObterFonteJsonSapAsync(ParseId(selector),ct));
             default:throw new KeyNotFoundException();
         }
     }

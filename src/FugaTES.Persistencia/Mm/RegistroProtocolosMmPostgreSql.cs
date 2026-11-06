@@ -1,24 +1,25 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Security.Cryptography;
 using System.Text;
 using FugaTES.Aplicacao.Contratos.Mm;
 using FugaTES.Aplicacao.Modelos.Mm;
 using Npgsql;
 namespace FugaTES.Persistencia.Mm;
-public sealed class RegistroProtocolosMmPostgreSql(NpgsqlDataSource fonte):IRegistroProtocolosMm
+public sealed class RegistroProtocolosMmPostgreSql(NpgsqlDataSource fonte,AmbienteBanco? ambiente=null):IRegistroProtocolosMm
 {
-    public const string Role="fugates_mm_app";
-    public static void ValidarIdentidade(string database,string user,string session,string cluster,int port)
-    {if(database!="fugates_dev"||user!=Role||session!=Role||cluster!="18/fugatesacmdev"||port!=5433)throw new InvalidOperationException("MM_DATABASE_IDENTITY_REJECTED");}
-    internal static async Task ConferirAsync(NpgsqlConnection connection,NpgsqlTransaction? tx,CancellationToken ct)
+    public static string Role=>AmbientesBanco.Dev110.PapelMm;
+    public static void ValidarIdentidade(string database,string user,string session,string cluster,int port,params AmbienteBanco[] aceitos)
+    {var lista=aceitos.Length==0?new[]{AmbientesBanco.Dev110}:aceitos;var a=AmbientesBanco.Por(database,user,lista);if(a is null||database!=a.Banco||user!=a.PapelMm||session!=user||cluster!="18/fugatesacmdev"||port!=5433)throw new InvalidOperationException("MM_DATABASE_IDENTITY_REJECTED");}
+    internal static async Task ConferirAsync(NpgsqlConnection connection,NpgsqlTransaction? tx,CancellationToken ct,AmbienteBanco? ambiente=null)
     {
         await using var command=new NpgsqlCommand("select current_database(),current_user,session_user,current_setting('cluster_name'),current_setting('port')::int",connection,tx);
         await using var reader=await command.ExecuteReaderAsync(ct);
         if(!await reader.ReadAsync(ct))throw new InvalidOperationException("MM_DATABASE_IDENTITY_UNAVAILABLE");
-        ValidarIdentidade(reader.GetString(0),reader.GetString(1),reader.GetString(2),reader.GetString(3),reader.GetInt32(4));
+        ValidarIdentidade(reader.GetString(0),reader.GetString(1),reader.GetString(2),reader.GetString(3),reader.GetInt32(4),ambiente??AmbientesBanco.Dev110);
     }
     public async Task<IReadOnlyList<RegistroProtocoloMm>> LerAsync(CancellationToken ct)
     {
-        await using var connection=await fonte.OpenConnectionAsync(ct);await ConferirAsync(connection,null,ct);
+        await using var connection=await fonte.OpenConnectionAsync(ct);await ConferirAsync(connection,null,ct,ambiente);
         await using var command=new NpgsqlCommand("select reserva_id,chave_natural,pedido,item,centro,payload_json,payload_sha256,estado,http_status,protocolo_id,mensagem_segura,atualizado_em,fonte_sha256 from fugates.protocolo_mm_pedido_compra order by criado_em limit 100001",connection);
         await using var reader=await command.ExecuteReaderAsync(ct);var result=new List<RegistroProtocoloMm>();
         while(await reader.ReadAsync(ct))
@@ -34,7 +35,7 @@ public sealed class RegistroProtocolosMmPostgreSql(NpgsqlDataSource fonte):IRegi
         if(row.Estado!=EstadoProtocoloMm.Indeterminado||row.Http is not null||row.ProtocoloId is not null||row.ReservaId==Guid.Empty
            ||row.SourceSha256 is null||!System.Text.RegularExpressions.Regex.IsMatch(row.SourceSha256,"^[0-9A-F]{64}$")||row.JsonEnviado.Length>65536||Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(row.JsonEnviado)))!=row.Sha256)
             throw new InvalidOperationException("MM_RESERVATION_INVALID");
-        await using var connection=await fonte.OpenConnectionAsync(ct);await using var tx=await connection.BeginTransactionAsync(ct);await ConferirAsync(connection,tx,ct);
+        await using var connection=await fonte.OpenConnectionAsync(ct);await using var tx=await connection.BeginTransactionAsync(ct);await ConferirAsync(connection,tx,ct,ambiente);
         await using var command=new NpgsqlCommand("""
             insert into fugates.protocolo_mm_pedido_compra
             (reserva_id,chave_natural,empresa,pedido,item,centro,payload_json,payload_sha256,estado,mensagem_segura,fonte_sha256)
@@ -49,7 +50,7 @@ public sealed class RegistroProtocolosMmPostgreSql(NpgsqlDataSource fonte):IRegi
         if(result.Estado is not(EstadoProtocoloMm.Criado or EstadoProtocoloMm.Recusado or EstadoProtocoloMm.Indeterminado)
            ||result.Estado==EstadoProtocoloMm.Criado&&(result.ProtocoloId is not >0||result.Http is not(>=200 and <300)))
             throw new InvalidOperationException("MM_OUTCOME_INVALID");
-        await using var connection=await fonte.OpenConnectionAsync(ct);await using var tx=await connection.BeginTransactionAsync(ct);await ConferirAsync(connection,tx,ct);
+        await using var connection=await fonte.OpenConnectionAsync(ct);await using var tx=await connection.BeginTransactionAsync(ct);await ConferirAsync(connection,tx,ct,ambiente);
         await using var command=new NpgsqlCommand("""
             update fugates.protocolo_mm_pedido_compra set estado=$3,http_status=$4,protocolo_id=$5,mensagem_segura=$6,atualizado_em=now()
             where reserva_id=$1 and chave_natural=$2 and estado='INDETERMINADO' and http_status is null

@@ -52,7 +52,7 @@ public static class ToledoSapReturnComposition
         if(ackMode=="SapConfirmed")
         {
             services.AddSingleton(ToledoSapCallbackAckOptions.Approved);
-            services.AddScoped<IToledoSapCallbackOutcomeRead>(sp=>new ToledoSapCallbackOutcomeRead(sp.GetRequiredKeyedService<NpgsqlDataSource>(ToledoCallbackComposition.DataSourceKey)));
+            services.AddScoped<IToledoSapCallbackOutcomeRead>(sp=>new ToledoSapCallbackOutcomeRead(sp.GetRequiredKeyedService<NpgsqlDataSource>(ToledoCallbackComposition.DataSourceKey),AmbientesBanco.PorNome(AmbientesSap.Por(sap,config["Sap:SapClient"])!.Nome)));
             services.AddScoped<ToledoSapCallbackAcknowledgement>();
         }
         services.AddKeyedScoped<DevolutivaToledoSapPostgreSql>(Key,(sp,_)=>new(sp.GetRequiredKeyedService<NpgsqlDataSource>(ToledoCallbackComposition.DataSourceKey),window));

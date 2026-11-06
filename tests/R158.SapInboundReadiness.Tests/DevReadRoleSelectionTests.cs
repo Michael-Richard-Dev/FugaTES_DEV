@@ -51,11 +51,12 @@ public sealed class DevReadRoleSelectionTests
         // pelo codigo, nao pela variavel.
         Assert.True(NpgsqlDataSourceFactory.EhRoleGuardada(NpgsqlDataSourceFactory.AcmApplicationRole));
         Assert.True(NpgsqlDataSourceFactory.EhRoleGuardada(NpgsqlDataSourceFactory.DevReadOnlyApplicationRole));
-        var fonte = Fonte("DevUnifiedReadApi.cs");
-        // A connection string segue fixando porta, base, schema e somente leitura no codigo.
-        foreach (var fixo in new[] { "Port=5433", "Database=\"fugates_dev\"", "SearchPath=\"fugates\"",
-                                     "default_transaction_read_only=on" })
-            Assert.Contains(fixo.Replace("Port=5433", "Port=5433"), fonte.Replace("Port = 5433", "Port=5433"), StringComparison.Ordinal);
+        var config=new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+        var connection=DevUnifiedReadApi.BuildConnection(config,"/SYNTHETIC/passfile","fugates_dev_read_app");
+        Assert.Equal(5433,connection.Port);Assert.Equal("127.0.0.1",connection.Host);
+        Assert.Equal("fugates_dev",connection.Database);Assert.Equal("fugates",connection.SearchPath);
+        Assert.Equal("-c default_transaction_read_only=on",connection.Options);
+        using var source=NpgsqlDataSourceFactory.CriarAcm(connection.ConnectionString);
     }
 
     private static string Fonte(string nome)

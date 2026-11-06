@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Text.Json;
 using FugaTES.Aplicacao.Contratos.Mm;
 using FugaTES.Aplicacao.Modelos.Mm;
@@ -5,7 +6,7 @@ using FugaTES.Aplicacao.Servicos.Mm;
 using Npgsql;
 namespace FugaTES.Persistencia.Mm;
 /// <summary>Durable MM commands, independent of H4/ACM integration identifiers.</summary>
-public sealed class MmRetryPostgreSqlStore(NpgsqlDataSource source):IMmRetryStore
+public sealed class MmRetryPostgreSqlStore(NpgsqlDataSource source,AmbienteBanco? ambiente=null):IMmRetryStore
 {
  const string CommandFields="comando_id,anterior_json::text,snapshot_sha256,operador_sid,justificativa,estado,criado_em,claim_token,envio_iniciado_em,resultado_json::text";
  const string RegistryFields="reserva_id,chave_natural,pedido,item,centro,payload_json,payload_sha256,estado,http_status,protocolo_id,mensagem_segura,atualizado_em,fonte_sha256";
@@ -30,22 +31,22 @@ public sealed class MmRetryPostgreSqlStore(NpgsqlDataSource source):IMmRetryStor
   await using var r=await cmd.ExecuteReaderAsync(ct);return await r.ReadAsync(ct)?Registry(r):null;
  }
  public async Task<RegistroProtocoloMm?> ReadRegistryAsync(string pedido,string item,CancellationToken ct)
- {await using var c=await source.OpenConnectionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct);return await Read(c,null,pedido,item,false,ct);}
+ {await using var c=await source.OpenConnectionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct,ambiente);return await Read(c,null,pedido,item,false,ct);}
  public async Task<bool> HasPendingAsync(string key,CancellationToken ct)
  {
-  await using var c=await source.OpenConnectionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct);
+  await using var c=await source.OpenConnectionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct,ambiente);
   await using var cmd=new NpgsqlCommand("select exists(select 1 from fugates.protocolo_mm_reenvio_comando where chave_natural=$1 and estado in ('PENDENTE','EM_PROCESSAMENTO','INDETERMINADO'))",c);cmd.Parameters.AddWithValue(key);return await cmd.ExecuteScalarAsync(ct) is true;
  }
  public async Task<MmRetryCommand?> FindCommandAsync(Guid id,CancellationToken ct)
  {
-  await using var c=await source.OpenConnectionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct);
+  await using var c=await source.OpenConnectionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct,ambiente);
   await using var cmd=new NpgsqlCommand("select "+CommandFields+" from fugates.protocolo_mm_reenvio_comando where comando_id=$1",c);cmd.Parameters.AddWithValue(id);await using var r=await cmd.ExecuteReaderAsync(ct);return await r.ReadAsync(ct)?Command(r):null;
  }
  public async Task<MmRetryReceipt> EnqueueAsync(MmRetryCommand job,CancellationToken ct)
  {
   var row=job.Previous;
   if(job.Id==Guid.Empty||row is null||row.ReservaId==Guid.Empty||row.Estado!=EstadoProtocoloMm.Recusado||row.ProtocoloId is not null||!MmRetryPolicy.Key(row.Pedido,10)||!MmRetryPolicy.Key(row.Item,5)||!MmRetryOptions.Hash(job.SnapshotDigest)||!System.Text.RegularExpressions.Regex.IsMatch(job.OperatorSid,@"\AS-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]+\z")||job.Justification.Length is <8 or >500||job.Justification.Any(char.IsControl)||job.State!="PENDENTE"||job.Fence is not null||job.DispatchStartedUtc is not null)throw new InvalidOperationException("MM_COMMAND_ADMISSION_INVALID");
-  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct);
+  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct,ambiente);
   var current=await Read(c,tx,row.Pedido,row.Item,true,ct);
   if(!Same(current,row))return new(job.Id,row.Pedido,row.Item,"BLOCKED","MM_RETRY_PREVIEW_CHANGED");
   await using var cmd=new NpgsqlCommand("""
@@ -58,7 +59,7 @@ public sealed class MmRetryPostgreSqlStore(NpgsqlDataSource source):IMmRetryStor
  }
  public async Task<MmRetryCommand?> ClaimAsync(CancellationToken ct)
  {
-  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct);
+  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct,ambiente);
   await using var cmd=new NpgsqlCommand("""
    with candidate as(select comando_id from fugates.protocolo_mm_reenvio_comando where estado='PENDENTE' order by criado_em,comando_id for update skip locked limit 1)
    update fugates.protocolo_mm_reenvio_comando j set estado='EM_PROCESSAMENTO',claim_token=$1,atualizado_em=now() from candidate c where j.comando_id=c.comando_id
@@ -70,7 +71,7 @@ public sealed class MmRetryPostgreSqlStore(NpgsqlDataSource source):IMmRetryStor
  public async Task<bool> MarkDispatchAsync(MmRetryCommand job,CancellationToken ct)
  {
   if(job.Fence is null)return false;
-  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct);
+  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct,ambiente);
   var previous=await Read(c,tx,job.Previous.Pedido,job.Previous.Item,true,ct);if(!Same(previous,job.Previous))return false;
   await using var cmd=new NpgsqlCommand("update fugates.protocolo_mm_reenvio_comando set envio_iniciado_em=now(),atualizado_em=now() where comando_id=$1 and claim_token=$2 and estado='EM_PROCESSAMENTO' and envio_iniciado_em is null",c,tx);cmd.Parameters.AddWithValue(job.Id);cmd.Parameters.AddWithValue(job.Fence.Value);
   var count=await cmd.ExecuteNonQueryAsync(ct);await tx.CommitAsync(ct);return count==1;
@@ -78,7 +79,7 @@ public sealed class MmRetryPostgreSqlStore(NpgsqlDataSource source):IMmRetryStor
  public async Task FinishAsync(MmRetryCommand job,ResultadoProtocoloMm result,bool dispatched,CancellationToken ct)
  {
   if(job.Fence is null||result.Estado is not(EstadoProtocoloMm.Criado or EstadoProtocoloMm.Recusado or EstadoProtocoloMm.Indeterminado)||result.Mensagem.Length>400||result.Estado==EstadoProtocoloMm.Criado&&(!dispatched||result.Http is not(>=200 and <300)||result.ProtocoloId is not >0))throw new InvalidOperationException("MM_COMMAND_OUTCOME_INVALID");
-  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct);
+  await using var c=await source.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,tx,ct,ambiente);
   var current=await Read(c,tx,job.Previous.Pedido,job.Previous.Item,true,ct);if(!Same(current,job.Previous))throw new InvalidOperationException("MM_COMMAND_PRIOR_STATE_CHANGED");
   if(dispatched)
   {

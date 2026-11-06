@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Text.Json;
 using FugaTES.Aplicacao.Modelos.Mm;
 using FugaTES.Aplicacao.Servicos.Mm;
@@ -11,7 +12,14 @@ public static class MmLinuxComposition
 {
  public static void Configure(IServiceCollection services,IConfiguration config)
  {
-  var options=config.GetSection("MmPurchaseOrders").Get<MmLinuxOptions>()??new();options.Validate();
+  var options=config.GetSection("MmPurchaseOrders").Get<MmLinuxOptions>()??new();
+  if(config["Sap:BaseUrl"] is not null||config["Sap:SapClient"] is not null)
+  {
+   var sap=AcmEnvironmentBinding.Sap(config);
+   if(config["MmPurchaseOrders:SapOrigin"] is not null&&options.SapOrigin!=sap.Origem||config["MmPurchaseOrders:SapClient"] is not null&&options.SapClient!=sap.SapClient)throw new InvalidOperationException("MM_PROCESS_ENVIRONMENT_MISMATCH");
+   options=options with{SapOrigin=sap.Origem,SapClient=sap.SapClient};
+  }
+  options.Validate();
   services.AddSystemd();services.AddSingleton(options);services.AddHostedService<MmLinuxWorker>();
  }
 }
@@ -44,7 +52,7 @@ public sealed class MmLinuxRuntime:IAsyncDisposable,IMmGuardianDispatcher
  private MmLinuxRuntime(MmLinuxOptions options,NpgsqlDataSource database,MmWorkerLease lease,HttpClient sap,HttpClient guardian,MmFileSnapshotStore store,GuardianTokenClient token,MmRetryOptions retryOptions)
  {
   this.options=options;this.database=database;this.lease=lease;this.sap=sap;this.guardian=guardian;this.store=store;
-  registry=new(database);
+  registry=new(database,options.AmbienteBanco);
   var raw=new GuardianProtocoloMmClient(guardian,token.ObterTokenAsync,TimeSpan.FromSeconds(30));
   IEnviarProtocoloMmGateway delivery=raw;
   if(options.MasterdataValidationEnabled)
@@ -52,18 +60,18 @@ public sealed class MmLinuxRuntime:IAsyncDisposable,IMmGuardianDispatcher
    emitterRead=new();materialRead=new();var httpOptions=new GuardianHttpOptions{BaseUrl=new("https://guardian.cloudprix.com.br"),Timeout=TimeSpan.FromSeconds(20)};
    var gate=new MmMasterdataGate(new GuardianEmitterReadAdapter(emitterRead.Client,httpOptions,token,retryOptions.GuardianSignatureId),new GuardianMaterialReadAdapter(materialRead.Client,httpOptions,token,retryOptions.GuardianSignatureId),retryOptions.GuardianSignatureId);
    delivery=new MmValidatedGuardianGateway(gate,raw);
-   if(options.RetryCommandsEnabled&&retryOptions.Enabled)retry=new(new MmRetryPostgreSqlStore(database),gate,raw,retryOptions);
+   if(options.RetryCommandsEnabled&&retryOptions.Enabled)retry=new(new MmRetryPostgreSqlStore(database,options.AmbienteBanco),gate,raw,retryOptions);
   }
   sender=new(registry,delivery,options.CallbackUrl,lease.CheckAsync);
  }
  public static async Task<MmLinuxRuntime> CreateAsync(MmLinuxOptions options,CancellationToken ct)
  {
   options.Validate();if(!options.Enabled||!OperatingSystem.IsLinux()||Environment.MachineName!="vm-fugatesbio")throw new InvalidOperationException("MM_VM_HOST_REJECTED");
-  const string dir="/run/credentials/fugates-mm-purchase-orders.service";
+  var dir=MmRetryPolicyFile.RuntimeDirectoryFor(options.AmbienteBanco);
   if(Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY")!=dir)throw new InvalidOperationException("MM_SYSTEMD_SCOPE_REJECTED");
-  var retryPolicy=options.MasterdataValidationEnabled?MmRetryPolicyFile.ReadPolicy(MmRetryPolicyFile.RuntimePolicyPath):new MmRetryOptions();
+  var retryPolicy=options.MasterdataValidationEnabled?MmRetryPolicyFile.ReadPolicy(dir+"/mm-retry-policy",options.AmbienteBanco):new MmRetryOptions();
   if(options.MasterdataValidationEnabled&&retryPolicy.GuardianSignatureId<=0||options.RetryCommandsEnabled&&!retryPolicy.Enabled)throw new InvalidOperationException("MM_RETRY_APPROVED_POLICY_REQUIRED");
-  var credentials=new CarrierSystemdCredentials(dir);
+  var credentials=new CarrierSystemdCredentials(dir,options.AmbienteBanco);
   // Existing approved MM JSON provider is mounted under this credential ID; no Windows secret or fallback.
   using var doc=JsonDocument.Parse(credentials.Read("carrier-hml-postgres-password"));var db=doc.RootElement;
   if(db.GetProperty("username").GetString()!=options.Role||db.GetProperty("database").GetString()!=options.Database||db.GetProperty("port").GetInt32()!=options.Port)throw new InvalidOperationException("MM_PROVIDER_IDENTITY_REJECTED");
@@ -72,21 +80,24 @@ public sealed class MmLinuxRuntime:IAsyncDisposable,IMmGuardianDispatcher
   NpgsqlDataSource? source=null;MmWorkerLease? lease=null;HttpClient? sap=null,guardian=null;
   try
   {
-   source=new NpgsqlDataSourceBuilder(cs).Build();lease=await MmWorkerLease.AcquireAsync(cs,ct);
-   sap=new(new MmSapOnlyHandler(new HttpClientHandler{AllowAutoRedirect=false,UseProxy=false,UseCookies=false})){Timeout=Timeout.InfiniteTimeSpan};
+   source=new NpgsqlDataSourceBuilder(cs).Build();lease=await MmWorkerLease.AcquireAsync(cs,ct,options.AmbienteBanco);
+   sap=new(new MmSapOnlyHandler(new HttpClientHandler{AllowAutoRedirect=false,UseProxy=false,UseCookies=false},options.AmbienteSap)){Timeout=Timeout.InfiniteTimeSpan};
    guardian=new(new MmGuardianOnlyHandler(new HttpClientHandler{AllowAutoRedirect=false,UseProxy=false,UseCookies=false})){Timeout=Timeout.InfiniteTimeSpan};
    var token=new GuardianTokenClient(guardian,new GuardianHttpOptions{BaseUrl=new("https://guardian.cloudprix.com.br"),Timeout=TimeSpan.FromSeconds(30)},new CarrierLinuxGuardianCredentials(credentials));
-   var store=new MmFileSnapshotStore(options.StateDirectory);
-   var records=await new RegistroProtocolosMmPostgreSql(source).LerAsync(ct);
-   store.Write(new(){RuntimeMode="VM",Host="vm-fugatesbio",State="MM_NOT_STARTED",GuardianState="MM_GUARDIAN_PRONTO",GuardianCallback=options.CallbackUrl,GuardianRecords=records,RegistryReadUtc=DateTimeOffset.UtcNow});
+   var store=new MmFileSnapshotStore(options.StateDirectory,ambiente:options.AmbienteSap);
+   var records=await new RegistroProtocolosMmPostgreSql(source,options.AmbienteBanco).LerAsync(ct);
+   store.Read();
+   store.Write(new(){Origin=options.SapOrigin,Client=options.SapClient,RuntimeMode="VM",Host="vm-fugatesbio",State="MM_NOT_STARTED",GuardianState="MM_GUARDIAN_PRONTO",GuardianCallback=options.CallbackUrl,GuardianRecords=records,RegistryReadUtc=DateTimeOffset.UtcNow});
    return new(options,source,lease,sap,guardian,store,token,retryPolicy);
   }
   catch{sap?.Dispose();guardian?.Dispose();if(lease is not null)await lease.DisposeAsync();if(source is not null)await source.DisposeAsync();throw;}
  }
+ public static IPedidosCompraMmConsulta CreateQuery(MmLinuxOptions options,HttpClient sap,FugaTES.Integracao.SAP.Autenticacao.IAutenticacaoSap authentication)
+ {options.Validate();return new PedidosCompraMmConsultaAdapter(sap,authentication,options.AmbienteSap);}
  public async Task RunAsync(CancellationToken ct)
  {
-  var credentials=new CarrierSystemdCredentials("/run/credentials/fugates-mm-purchase-orders.service");
-  var query=new PedidosCompraMmConsultaAdapter(sap,new CarrierLinuxSapAuthentication(new(MmCollectionPolicy.SapOrigin),credentials,"FUGATES"));
+  var credentials=new CarrierSystemdCredentials(MmRetryPolicyFile.RuntimeDirectoryFor(options.AmbienteBanco),options.AmbienteBanco);
+  var query=CreateQuery(options,sap,new CarrierLinuxSapAuthentication(new(options.SapOrigin),credentials,"FUGATES"));
   using var lifetime=CancellationTokenSource.CreateLinkedTokenSource(ct);
   var loop=new MmPurchaseOrderCollector(query,store,this,()=>lease.IsHeld).RunAsync(MmCollectionPolicy.Interval,lifetime.Token);
   try
@@ -116,10 +127,11 @@ public sealed class MmLinuxRuntime:IAsyncDisposable,IMmGuardianDispatcher
  }
  public async ValueTask DisposeAsync(){emitterRead?.Dispose();materialRead?.Dispose();sap.Dispose();guardian.Dispose();await lease.DisposeAsync();await database.DisposeAsync();}
 }
-public sealed class MmSapOnlyHandler(HttpMessageHandler inner):DelegatingHandler(inner)
+public sealed class MmSapOnlyHandler(HttpMessageHandler inner,AmbienteSap? ambiente=null):DelegatingHandler(inner)
 {
  protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)
- {if(request.Method!=HttpMethod.Get||request.RequestUri is null)throw new InvalidOperationException("MM_SAP_METHOD_REJECTED");PedidosCompraMmConsultaAdapter.ValidateUri(request.RequestUri);return base.SendAsync(request,ct);}
+ {if(request.Method!=HttpMethod.Get||request.RequestUri is null)throw new InvalidOperationException("MM_SAP_METHOD_REJECTED");PedidosCompraMmConsultaAdapter.ValidateUri(request.RequestUri);var a=ambiente??AmbientesSap.Dev110;
+ if(request.RequestUri.GetLeftPart(UriPartial.Authority)!=a.Origem||System.Web.HttpUtility.ParseQueryString(request.RequestUri.Query)["sap-client"] is {} client&&client!=a.SapClient)throw new InvalidOperationException("MM_SAP_PROCESS_ENVIRONMENT_REJECTED");return base.SendAsync(request,ct);}
 }
 public sealed class MmGuardianOnlyHandler(HttpMessageHandler inner):DelegatingHandler(inner)
 {

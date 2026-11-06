@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Data;
 using System.Text.Json;
 using FugaTES.Aplicacao.Modelos.ContratosSapToledo;
@@ -11,7 +12,7 @@ namespace FugaTES.Persistencia.ManualRetry;
 
 // Candidate only. Not registered in the GET-only DEV API or any running host.
 // Existing tables, parameterized commands, one transaction for admission/audit/queue.
-public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IAcmManualRetryStore
+public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source,AmbienteBanco? ambiente=null):IAcmManualRetryStore
 {
     const string Requested="ACM_MANUAL_RETRY_REQUESTED",Started="ACM_MANUAL_RETRY_STARTED",Finished="ACM_MANUAL_RETRY_FINISHED";
     static readonly JsonSerializerOptions Json=new(){PropertyNameCaseInsensitive=true};
@@ -36,7 +37,7 @@ public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IA
     }
     public async Task<AcmRetrySnapshot?> ReadAsync(Guid id,CancellationToken ct)
     {
-        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct);
+        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct,expectedRole:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).PapelAcm,expectedDatabase:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).Banco);
         await using var tx=await c.BeginTransactionAsync(IsolationLevel.RepeatableRead,ct);
         try{await Settings(c,tx,false,ct);return await Snapshot(c,tx,id,ct);}
         finally{await tx.RollbackAsync(CancellationToken.None);}
@@ -44,7 +45,7 @@ public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IA
     public async Task<Guid?> PendingCommandAsync(AcmRetryApproval approval,CancellationToken ct)
     {
         if(!approval.Homologated||!approval.ExecutionAuthorized||!approval.ExclusiveWorker)return null;
-        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct);
+        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct,expectedRole:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).PapelAcm,expectedDatabase:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).Banco);
         await using var tx=await c.BeginTransactionAsync(ct);
         try
         {
@@ -221,7 +222,7 @@ public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IA
         if(System.Transactions.Transaction.Current is not null)throw new InvalidOperationException("ACM_RETRY_AMBIENT_TRANSACTION_REJECTED");
         AcmRetryAdmission Block(string code)=>new("BLOCKED",code,request.CommandId,request.IntegrationId);
         if(!AcmManualRetryPolicy.AuthorizationOpen(approval,request.IntegrationId,actor,now)||!request.Confirm||!AcmManualRetryService.SafeJustification(request.Justification)||request.CommandId==Guid.Empty)return Block("CONFIRMATION_OR_REASON_REQUIRED");
-        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct);
+        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct,expectedRole:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).PapelAcm,expectedDatabase:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).Banco);
         await using var tx=await c.BeginTransactionAsync(IsolationLevel.Serializable,ct);
         var committed=false;
         try
@@ -272,7 +273,7 @@ public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IA
     {
         if(System.Transactions.Transaction.Current is not null)throw new InvalidOperationException("ACM_RETRY_AMBIENT_TRANSACTION_REJECTED");
         if(!approval.Homologated||!approval.ExecutionAuthorized||!approval.ExclusiveWorker||now<approval.NotBeforeUtc||now>=approval.UntilUtc||!AcmManualRetryPolicy.Evidence(worker))return null;
-        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct);
+        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct,expectedRole:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).PapelAcm,expectedDatabase:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).Banco);
         await using var tx=await c.BeginTransactionAsync(IsolationLevel.Serializable,ct);
         var committed=false;
         try
@@ -337,7 +338,7 @@ public sealed partial class AcmManualRetryPostgreSql(NpgsqlDataSource source):IA
     async Task CompleteCoreAsync(Guid commandId,Guid integrationId,AcmRetryWork? suppliedWork,AcmRetryApproval? reconciliationApproval,AcmRetryActor? actor,string result,DateTimeOffset now,CancellationToken ct)
     {
         if(System.Transactions.Transaction.Current is not null)throw new InvalidOperationException("ACM_RETRY_AMBIENT_TRANSACTION_REJECTED");
-        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct);
+        await using var c=await source.OpenConnectionAsync(ct);await AcmPostgreSqlIdentityGuard.VerifyAsync(c,ct,expectedRole:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).PapelAcm,expectedDatabase:(ambiente??FugaTES.Aplicacao.Configuracao.AmbientesBanco.Dev110).Banco);
         await using var tx=await c.BeginTransactionAsync(IsolationLevel.Serializable,ct);
         var committed=false;
         try

@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Data;
 using System.Text.Json;
 using System.Security.Cryptography;
@@ -8,12 +9,12 @@ using FugaTES.Persistencia.Consultas.Monitor;
 namespace FugaTES.Persistencia.Consultas.RecebimentosToledo;
 
 // Pure read side. It never invokes callback storage, motor, Guardian or SAP.
-public sealed partial class RecebimentosToledoPostgreSqlReadRepository(DbDataSource source,string? roleEsperada=null):IRecebimentosToledoReadRepository,IToledoSapJsonReadRepository
+public sealed partial class RecebimentosToledoPostgreSqlReadRepository(DbDataSource source,string? roleEsperada=null,AmbienteBanco? ambiente=null):IRecebimentosToledoReadRepository,IToledoSapJsonReadRepository
 {
- readonly string? expectedRole=ValidateRole(roleEsperada);
- static string? ValidateRole(string? role)
+ readonly string? expectedRole=ValidateRole(roleEsperada,ambiente??AmbientesBanco.Dev110);
+ static string? ValidateRole(string? role,AmbienteBanco ambiente)
  {
-  if(role is not null&&!MonitorPostgreSqlReadRepository.RolesDeLeituraAutorizadas.Contains(role,StringComparer.Ordinal))
+  if(role is not null&&(AmbientesBanco.Por(ambiente.Banco,role,ambiente)!=ambiente||role!=ambiente.PapelAcm&&role!=ambiente.PapelLeitura))
    throw new InvalidOperationException("TOLEDO_READ_ROLE_NOT_AUTHORIZED");
   return role;
  }
@@ -94,9 +95,14 @@ public sealed partial class RecebimentosToledoPostgreSqlReadRepository(DbDataSou
  async Task Protect(DbConnection c,DbTransaction tx,CancellationToken ct)
  {
   await using(var setup=Cmd(c,tx,"set transaction read only; set local statement_timeout='5s'; set local lock_timeout='1s';"))await setup.ExecuteNonQueryAsync(ct);
-  await using var guard=Cmd(c,tx,expectedRole is null?MonitorPostgreSqlReadRepository.SqlIdentidadeAcm:MonitorPostgreSqlReadRepository.SqlIdentidadeRole);
-  if(expectedRole is not null)Param(guard,"role",DbType.String,expectedRole);
+  await using var guard=ComandoIdentidade(c,tx,expectedRole,ambiente);
   if(await guard.ExecuteScalarAsync(ct) is not true)throw new InvalidOperationException("TOLEDO_READ_DATABASE_IDENTITY_REJECTED");
+ }
+ public static DbCommand ComandoIdentidade(DbConnection c,DbTransaction tx,string? role=null,AmbienteBanco? ambiente=null)
+ {
+  var a=ambiente??AmbientesBanco.Dev110;ValidateRole(role,a);
+  var command=Cmd(c,tx,MonitorPostgreSqlReadRepository.SqlIdentidadeRole);
+  Param(command,"database",DbType.String,a.Banco);Param(command,"role",DbType.String,role??a.PapelAcm);return command;
  }
  static DbCommand Cmd(DbConnection c,DbTransaction tx,string sql){var cmd=c.CreateCommand();cmd.Transaction=tx;cmd.CommandText=sql;cmd.CommandTimeout=6;return cmd;}
  static void Param(DbCommand c,string name,DbType type,object? value){var p=c.CreateParameter();p.ParameterName=name;p.DbType=type;p.Value=value??DBNull.Value;c.Parameters.Add(p);}

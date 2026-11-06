@@ -60,7 +60,7 @@ public static class HostIntegracaoComposition
 
         var connectionString = configuration.GetConnectionString(NpgsqlDataSourceFactory.ConnectionStringName);
         if (!string.IsNullOrWhiteSpace(connectionString) &&
-            new Npgsql.NpgsqlConnectionStringBuilder(connectionString).Username == NpgsqlDataSourceFactory.AcmApplicationRole &&
+            new[]{AmbientesBanco.Dev110,AmbientesBanco.Qas120}.Any(a=>new Npgsql.NpgsqlConnectionStringBuilder(connectionString).Username==a.PapelAcm) &&
             !(bool.TryParse(configuration["AcmR57:Enabled"], out var acmEnabled) && acmEnabled))
             throw new InvalidOperationException("R165R_ACM_ROLE_REQUIRES_R57_ENABLED");
 
@@ -91,8 +91,10 @@ public static class HostIntegracaoComposition
         var persistenceMode = configuration["HostIntegracao:PersistenceMode"];
         if (string.Equals(persistenceMode, "PostgreSql", StringComparison.OrdinalIgnoreCase))
         {
+            var requireIdentity=RequiresAcmPhysicalIdentity(configuration)||NpgsqlDataSourceFactory.EhRoleGuardada(new Npgsql.NpgsqlConnectionStringBuilder(connectionString).Username,AmbientesBanco.Dev110,AmbientesBanco.Qas120);
             services.AddRepositorioMotorIntegracaoPostgreSql(connectionString,
-                requireAcmPhysicalIdentity: RequiresAcmPhysicalIdentity(configuration));
+                requireAcmPhysicalIdentity: requireIdentity,
+                ambientesAceitos: requireIdentity?[AcmEnvironmentBinding.Banco(configuration)]:[]);
             services.TryAddScoped<IContratoSapToledoVersaoStore, ContratoSapToledoVersaoStorePostgreSql>();
             services.TryAddScoped<IAcmGuardianVinculoStore, AcmGuardianVinculoPostgreSql>();
         }

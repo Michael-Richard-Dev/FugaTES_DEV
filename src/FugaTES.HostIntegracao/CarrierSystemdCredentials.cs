@@ -1,10 +1,11 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Net.Http.Headers;
 using System.Text;
 using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Integracao.SAP.Autenticacao;
 namespace FugaTES.HostIntegracao;
 
-public sealed class CarrierSystemdCredentials(string directory)
+public sealed class CarrierSystemdCredentials(string directory,AmbienteBanco? ambienteMm=null)
 {
     public static readonly IReadOnlyList<string> RequiredNames=Array.AsReadOnly(new[]{"carrier-hml-postgres-password","carrier-hml-guardian-email","carrier-hml-guardian-password","carrier-hml-guardian-signature","carrier-hml-sap-user","carrier-hml-sap-password"});
     public static void ValidateName(string name)
@@ -28,12 +29,12 @@ public sealed class CarrierSystemdCredentials(string directory)
             (parentMode&(UnixFileMode.GroupWrite|UnixFileMode.OtherWrite))==0;
     }
     public static bool IsApprovedMmRuntimeDirectory(string name,string directory,string? runtimeDirectory,
-        UnixFileMode directoryMode,UnixFileMode parentMode,bool hasLinks)
+        UnixFileMode directoryMode,UnixFileMode parentMode,bool hasLinks,params AmbienteBanco[] aceitos)
     {
-        const string expected="/run/credentials/fugates-mm-purchase-orders.service";
+        var approved=aceitos.Length==0?new[]{AmbientesBanco.Dev110}:aceitos;
         var owner=UnixFileMode.UserRead|UnixFileMode.UserExecute;
         var group=owner|UnixFileMode.GroupRead|UnixFileMode.GroupExecute;
-        return RequiredNames.Contains(name,StringComparer.Ordinal)&&directory==expected&&runtimeDirectory==expected&&!hasLinks&&
+        return RequiredNames.Contains(name,StringComparer.Ordinal)&&approved.Any(a=>directory==Mm.MmRetryPolicyFile.RuntimeDirectoryFor(a)&&runtimeDirectory==directory)&&!hasLinks&&
             (directoryMode==owner||directoryMode==group)&&(parentMode&(UnixFileMode.GroupWrite|UnixFileMode.OtherWrite))==0;
     }
     public string Read(string name)
@@ -54,7 +55,7 @@ public sealed class CarrierSystemdCredentials(string directory)
                     Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY"),File.GetUnixFileMode(directory),
                     File.GetUnixFileMode(parent.FullName),folder.LinkTarget is not null||parent.LinkTarget is not null) || IsApprovedMmRuntimeDirectory(name,directory,
                     Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY"),File.GetUnixFileMode(directory),
-                    File.GetUnixFileMode(parent.FullName),folder.LinkTarget is not null||parent.LinkTarget is not null);
+                    File.GetUnixFileMode(parent.FullName),folder.LinkTarget is not null||parent.LinkTarget is not null,ambienteMm is null?[]:[ambienteMm]);
             }
             ValidateMode(mode,approvedRuntime);
             var secret=File.ReadAllText(path,new UTF8Encoding(false,true));

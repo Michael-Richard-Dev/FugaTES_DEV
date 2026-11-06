@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Security.Cryptography;
 using System.Text.Json;
 using FugaTES.Persistencia.MotorIntegracao;
@@ -21,8 +22,9 @@ public static class AcmProviderReadOnlyEntrypoint
   if(!bool.TryParse(config["AcmR104:ExecutionAuthorized"],out var authorized)||authorized)return "R161L_BUSINESS_EXECUTION_FORBIDDEN";
   try
   {
+   var ambiente=AcmEnvironmentBinding.Banco(config);
    var c=new NpgsqlConnectionStringBuilder(config.GetConnectionString(NpgsqlDataSourceFactory.ConnectionStringName));
-   if(c.Host!="127.0.0.1"||c.Port!=5433||c.Database!="fugates_dev"||c.Username!=NpgsqlDataSourceFactory.AcmApplicationRole||c.SearchPath!="fugates"||c.Enlist||
+   if(c.Host!="127.0.0.1"||c.Port!=5433||AmbientesBanco.Por(c.Database,c.Username,ambiente)!=ambiente||c.Username!=ambiente.PapelAcm||c.SearchPath!="fugates"||c.Enlist||
       c.Options!="-c default_transaction_read_only=on")return "R161L_READONLY_ACM_CONNECTION_REQUIRED";
    if(!NpgsqlDataSourceFactory.HasExplicitAcmPassfile(c) || !string.IsNullOrEmpty(config["PGPASSWORD"]) ||
       (config["PGPASSFILE"]?.Contains(".fugates-r116-dev",StringComparison.OrdinalIgnoreCase)??false))
@@ -48,6 +50,7 @@ public static class AcmProviderReadOnlyEntrypoint
    var block=ConfigurationBlock(builder.Configuration);
    if(block is not null){Console.WriteLine(block);return 78;}
    Configure(builder);
+   var ambiente=AcmEnvironmentBinding.Banco(builder.Configuration);
    // Never Start/Run the host; never resolve or invoke gateways, workers or the unitary invoker.
    using var host=builder.Build();using var scope=host.Services.CreateScope();
    var source=scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
@@ -68,8 +71,8 @@ public static class AcmProviderReadOnlyEntrypoint
      """,connection,transaction){CommandTimeout=5};
     await using var row=await command.ExecuteReaderAsync(ct);
     if(!await row.ReadAsync(ct)||row.GetString(0)!="18/fugatesacmdev"||row.GetInt32(1)!=5433||row.GetInt32(2)!=5433||
-       row.GetString(3)!="fugates_dev"||row.GetString(4)!="fugates"||row.GetString(5)!=NpgsqlDataSourceFactory.AcmApplicationRole||
-       row.GetString(6)!=NpgsqlDataSourceFactory.AcmApplicationRole||row.GetString(7)!="on"||row.GetBoolean(8))
+       row.GetString(3)!=ambiente.Banco||row.GetString(4)!="fugates"||row.GetString(5)!=ambiente.PapelAcm||
+       row.GetString(6)!=ambiente.PapelAcm||row.GetString(7)!="on"||row.GetBoolean(8))
      throw new InvalidOperationException("R161L_EFFECTIVE_IDENTITY_MISMATCH");
     static object AssemblyProof(Type type)
     {

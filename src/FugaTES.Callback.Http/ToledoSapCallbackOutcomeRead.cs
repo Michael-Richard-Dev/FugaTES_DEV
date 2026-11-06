@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Data;
 using System.Text.Json;
 using FugaTES.Aplicacao.Servicos.Recebimento;
@@ -28,12 +29,12 @@ public sealed record ToledoSapCallbackSnapshot(Guid Receipt,Guid Integration,str
  public IReadOnlyList<ToledoSapCallbackAudit> Audits {get;init;}=[];
 }
 
-public sealed class ToledoSapCallbackOutcomeRead(NpgsqlDataSource source):IToledoSapCallbackOutcomeRead
+public sealed class ToledoSapCallbackOutcomeRead(NpgsqlDataSource source,AmbienteBanco? ambiente=null):IToledoSapCallbackOutcomeRead
 {
  public const string Sql="""
  select current_setting('cluster_name')='18/fugatesacmdev' and current_setting('port')='5433'
-   and current_database()='fugates_dev' and current_user='fugates_acm_hml_app'
-   and session_user='fugates_acm_hml_app' and current_setting('transaction_read_only')='on',
+   and current_database()=@database and current_user=@role
+   and session_user=@role and current_setting('transaction_read_only')='on',
    r.recibo_id,i.id,r.fingerprint_sha256,i.fingerprint_sha256,i.correlation_id,
    (select count(*)::int from fugates.integracao x where x.chave_negocio=r.recibo_id::text
      and x.origem='GUARDIAN' and x.destino='SAP' and x.operacao=@operation),
@@ -61,6 +62,8 @@ public sealed class ToledoSapCallbackOutcomeRead(NpgsqlDataSource source):IToled
   {
    await using(var protect=new NpgsqlCommand("set transaction read only;set local statement_timeout='3s';set local lock_timeout='1s';",c,tx))await protect.ExecuteNonQueryAsync(ct);
    await using var cmd=new NpgsqlCommand(Sql,c,tx){CommandTimeout=4};
+   var a=ambiente??AmbientesBanco.Dev110;
+   cmd.Parameters.AddWithValue("database",a.Banco);cmd.Parameters.AddWithValue("role",a.PapelAcm);
    cmd.Parameters.AddWithValue("receipt",receipt);cmd.Parameters.AddWithValue("integration",integration);cmd.Parameters.AddWithValue("operation",ToledoSapWork.Operacao);
    await using var row=await cmd.ExecuteReaderAsync(ct);
    if(!await row.ReadAsync(ct)||!row.GetBoolean(0))return null;

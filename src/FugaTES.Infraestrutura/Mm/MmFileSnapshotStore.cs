@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Text.Json;
 using FugaTES.Aplicacao.Modelos.Mm;
 namespace FugaTES.Infraestrutura.Mm;
@@ -7,13 +8,14 @@ public class MmFileSnapshotStore : IMmSnapshotStore
     private const int MaxBytes=64*1024*1024;
     private static readonly JsonSerializerOptions Json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase};
     private readonly string directory;
+    private readonly AmbienteSap? ambiente;
     private readonly object gate=new();
     private string SnapshotPath=>Path.Combine(directory,"snapshot.json");
     public static string DefaultDirectory=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FugaTES","DEV110","mm-purchase-orders");
-    public MmFileSnapshotStore(string directory,bool readOnly=false)
+    public MmFileSnapshotStore(string directory,bool readOnly=false,AmbienteSap? ambiente=null)
     {
         if(!Path.IsPathFullyQualified(directory))throw new InvalidOperationException("MM_CACHE_PATH_INVALID");
-        this.directory=directory;
+        this.directory=directory;this.ambiente=ambiente;
         this.readOnly=readOnly;
         if(!readOnly){if(OperatingSystem.IsLinux())Directory.CreateDirectory(directory,UnixFileMode.UserRead|UnixFileMode.UserWrite|UnixFileMode.UserExecute);else Directory.CreateDirectory(directory);}
         ValidatePath(directory,true);
@@ -43,17 +45,20 @@ public class MmFileSnapshotStore : IMmSnapshotStore
     public void Update(Func<MmPurchaseOrderSnapshot,MmPurchaseOrderSnapshot> update){lock(gate)WriteCore(update(ReadCore()));}
     private MmPurchaseOrderSnapshot ReadCore()
     {
-        if(!File.Exists(SnapshotPath))return new();
+        if(!File.Exists(SnapshotPath))return new(){Origin=ambiente?.Origem??AmbientesSap.Dev110.Origem,Client=ambiente?.SapClient??AmbientesSap.Dev110.SapClient};
         ValidatePath(SnapshotPath,false);
         var file=new FileInfo(SnapshotPath);
         if(file.LinkTarget is not null||file.Length>MaxBytes)throw new InvalidOperationException("MM_CACHE_INVALID");
         using var stream=new FileStream(SnapshotPath,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete);
         if(stream.Length>MaxBytes)throw new InvalidOperationException("MM_CACHE_SIZE_LIMIT");
         var snapshot=JsonSerializer.Deserialize<MmPurchaseOrderSnapshot>(stream,Json)??throw new InvalidOperationException("MM_CACHE_INVALID");
-        Validate(snapshot);return snapshot;
+        Validate(snapshot);ValidateEnvironment(snapshot);return snapshot;
     }
+    private void ValidateEnvironment(MmPurchaseOrderSnapshot snapshot)
+    {if(ambiente is not null&&AmbientesSap.Por(snapshot.Origin,snapshot.Client)!=ambiente)throw new InvalidOperationException("MM_CACHE_SCOPE_INVALID");}
     private void WriteCore(MmPurchaseOrderSnapshot snapshot)
     {
+        ValidateEnvironment(snapshot);
         if(readOnly)throw new InvalidOperationException("MM_CACHE_READ_ONLY");
         Validate(snapshot);
         var content=JsonSerializer.SerializeToUtf8Bytes(snapshot,Json);

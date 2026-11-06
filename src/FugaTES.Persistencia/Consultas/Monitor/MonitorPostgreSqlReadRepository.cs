@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using System.Data;
 using System.Text.Json;
 using FugaTES.Aplicacao.Consultas.Monitor;
@@ -7,8 +8,9 @@ using NpgsqlTypes;
 namespace FugaTES.Persistencia.Consultas.Monitor;
 
 // roleEsperada nula mantem o comportamento historico: identidade fixa na role ACM compartilhada.
-public sealed partial class MonitorPostgreSqlReadRepository(NpgsqlDataSource source, bool exigirIdentidadeAcm = false, string? roleEsperada = null) : IMonitorReadRepository
+public sealed partial class MonitorPostgreSqlReadRepository(NpgsqlDataSource source, bool exigirIdentidadeAcm, string? roleEsperada,AmbienteBanco? ambiente) : IMonitorReadRepository
 {
+    public MonitorPostgreSqlReadRepository(NpgsqlDataSource source,bool exigirIdentidadeAcm=false,string? roleEsperada=null):this(source,exigirIdentidadeAcm,roleEsperada,null){}
     // Every read is in a short, database-enforced read-only transaction.
     private async Task<(NpgsqlConnection Connection, NpgsqlTransaction Transaction)> AbrirAsync(NpgsqlDataSource source, CancellationToken ct)
     {
@@ -22,7 +24,7 @@ public sealed partial class MonitorPostgreSqlReadRepository(NpgsqlDataSource sou
                 await command.ExecuteNonQueryAsync(ct);
                 if (exigirIdentidadeAcm)
                 {
-                    await using var identity = ComandoIdentidade(roleEsperada, connection, tx);
+                    await using var identity = ComandoIdentidade(roleEsperada, connection, tx,ambiente);
                     if (await identity.ExecuteScalarAsync(ct) is not true)
                         throw new InvalidOperationException("ACM_DATABASE_IDENTITY_BLOCKED");
                 }

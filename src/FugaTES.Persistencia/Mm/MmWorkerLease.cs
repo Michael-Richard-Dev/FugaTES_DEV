@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using Npgsql;
 namespace FugaTES.Persistencia.Mm;
 /// <summary>Dedicated non-pooled physical session; a lost lock is never reacquired in-place.</summary>
@@ -8,13 +9,13 @@ public sealed class MmWorkerLease:IAsyncDisposable
  private int held;
  private MmWorkerLease(NpgsqlConnection connection){this.connection=connection;held=1;}
  public bool IsHeld=>Volatile.Read(ref held)==1&&connection.State==System.Data.ConnectionState.Open;
- public static async Task<MmWorkerLease> AcquireAsync(string connectionString,CancellationToken ct)
+ public static async Task<MmWorkerLease> AcquireAsync(string connectionString,CancellationToken ct,AmbienteBanco? ambiente=null)
  {
   var options=new NpgsqlConnectionStringBuilder(connectionString){Pooling=false,Multiplexing=false,CommandTimeout=5};
   var c=new NpgsqlConnection(options.ConnectionString);
   try
   {
-   await c.OpenAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct);
+   await c.OpenAsync(ct);await RegistroProtocolosMmPostgreSql.ConferirAsync(c,null,ct,ambiente);
    await using var cmd=new NpgsqlCommand("select pg_try_advisory_lock(3000,5433001)",c);
    if(await cmd.ExecuteScalarAsync(ct) is not true)throw new InvalidOperationException("MM_WORKER_ALREADY_RUNNING");
    return new(c);

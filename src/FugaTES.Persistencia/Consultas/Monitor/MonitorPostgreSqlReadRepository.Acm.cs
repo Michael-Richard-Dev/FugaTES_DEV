@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using FugaTES.Aplicacao.Consultas.Monitor;
 using Npgsql;
 
@@ -16,14 +17,11 @@ public sealed partial class MonitorPostgreSqlReadRepository
           and exists(select 1 from pg_namespace where nspname='fugates'),false);
         """;
 
-    // R166: identico ao predicado acima em TODAS as condicoes fisicas; a unica diferenca e que a
-    // role esperada entra por parametro (@role), em vez de literal. Existe porque a API privada
-    // 18762 passou a ter identidade GET-only propria (fugates_dev_read_app): sem isto o guard
-    // recusa a conexao e o processo encerra com UNIFIED_DEV_DATABASE_IDENTITY_REJECTED.
-    // Nao afrouxa nada: quem nao informa role continua usando SqlIdentidadeAcm, fixo na role
-    // compartilhada, e o valor de @role e validado contra a lista branca em RolesDeLeituraAutorizadas.
+    // The legacy constant above preserves the public DEV-only contract. Live commands below
+    // bind the registered database AND read role; callers explicitly select QAS120.
+    // Cluster, port, server version, read-only mode, host and schema checks are unchanged.
     public const string SqlIdentidadeRole = """
-        select coalesce(current_database()='fugates_dev'
+        select coalesce(current_database()=@database
           and current_user=@role
           and current_setting('port')='5433'
           and current_setting('cluster_name',true)='18/fugatesacmdev'
@@ -33,21 +31,23 @@ public sealed partial class MonitorPostgreSqlReadRepository
           and exists(select 1 from pg_namespace where nspname='fugates'),false);
         """;
 
-    public const string RoleAcmCompartilhada = "fugates_acm_hml_app";
-    public const string RoleDevSomenteLeitura = "fugates_dev_read_app";
+    public static readonly string RoleAcmCompartilhada = AmbientesBanco.Dev110.PapelAcm;
+    public static readonly string RoleDevSomenteLeitura = AmbientesBanco.Dev110.PapelLeitura;
 
     // Lista branca das UNICAS identidades que podem servir leitura. A role de escrita do receptor
     // SAP (fugates_sap_inbound_app) NAO esta aqui, de proposito.
     public static readonly string[] RolesDeLeituraAutorizadas = [RoleAcmCompartilhada, RoleDevSomenteLeitura];
 
     // Devolve o comando de identidade correto, com a role ja ligada como parametro.
-    public static NpgsqlCommand ComandoIdentidade(string? roleEsperada, NpgsqlConnection c, NpgsqlTransaction tx)
+    public static NpgsqlCommand ComandoIdentidade(string? roleEsperada, NpgsqlConnection c, NpgsqlTransaction tx, AmbienteBanco? ambiente=null)
     {
-        if (roleEsperada is null)
-            return new NpgsqlCommand(SqlIdentidadeAcm, c, tx) { CommandTimeout = 5 };
-        if (!RolesDeLeituraAutorizadas.Contains(roleEsperada))
+        ambiente??=AmbientesBanco.Dev110;
+        // Legacy SQL constant remains public; live guards always bind the registered pair.
+        roleEsperada??=ambiente.PapelAcm;
+        if (AmbientesBanco.Por(ambiente.Banco,roleEsperada,ambiente)!=ambiente||roleEsperada!=ambiente.PapelAcm&&roleEsperada!=ambiente.PapelLeitura)
             throw new InvalidOperationException("ACM_DATABASE_IDENTITY_ROLE_NOT_AUTHORIZED");
         var command = new NpgsqlCommand(SqlIdentidadeRole, c, tx) { CommandTimeout = 5 };
+        command.Parameters.AddWithValue("database",ambiente.Banco);
         command.Parameters.AddWithValue("role", roleEsperada);
         return command;
     }
