@@ -23,9 +23,6 @@ namespace FugaTES.HostIntegracao;
 /// </summary>
 public static class SdProtocoloComposition
 {
-    /// <summary>Origem SAP de DEV aprovada, a mesma das demais leituras.</summary>
-    public const string OrigemSapAprovada = "https://vhfufds4ci.sap.fugacouros.com.br:44300";
-
     /// <summary>Rota liberada no SAP: so a colecao de ordens de venda.</summary>
     public const string RotaSapAprovada = "/sap/opu/odata/sap/API_SALES_ORDER_SRV/";
 
@@ -197,9 +194,17 @@ public sealed class MotorSdSapGuard(HttpMessageHandler inner, string origemAprov
         var expedicao = EscopoExpedicaoSd.ExpedicaoHabilitada && origemOk
             && (caminho.Equals(ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal)
                 || caminho.Equals(ExpedicaoSdSapClient.RotaSaida, StringComparison.Ordinal));
+        // O $batch: a rota do LOTE, exata. E POST por ser o verbo do envelope, nao da escrita -
+        // o que vai DENTRO dele sao os mesmos PATCHes de item que a linha de baixo ja permite, e
+        // nenhuma outra entidade e alcancavel por ele: o corpo e montado por nos, item a item.
+        //
+        // Sem esta linha a guarda recusa o ajuste inteiro com rota proibida. Ela fez exatamente o
+        // que devia em 06/11/2026, quando o $batch entrou sem passar por aqui.
+        var loteRemessa = caminho.Equals(
+            AjusteRemessaSdSapClient.Servico + SapODataLoteV2.Sufixo, StringComparison.Ordinal);
         // Os mesmos limites da tela do operador - nem um a mais.
         var liberado =
-            request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || expedicao
+            request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || expedicao || loteRemessa
             : request.Method == HttpMethod.Patch ? entidadeRemessa || entidadeTexto
             : request.Method == HttpMethod.Get
                 && (ordem || colecaoRemessa || entidadeRemessa || navegacaoTexto);

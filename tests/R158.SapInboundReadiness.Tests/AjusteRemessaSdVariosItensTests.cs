@@ -4,6 +4,7 @@ using FugaTES.Aplicacao.Modelos.Sd;
 using FugaTES.Aplicacao.Servicos.Sd;
 using FugaTES.Integracao.SAP.Autenticacao;
 using FugaTES.Integracao.SAP.BusinessDocuments;
+using FugaTES.HostIntegracao;
 using FugaTES.Integracao.SAP.Http;
 
 namespace R158.SapInboundReadiness.Tests;
@@ -194,10 +195,17 @@ public sealed class AjusteRemessaSdVariosItensTests
         { request.Headers.Authorization = new("Basic", "TESTE"); return Task.CompletedTask; }
     }
 
+    /// <summary>
+    /// O cliente montado COMO EM PRODUCAO: atras da guarda de rota do motor.
+    ///
+    /// Ate 06/11/2026 estes testes usavam um HttpClient cru, e foi por isso que o $batch passou
+    /// neles e teria sido recusado na VM: a guarda e fail-closed e a rota do lote nao estava na
+    /// lista. Ela fez o trabalho dela - os testes e que nao passavam por ela.
+    /// </summary>
     private static (AjusteRemessaSdSapClient Cliente, SapComEtag Sap, HttpClient Http) Montar()
     {
         var sap = new SapComEtag();
-        var http = new HttpClient(sap);
+        var http = new HttpClient(new MotorSdSapGuard(sap, "https://sap.invalid"));
         var executor = new SapODataHttpExecutor(http,
             new() { BaseUrl = new("https://sap.invalid"), SapClient = "110", Timeout = TimeSpan.FromSeconds(5) },
             new AuthFake(), new CookieContainer());

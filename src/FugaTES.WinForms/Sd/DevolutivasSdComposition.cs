@@ -139,8 +139,16 @@ public sealed class RemessaSdHttpGuard(HttpMessageHandler inner, string origemAp
             && (caminho.Equals(ExpedicaoSdSapClient.RotaPicking, StringComparison.Ordinal)
                 || caminho.Equals(ExpedicaoSdSapClient.RotaSaida, StringComparison.Ordinal));
 
+        // O $batch: a rota do LOTE, exata. E POST por ser o verbo do envelope, nao da escrita -
+        // o que vai DENTRO dele sao os mesmos PATCHes de item que a linha de baixo ja permite, e
+        // nenhuma outra entidade e alcancavel por ele: o corpo e montado por nos, item a item.
+        //
+        // Sem esta linha a guarda recusa o ajuste inteiro com rota proibida. Ela fez exatamente o
+        // que devia em 06/11/2026, quando o $batch entrou sem passar por aqui.
+        var loteRemessa = caminho.Equals(
+            AjusteRemessaSdSapClient.Servico + SapODataLoteV2.Sufixo, StringComparison.Ordinal);
         var liberado =
-            request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || expedicao
+            request.Method == HttpMethod.Post ? colecaoRemessa || navegacaoTexto || expedicao || loteRemessa
             : request.Method == HttpMethod.Patch ? entidadeRemessa || entidadeTexto
             : request.Method == HttpMethod.Get
                 && (colecaoRemessa || entidadeRemessa || navegacaoTexto || ordem);
