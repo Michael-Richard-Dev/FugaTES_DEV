@@ -33,8 +33,14 @@ CHAVE="${CHAVE:-SdProtocolo__ConnectionString}"
 # resposta, nao uma queda, e no primeiro ensaio o trap acusava defeito proprio justamente nela.
 # Falso alarme corroi a confianca no aviso tanto quanto o silencio.
 CONCLUIDO=0
+FALHOU=""
+# $LINENO dentro de um trap EXIT aponta para a linha do PROPRIO trap, nao para a que falhou: o
+# primeiro ensaio acusou "linha 2". Numero errado desorienta mais do que numero nenhum, entao
+# quem guarda a linha de verdade e o trap ERR. set -E faz ele valer dentro de funcoes e subshells.
+set -E
+trap 'FALHOU=$LINENO' ERR
 trap '[ "$CONCLUIDO" = 1 ] || echo "
-INTERROMPIDO na linha $LINENO, sem veredito. Isto e um defeito DESTE script, nao do ambiente:
+INTERROMPIDO na linha ${FALHOU:-?}, sem veredito. Isto e um defeito DESTE script, nao do ambiente:
 nada foi conferido. Me mande esta saida." >&2' EXIT
 
 # Os EnvironmentFile da unidade, na ordem em que o systemd os aplica - o ultimo a definir vence.
