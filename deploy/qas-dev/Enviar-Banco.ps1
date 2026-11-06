@@ -4,6 +4,7 @@
 #   inventariar-servicos.sh  - so LE systemd, nginx e portas, nunca altera
 #   criar-banco-qas.sh       - "conferir" e "ensaio" nao alteram nada; "aplicar" cria
 #   limpar-nginx.sh          - "conferir" nao altera nada; "aplicar" tira as copias .bak
+#   conferir-guarda-motor.sh - so LE; diz se a guarda nova aceitaria o motor como esta hoje
 #
 # Uso:  .\Enviar-Banco.ps1
 
@@ -14,7 +15,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host 'enviando os scripts do QAS120'
-scp inventariar-cluster.sh criar-banco-qas.sh inventariar-servicos.sh limpar-nginx.sh "${Destino}:~/"
+scp inventariar-cluster.sh criar-banco-qas.sh inventariar-servicos.sh limpar-nginx.sh conferir-guarda-motor.sh "${Destino}:~/"
 if ($LASTEXITCODE -ne 0) { throw "scp falhou com codigo $LASTEXITCODE." }
 
 Write-Host ''
