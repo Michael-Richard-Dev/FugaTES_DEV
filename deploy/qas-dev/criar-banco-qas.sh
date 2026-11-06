@@ -258,6 +258,17 @@ validar)
     fi
   done
 
+  # O DONO fica DE PROPOSITO sem senha, e isto e dito em voz alta para a omissao nao parecer
+  # descuido. O DDL do QAS vai pelo mesmo caminho do DEV - "sudo -u postgres" com "set role" -,
+  # exatamente como os migrar-*.sh fazem hoje, porque tambem nao ha credencial do
+  # fugates_dev_owner nesta maquina. Sem senha ele nao autentica de lugar nenhum, que e o estado
+  # mais estreito possivel para um papel que so precisa ser DONO, e nunca cliente.
+  if pg_q postgres "select rolpassword is not null from pg_authid where rolname='$DONO_QAS'" | grep -qi '^t'; then
+    echo "   $DONO_QAS ... tem senha. Nao e preciso: o DDL vai por sudo -u postgres com set role."
+  else
+    echo "   $DONO_QAS ... sem senha, DE PROPOSITO (so dono, nunca cliente)."
+  fi
+
   echo
   [ "$falhas" = 0 ] && echo "VALIDADO: $falhas pendencia(s)." || { echo "$falhas pendencia(s) acima."; exit 1; }
   ;;
