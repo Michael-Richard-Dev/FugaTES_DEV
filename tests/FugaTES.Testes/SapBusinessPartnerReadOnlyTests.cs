@@ -523,7 +523,38 @@ public sealed class SapBusinessPartnerReadOnlyTests
                 Assert.Single(Regex.Matches(source, Regex.Escape(literal)).Cast<Match>());
                 source = source.Replace(literal, "\"https://example.invalid\"", StringComparison.Ordinal);
             }
+            // O registro dos ambientes SAP aprovados. As duas URLs estao aqui de proposito: e o
+            // UNICO lugar do codigo que diz quais ambientes existem, e foi assim que o DEV110
+            // deixou de estar escrito espalhado por dezenas de arquivos. Autorizado pelo operador
+            // em 05/11/2026, junto com a criacao do QAS120.
+            //
+            // Cada literal e fixado em UMA ocorrencia e neutralizado antes da varredura - o mesmo
+            // tratamento do callback aprovado acima - para que o scanner continue valendo no resto
+            // do arquivo. Uma URL nova aqui quebra o Assert.Single, e isso e o controle.
+            if (Path.GetFileName(arquivo) == "AmbientesSap.cs")
+                foreach (var ambiente in FugaTES.Aplicacao.Configuracao.AmbientesSap.Aprovados)
+                {
+                    var literal = "\"" + ambiente.Origem + "\"";
+                    Assert.Single(Regex.Matches(source, Regex.Escape(literal)).Cast<Match>());
+                    source = source.Replace(literal, "\"https://example.invalid\"", StringComparison.Ordinal);
+                }
+
             var achados = ScannerSegurancaCodigo.Detectar(source);
+
+            // O POST do $batch, no transporte. Autorizado pelo operador em 06/11/2026 junto com a
+            // correcao da remessa 80003934: gravar os itens em PATCHes separados criava uma LUW
+            // por item sobre o mesmo documento, e o SAP recusava o segundo dizendo que a remessa
+            // estava sendo processada por nos mesmos - deixando-a com metade dos itens zerada.
+            //
+            // O $batch nao acrescenta capacidade: o que vai dentro dele sao os MESMOS PATCHes que
+            // ja eram autorizados, numa transacao so. O verbo POST e do envelope, nao da escrita.
+            // O que o changeset acrescenta e atomicidade, que e o contrario de capacidade nova.
+            //
+            // Continua valendo para o resto do arquivo: endpoint literal e segredo seguem
+            // proibidos aqui, e um PUT ou DELETE novo seria acusado.
+            if (Path.GetFileName(arquivo).Equals("SapODataHttpExecutor.cs", StringComparison.OrdinalIgnoreCase))
+                achados = achados.Where(achado =>
+                    !achado.Equals("HttpMethod.Post", StringComparison.OrdinalIgnoreCase)).ToArray();
             if (Path.GetFileName(arquivo).Equals("PesagemSapHttpGateway.cs", StringComparison.OrdinalIgnoreCase))
                 achados = achados.Where(achado => !achado.Equals("HttpMethod.Post", StringComparison.OrdinalIgnoreCase)).ToArray();
             // MVP SAP capabilities (Gate FUGATES-MVP-SAP-CAPABILITIES-SD-MM-ACM-R1): escrita SAP autorizada

@@ -79,52 +79,39 @@ public sealed class AjusteRemessaSdSapClient(SapODataHttpExecutor executor) : IA
                 return etapas;
             }
 
+            // TODOS OS ITENS NUMA TRANSACAO SO ($batch com um changeset).
+            //
+            // Ate 06/11/2026 cada item ia num PATCH proprio, e isso criava N gravacoes sobre o
+            // MESMO documento em sequencia rapida. Duas coisas davam errado, nesta ordem
+            // historica:
+            //
+            //   1. o ETag do item seguinte envelhecia assim que o anterior era aceito - 412 na
+            //      remessa 80003910 (05/11). Foi contornado relendo entre os itens;
+            //   2. a releitura nao resolveu a colisao de verdade: o update task do PATCH anterior
+            //      ainda estava rodando, e o SAP recusou dizendo que a remessa estava sendo
+            //      processada POR NOS MESMOS - HTTP 500 na remessa 80003934 (06/11), que ficou com
+            //      o item 000010 zerado e o 000020 nao.
+            //
+            // No changeset ha um enqueue e um commit: nao existe segundo PATCH para colidir com o
+            // primeiro, e o ETag nao envelhece no meio porque nada e aceito ate o fim. A releitura
+            // entre itens saiu junto - ela usava o unico GET do executor que nao carrega o cookie
+            // de sessao, e lia fora da sessao que acabara de gravar.
+            //
+            // E, o que mais importa: ou todos os itens sao zerados, ou nenhum. O estado "metade
+            // zerada" deixa de existir.
             var corpoItem = MapeadorAjusteRemessaSd.Serializar(MapeadorAjusteRemessaSd.MontarItemZerado());
-            var itens = remessa.Itens;
-            for (var i = 0; i < itens.Count; i++)
-            {
-                var item = itens[i];
-                var etag = item.ETag;
+            var gravacoes = remessa.Itens
+                .Select(item => new GravacaoLoteSap(
+                    $"item {item.DeliveryDocumentItem}",
+                    ChaveItemRelativa(item.DeliveryDocument, item.DeliveryDocumentItem),
+                    corpoItem,
+                    item.ETag))
+                .ToArray();
 
-                // RELEITURA ENTRE OS ITENS. Gravar um item muda a versao do DOCUMENTO, e com ela o
-                // ETag dos OUTROS itens - nao so o do cabecalho. O ETag lido antes do laco vale
-                // para o primeiro PATCH e envelhece no instante em que ele e aceito.
-                //
-                // Ate 04/11/2026 isso nunca apareceu porque a remessa de biodiesel tinha UM item.
-                // Na remessa 80003910, em 05/11, a criacao passou a trazer tambem as linhas da
-                // ordem em aberto: o item 000010 gravou com HTTP 204 e o 000020 foi recusado com
-                // 412 "State of the resource (entity) was already changed (If-Match)". E o mesmo
-                // 412 que a releitura abaixo ja evitava para o cabecalho - faltava estende-la aqui.
-                //
-                // O primeiro item segue usando o ETag que o chamador leu, sem GET extra: assim a
-                // remessa de um item unico - todos os outros setores - continua fazendo
-                // exatamente as mesmas chamadas de antes.
-                if (i > 0)
-                {
-                    var relido = await LerAsync(remessa.DeliveryDocument, ct).ConfigureAwait(false);
-                    var atualizado = relido?.Itens.FirstOrDefault(x => string.Equals(
-                        x.DeliveryDocumentItem, item.DeliveryDocumentItem, StringComparison.Ordinal));
-                    if (atualizado is null)
-                    {
-                        // Sem o ETag do estado atual nao da para gravar com seguranca: o velho
-                        // daria 412, e "*" passaria por cima de uma alteracao de terceiro.
-                        etapas.Add(new($"item {item.DeliveryDocumentItem}", false, 0,
-                            [new MensagemSap("SD_AJUSTE_RELEITURA_ITEM_FALHOU", "error",
-                                $"O item {item.DeliveryDocumentItem} não pôde ser lido de novo "
-                                + "para gravar com a precondição atual. Tente o ajuste outra vez.")]));
-                        return etapas;
-                    }
-                    etag = atualizado.ETag;
-                }
-
-                var uriItem = executor.ConstruirUri(ChaveItem(item.DeliveryDocument, item.DeliveryDocumentItem));
-                var etapa = await EnviarAsync($"item {item.DeliveryDocumentItem}", uriItem, corpoItem,
-                    token, etag, ct).ConfigureAwait(false);
-                etapas.Add(etapa);
-                // Para no primeiro item recusado: seguir deixaria a remessa com parte dos itens
-                // zerada e parte nao, e o cabecalho sem o peso da balanca.
-                if (!etapa.Ok) return etapas;
-            }
+            var doLote = await EnviarLoteAsync(gravacoes, token, ct).ConfigureAwait(false);
+            etapas.AddRange(doLote);
+            // Changeset e tudo-ou-nada: uma parte recusada significa que NENHUMA foi aplicada.
+            if (doLote.Any(e => !e.Ok)) return etapas;
 
             // Zerar os itens muda a VERSAO do documento, e com ela o ETag do cabecalho. Mandar o
             // cabecalho com o ETag lido antes devolveria 412 "State of the resource was already
@@ -149,6 +136,39 @@ public sealed class AjusteRemessaSdSapClient(SapODataHttpExecutor executor) : IA
             MapeadorAjusteRemessaSd.Serializar(cabecalho), token, remessa.ETag, ct).ConfigureAwait(false));
         return etapas;
     }
+
+    /// <summary>
+    /// O lote, com a mesma insistencia em trava que um PATCH avulso: a trava pode vir do enqueue
+    /// do passo ANTERIOR do fluxo - a criacao da remessa, segundos antes -, e nesse caso ela nao
+    /// e culpa de ter varios itens. O changeset resolve a colisao entre OS NOSSOS ITENS; a trava
+    /// entre passos continua existindo, e e transitoria do mesmo jeito.
+    ///
+    /// Insistir e seguro porque o changeset e atomico: uma recusa garante que nada foi gravado,
+    /// entao repetir nao grava duas vezes.
+    /// </summary>
+    private Task<IReadOnlyList<EtapaAjusteRemessaSd>> EnviarLoteAsync(
+        IReadOnlyList<GravacaoLoteSap> gravacoes, string token, CancellationToken ct)
+        => TravaSapOData.InsistirSeTravadoAsync(async cancelamento =>
+        {
+            // Boundaries unicos por envio: reaproveitar entre requisicoes e o tipo de coisa que
+            // so quebra sob concorrencia.
+            var marca = Guid.NewGuid().ToString("N");
+            var boundaryLote = "batch_" + marca;
+            var boundaryChangeset = "changeset_" + marca;
+
+            var corpo = SapODataLoteV2.MontarCorpo(gravacoes, boundaryLote, boundaryChangeset);
+            var uri = executor.ConstruirUri(Servico + SapODataLoteV2.Sufixo);
+            var resposta = await executor
+                .EnviarLoteAsync(uri, corpo, boundaryLote, token, cancelamento).ConfigureAwait(false);
+
+            return (IReadOnlyList<EtapaAjusteRemessaSd>)SapODataLoteV2
+                .LerRespostas(gravacoes, resposta.Status, resposta.Body)
+                .Select(r => new EtapaAjusteRemessaSd(r.Nome, r.Ok, r.HttpStatus, r.MensagensSap))
+                .ToArray();
+        },
+        etapas => etapas.All(e => e.Ok),
+        etapas => etapas.SelectMany(e => e.MensagensSap).ToArray(),
+        ct);
 
     private Task<EtapaAjusteRemessaSd> EnviarAsync(string etapa, Uri uri, string json,
         string token, string? etag, CancellationToken ct)
@@ -176,6 +196,17 @@ public sealed class AjusteRemessaSdSapClient(SapODataHttpExecutor executor) : IA
     public static string ChaveItem(string numeroRemessa, string item)
         => Item + "(DeliveryDocument='" + Digitos(numeroRemessa, nameof(numeroRemessa))
             + "',DeliveryDocumentItem='" + Digitos(item, nameof(item)) + "')";
+
+    /// <summary>
+    /// A mesma chave do item, mas RELATIVA ao servico - sem o caminho do servico e sem barra
+    /// inicial. E a forma que o OData V2 exige na linha de requisicao de dentro do $batch: um
+    /// caminho absoluto ali faz o SAP recusar a parte.
+    ///
+    /// Passa pela mesma conferencia de digitos de <see cref="ChaveItem"/>, que e o que impede um
+    /// valor arbitrario de mudar a entidade alvo.
+    /// </summary>
+    public static string ChaveItemRelativa(string numeroRemessa, string item)
+        => ChaveItem(numeroRemessa, item)[Servico.Length..];
 
     private static string Digitos(string valor, string nome)
     {

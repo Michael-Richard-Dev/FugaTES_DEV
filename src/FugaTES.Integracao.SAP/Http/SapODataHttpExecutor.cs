@@ -1,3 +1,4 @@
+using System.Text;
 using System.Net;
 using FugaTES.Integracao.SAP.Autenticacao;
 using FugaTES.Integracao.SAP.Configuracao;
@@ -109,6 +110,38 @@ public sealed class SapODataHttpExecutor(
         await autenticacao.AplicarAsync(request, timeout.Token).ConfigureAwait(false);
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
         var body = accept=="application/atom+xml" ? await ReadBoundedAsync(response.Content,timeout.Token) : await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+        return new SapHttpResposta(response.StatusCode, body, LerETag(response));
+    }
+
+    /// <summary>
+    /// POST de um $batch do OData V2. O boundary vai no Content-Type e TEM de ser o mesmo que
+    /// montou o corpo - divergir produz um lote que o SAP aceita e ignora, respondendo 202 sem
+    /// ter feito nada.
+    ///
+    /// Vai com CSRF e com o cookie de sessao, como qualquer escrita: o lote E uma escrita.
+    /// </summary>
+    public async Task<SapHttpResposta> EnviarLoteAsync(
+        Uri uri, string corpoMultipart, string boundary, string tokenCsrf, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(opcoes.Timeout);
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        using var conteudo = new ByteArrayContent(Encoding.UTF8.GetBytes(corpoMultipart));
+        conteudo.Headers.TryAddWithoutValidation("Content-Type", "multipart/mixed; boundary=" + boundary);
+        request.Content = conteudo;
+        request.Headers.TryAddWithoutValidation("X-CSRF-Token", tokenCsrf);
+        request.Headers.TryAddWithoutValidation("Accept", "multipart/mixed");
+
+        var cookies = cookieContainer.GetCookieHeader(uri);
+        if (!string.IsNullOrWhiteSpace(cookies))
+        {
+            request.Headers.TryAddWithoutValidation("Cookie", cookies);
+        }
+
+        await autenticacao.AplicarAsync(request, timeout.Token).ConfigureAwait(false);
+        using var response = await httpClient
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+        var body = await ReadBoundedAsync(response.Content, timeout.Token).ConfigureAwait(false);
         return new SapHttpResposta(response.StatusCode, body, LerETag(response));
     }
 

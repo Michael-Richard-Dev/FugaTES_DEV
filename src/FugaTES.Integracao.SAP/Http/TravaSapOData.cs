@@ -23,13 +23,37 @@ public static class TravaSapOData
     public static readonly TimeSpan Espera = TimeSpan.FromSeconds(2);
 
     /// <summary>
-    /// Se a recusa e trava. Pelo CODIGO, e nao por "deu 400": a distincao entre transitorio e
-    /// definitivo e o que autoriza insistir.
+    /// As formas conhecidas de o SAP dizer "este documento esta ocupado agora".
+    ///
+    /// Sao DUAS mensagens diferentes para a mesma coisa, e isso custou a remessa 80003934 em
+    /// 06/11/2026: o enqueue generico fala "currently locked by user FUGATES" (MC/601), mas o
+    /// servico da remessa fala "The delivery is currently being processed by user FUGATES"
+    /// (LE_SHP_ODATA_API_OD/003). Reconheciamos so a primeira, entao a segunda passou como recusa
+    /// definitiva, sem UMA tentativa sequer - e o ajuste parou no meio.
+    ///
+    /// Comparar por trecho de texto e fragil, e aqui e deliberado: o codigo do servico varia por
+    /// API e nao da para enumerar todos de antemao. O trecho escolhido e o que descreve a
+    /// natureza - ocupado AGORA, por alguem -, nao o verbo de uma API.
+    /// </summary>
+    private static readonly string[] TrechosDeTrava =
+    [
+        "currently locked",             // MC/601, enqueue generico
+        "currently being processed",    // LE_SHP_ODATA_API_OD/003, remessa
+        "is locked by user"
+    ];
+
+    private static readonly string[] CodigosDeTrava = ["MC/601", "LE_SHP_ODATA_API_OD/003"];
+
+    /// <summary>
+    /// Se a recusa e trava. Pelo CODIGO quando ele e conhecido, e pelo TEXTO quando nao e: a
+    /// distincao entre transitorio e definitivo e o que autoriza insistir, e errar para o lado de
+    /// nao insistir deixa a remessa pela metade.
     /// </summary>
     public static bool EhTrava(IReadOnlyList<MensagemSap>? mensagens)
         => mensagens is not null
-           && mensagens.Any(m => string.Equals(m.Codigo, "MC/601", StringComparison.OrdinalIgnoreCase)
-               || m.Texto.Contains("currently locked", StringComparison.OrdinalIgnoreCase));
+           && mensagens.Any(m =>
+               CodigosDeTrava.Any(c => string.Equals(m.Codigo, c, StringComparison.OrdinalIgnoreCase))
+               || TrechosDeTrava.Any(t => m.Texto.Contains(t, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>
     /// Executa e insiste enquanto a recusa for trava, ate <see cref="Tentativas"/>. Devolve o
