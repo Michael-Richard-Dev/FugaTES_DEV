@@ -1,4 +1,5 @@
 using System.Data.Common;
+using FugaTES.Aplicacao.Configuracao;
 using FugaTES.Aplicacao.Servicos.Mvp;
 namespace FugaTES.Persistencia.MotorIntegracao;
 
@@ -9,14 +10,31 @@ public static class AcmPostgreSqlIdentityGuard
     /// <param name="expectedRole">
     /// Role que a conexao fisica tem que confirmar em current_user e session_user. Por padrao a
     /// role leitora; o receptor SAP, quando autorizado, passa a sua propria identidade exclusiva.
-    /// Nenhum outro criterio e relaxado: cluster, porta, base, schema e recovery seguem fixos.
+    /// Nenhum outro criterio e relaxado: cluster, porta, schema e recovery seguem fixos.
     /// </param>
-    public static async Task VerifyAsync(DbConnection connection, CancellationToken ct = default, string? expectedRole = null)
+    /// <param name="expectedDatabase">
+    /// O banco que a conexao tem que confirmar em current_database. Por padrao o do DEV110, que e
+    /// o comportamento de sempre - nenhum chamador de hoje precisou mudar quando o QAS120 apareceu,
+    /// em 06/11/2026.
+    ///
+    /// Isto existe porque a cadeia de conexao DIZ um banco e o servidor pode entregar outro: um
+    /// tunel, um pgbouncer ou um alias mudam o destino sem mudar a string. A conferencia na string
+    /// prova intencao; esta aqui prova ONDE a conexao caiu.
+    ///
+    /// O par banco+papel e conferido junto, e nao um de cada vez: papel no PostgreSQL e do
+    /// cluster, entao o banco do QAS com o papel do DEV passaria em duas conferencias separadas.
+    /// </param>
+    public static async Task VerifyAsync(DbConnection connection, CancellationToken ct = default,
+        string? expectedRole = null, string? expectedDatabase = null)
     {
         var role = string.IsNullOrWhiteSpace(expectedRole)
-            ? NpgsqlDataSourceFactory.AcmApplicationRole
+            ? AmbientesBanco.Dev110.PapelAcm
             : expectedRole;
-        if (!NpgsqlDataSourceFactory.EhRoleGuardada(role))
+        var banco = string.IsNullOrWhiteSpace(expectedDatabase)
+            ? AmbientesBanco.Dev110.Banco
+            : expectedDatabase;
+        if (AmbientesBanco.Por(banco, role) is not { } ambiente
+            || !NpgsqlDataSourceFactory.EhRoleGuardada(role, ambiente))
             throw new AcmR57BlockedException("R146E_PHYSICAL_DATABASE_IDENTITY_MISMATCH");
         try
         {
@@ -41,7 +59,7 @@ public static class AcmPostgreSqlIdentityGuard
                 await using var reader = await cmd.ExecuteReaderAsync(ct);
                 if (!await reader.ReadAsync(ct) || reader.IsDBNull(0) || reader.GetString(0) != "18/fugatesacmdev" ||
                     reader.GetInt32(1) != 5433 || (!reader.IsDBNull(2) && reader.GetInt32(2) != 5433) ||
-                    reader.GetString(3) != "fugates_dev" || reader.IsDBNull(4) || reader.GetString(4) != "fugates" ||
+                    reader.GetString(3) != banco || reader.IsDBNull(4) || reader.GetString(4) != "fugates" ||
                     reader.GetString(5) != role || reader.GetString(6) != role || reader.GetBoolean(7))
                     throw new AcmR57BlockedException("R146E_PHYSICAL_DATABASE_IDENTITY_MISMATCH");
             }

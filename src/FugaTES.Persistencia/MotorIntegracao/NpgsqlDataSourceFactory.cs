@@ -1,4 +1,5 @@
 ﻿using Npgsql;
+using FugaTES.Aplicacao.Configuracao;
 
 namespace FugaTES.Persistencia.MotorIntegracao;
 
@@ -26,21 +27,46 @@ public static class NpgsqlDataSourceFactory
     /// </summary>
     public const string DevReadOnlyApplicationRole = "fugates_dev_read_app";
 
-    /// <summary>Identidades submetidas ao caminho reforcado de conexao.</summary>
-    public static bool EhRoleGuardada(string? username)
-        => username == AcmApplicationRole
-        || username == SapInboundApplicationRole
-        || username == DevReadOnlyApplicationRole;
-
-    public static NpgsqlDataSource CriarAcm(string? connectionString)
+    /// <summary>
+    /// Identidades submetidas ao caminho reforcado de conexao, nos ambientes informados.
+    ///
+    /// Sao os MESMOS tres papeis de sempre - ACM, receptor SAP e leitura -, so que agora lidos do
+    /// ambiente em vez de escritos aqui. Vazio significa DEV110, e ai a lista e identica a que
+    /// existia antes de 06/11/2026.
+    ///
+    /// O papel do SD e do MM nao entram: eles nao passam por este caminho, e inclui-los daria a
+    /// eles um reforco que o codigo deles nao espera.
+    /// </summary>
+    public static bool EhRoleGuardada(string? username, params AmbienteBanco[] ambientesAceitos)
     {
+        var aceitos = ambientesAceitos is { Length: > 0 } ? ambientesAceitos : [AmbientesBanco.Dev110];
+        return Array.Exists(aceitos, a =>
+            username == a.PapelAcm || username == a.PapelSapInbound || username == a.PapelLeitura);
+    }
+
+    /// <summary>
+    /// <paramref name="ambientesAceitos"/> diz QUAIS bancos esta conexao pode alcancar. Vazio
+    /// significa so o DEV110, que e o comportamento de sempre - por isso nenhum chamador de hoje
+    /// precisou mudar quando o QAS120 apareceu, em 06/11/2026.
+    ///
+    /// O par banco+papel e conferido JUNTO (ver <see cref="AmbientesBanco"/>): papel no PostgreSQL
+    /// e do CLUSTER e nao do banco, entao conferir um sem o outro deixaria passar o banco do QAS
+    /// com o papel do DEV.
+    ///
+    /// Ampliar um fluxo e acrescentar um ambiente NA CHAMADA, deliberadamente. Em 06/11/2026 so o
+    /// receptor da devolutiva SD foi ampliado; ACM e MM seguem no DEV110.
+    /// </summary>
+    public static NpgsqlDataSource CriarAcm(string? connectionString, params AmbienteBanco[] ambientesAceitos)
+    {
+        var aceitos = ambientesAceitos is { Length: > 0 } ? ambientesAceitos : [AmbientesBanco.Dev110];
         NpgsqlConnectionStringBuilder metadata;
         try
         {
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException();
             metadata = new NpgsqlConnectionStringBuilder(connectionString);
-            if (metadata.Port != 5433 || !EhRoleGuardada(metadata.Username) || metadata.Database != "fugates_dev" ||
+            if (metadata.Port != 5433 || !EhRoleGuardada(metadata.Username, aceitos) ||
+                !AmbientesBanco.EhPar(metadata.Database, metadata.Username, aceitos) ||
                 metadata.SearchPath != "fugates" ||
                 (metadata.Host != "127.0.0.1" && metadata.Host != "localhost"))
                 throw new InvalidOperationException();
@@ -57,10 +83,13 @@ public static class NpgsqlDataSourceFactory
         // A identidade esperada acompanha a role da propria connection string: cada conexao fisica
         // precisa confirmar que current_user e session_user sao exatamente essa role.
         var roleEsperada = metadata.Username!;
+        // O banco vai junto: a cadeia DIZ um destino, e so a conferencia fisica prova onde a
+        // conexao caiu. Ver AcmPostgreSqlIdentityGuard.
+        var bancoEsperado = metadata.Database!;
         var builder = new NpgsqlDataSourceBuilder(metadata.ConnectionString);
         builder.UsePhysicalConnectionInitializer(
-            connection => AcmPostgreSqlIdentityGuard.VerifyAsync(connection, expectedRole: roleEsperada).GetAwaiter().GetResult(),
-            connection => AcmPostgreSqlIdentityGuard.VerifyAsync(connection, expectedRole: roleEsperada));
+            connection => AcmPostgreSqlIdentityGuard.VerifyAsync(connection, expectedRole: roleEsperada, expectedDatabase: bancoEsperado).GetAwaiter().GetResult(),
+            connection => AcmPostgreSqlIdentityGuard.VerifyAsync(connection, expectedRole: roleEsperada, expectedDatabase: bancoEsperado));
         return builder.Build();
     }
 

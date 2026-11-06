@@ -29,9 +29,17 @@ public class FactoryTests
     private static NpgsqlDataSource CreateAcm(string? connection)
     {
         // Assert a missing R161L API as a runnable RED, rather than a compile failure.
-        var method = typeof(NpgsqlDataSourceFactory).GetMethod("CriarAcm", new[] { typeof(string) });
+        //
+        // A assinatura ganhou um segundo parametro em 06/11/2026: os ambientes de banco que a
+        // conexao pode alcancar. Vazio significa so o DEV110 - exatamente o comportamento que
+        // estes testes exercitam -, entao o que eles provam nao mudou. Ver AmbientesBanco.
+        var method = typeof(NpgsqlDataSourceFactory).GetMethod(
+            "CriarAcm", new[] { typeof(string), typeof(FugaTES.Aplicacao.Configuracao.AmbienteBanco[]) });
         Assert.NotNull(method);
-        return method.CreateDelegate<Func<string?, NpgsqlDataSource>>()(connection);
+        // Delegate, e nao Invoke: Invoke embrulha a recusa em TargetInvocationException, e estes
+        // testes conferem o TIPO exato da excecao - passariam a falhar por causa do mensageiro.
+        return method.CreateDelegate<Func<string?, FugaTES.Aplicacao.Configuracao.AmbienteBanco[], NpgsqlDataSource>>()(
+            connection, Array.Empty<FugaTES.Aplicacao.Configuracao.AmbienteBanco>());
     }
 
     [Fact]

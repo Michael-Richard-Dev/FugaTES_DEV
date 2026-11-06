@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using FugaTES.Aplicacao.Contratos.Sd;
 using FugaTES.Persistencia.MotorIntegracao;
 using FugaTES.Persistencia.Sd;
@@ -31,9 +32,16 @@ public static class DevolutivaSdComposition
             throw new InvalidOperationException($"{Flag} must be explicit true/false.");
         if (!bool.TryParse(flag, out var habilitado) || !habilitado) return false;
 
+        // OS DOIS AMBIENTES, e este e o unico lugar do receptor onde isso vale hoje.
+        //
+        // O receptor Toledo e o ACM continuam no DEV110: ampliar e acrescentar um ambiente AQUI,
+        // deliberadamente, e nao afrouxar a guarda la dentro. O par banco+papel continua sendo
+        // conferido junto, entao o fugates_qas so e aceito com o papel do QAS.
+        var ambientes = new[] { AmbientesBanco.Dev110, AmbientesBanco.Qas120 };
         var cs = ToledoCallbackComposition.ValidateDedicatedBinding(
-            configuration.GetConnectionString("SdDevolutiva") ?? configuration.GetConnectionString("Toledo"));
-        services.AddKeyedSingleton<NpgsqlDataSource>(DataSourceKey, (_, _) => NpgsqlDataSourceFactory.CriarAcm(cs));
+            configuration.GetConnectionString("SdDevolutiva") ?? configuration.GetConnectionString("Toledo"),
+            ambientes);
+        services.AddKeyedSingleton<NpgsqlDataSource>(DataSourceKey, (_, _) => NpgsqlDataSourceFactory.CriarAcm(cs, ambientes));
         services.TryAddScoped<IDevolutivasSdRepositorio>(sp =>
             new DevolutivasSdPostgreSql(sp.GetRequiredKeyedService<NpgsqlDataSource>(DataSourceKey)));
         return true;

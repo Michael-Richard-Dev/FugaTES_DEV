@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Configuracao;
 using FugaTES.Aplicacao.CasosDeUso.Recebimento;
 using FugaTES.Aplicacao.Contratos.Recebimento;
 using FugaTES.Persistencia.Recebimento;
@@ -33,13 +34,28 @@ public static class ToledoCallbackComposition
         services.TryAddSingleton<IToledoCallbackAdmission>(new ProtectedToledoCallbackAdmission(ToledoCallbackAdmissionOptions.Parse(configuration)));
         // No ordinary NpgsqlDataSource registration, legacy provider change, host or worker.
     }
-    public static string ValidateDedicatedBinding(string? cs)
+    /// <summary>
+    /// O vinculo dedicado ao banco. <paramref name="ambientesAceitos"/> diz QUAIS bancos este
+    /// vinculo pode alcancar; vazio significa so o DEV110, que e o comportamento de sempre.
+    ///
+    /// O par banco+papel e conferido JUNTO: papel no PostgreSQL e do CLUSTER e nao do banco,
+    /// entao exigir "banco aprovado" e "papel aprovado" em separado deixaria passar o banco do
+    /// QAS com o papel do DEV - e seria uma gravacao no ambiente errado com credencial valida.
+    ///
+    /// Em 06/11/2026 so o receptor da devolutiva SD passou a aceitar o QAS120. O receptor Toledo
+    /// e o ACM continuam no DEV110, e e por isso que o parametro existe em vez de a funcao
+    /// consultar a lista inteira.
+    /// </summary>
+    public static string ValidateDedicatedBinding(string? cs,params AmbienteBanco[] ambientesAceitos)
     {
+        var aceitos=ambientesAceitos is {Length:>0}?ambientesAceitos:[AmbientesBanco.Dev110];
         try
         {
             var v=new NpgsqlConnectionStringBuilder(cs??"");
-            if(v.Host is not("127.0.0.1" or "localhost")||v.Port!=5433||v.Database!="fugates_dev"||v.SearchPath!="fugates"||
-                v.Username!=NpgsqlDataSourceFactory.AcmApplicationRole||v.Enlist||!NpgsqlDataSourceFactory.HasExplicitAcmPassfile(v))throw new InvalidOperationException();
+            var ambiente=AmbientesBanco.Por(v.Database,v.Username,aceitos);
+            if(v.Host is not("127.0.0.1" or "localhost")||v.Port!=5433||v.SearchPath!="fugates"||
+                ambiente is null||v.Username!=ambiente.PapelAcm||
+                v.Enlist||!NpgsqlDataSourceFactory.HasExplicitAcmPassfile(v))throw new InvalidOperationException();
             return v.ConnectionString;
         }
         catch{throw new InvalidOperationException("TOLEDO_DEDICATED_5433_BINDING_REQUIRED");}
