@@ -9,17 +9,28 @@ public sealed record ToledoCallbackActor(bool Accepted,string SourceIdentity,int
 public interface IToledoCallbackAdmission
 {Task<ToledoCallbackActor> AuthorizeAsync(HttpContext context,CancellationToken ct);}
 
+// The environment and its private listener are one approval, never independent allowlists.
+internal sealed record ToledoCallbackIngress(string Environment,int Port)
+{
+ private static readonly ToledoCallbackIngress[] Approved=[new("DEV",18086),new("QAS120",18087)];
+ internal static ToledoCallbackIngress? Find(string? environment,int port)
+  =>Approved.SingleOrDefault(i=>i.Environment==environment&&i.Port==port);
+}
+
 public sealed record ToledoCallbackAdmissionOptions
 {
+    public string Environment{get;init;}="DEV";
+    public int PrivateListenerPort{get;init;}=18086;
+    internal ToledoCallbackIngress? Ingress=>ToledoCallbackIngress.Find(Environment,PrivateListenerPort);
     public string SourceIdentity{get;init;}="";
     public string HeaderName{get;init;}="";
     public string SecretFile{get;init;}="";
     public IPAddress[] AllowedPeers{get;init;}=[];
     public bool PrivateLoopbackProxyApproved{get;init;}
-    // Explicit operator-approved DEV network boundary; never the default mode.
+    // Legacy mode name retained; approval is the complete environment/listener pair.
     public bool PrivateDevNetworkOnly{get;init;}
     public bool Configured=>SourceIdentity.Length is >0 and <=160&&!SourceIdentity.Any(char.IsControl)&&AllowedPeers.Length>0&&
-        (PrivateDevNetworkOnly?PrivateLoopbackProxyApproved:
+        (PrivateDevNetworkOnly?PrivateLoopbackProxyApproved&&Ingress is not null:
         HeaderName.Length is >0 and <=64&&HeaderName.All(c=>char.IsAsciiLetterOrDigit(c)||c=='-')&&
         Path.IsPathFullyQualified(SecretFile)&&!SecretFile.Any(char.IsControl));
     public static ToledoCallbackAdmissionOptions Parse(IConfiguration config)
@@ -30,11 +41,14 @@ public sealed record ToledoCallbackAdmissionOptions
         bool True(string key)=>bool.TryParse(s[key],out var flag)&&flag;
         var mode=s["Mode"]??"SharedSecret";
         if(mode is not ("SharedSecret" or "PrivateDevNetworkOnly"))return new();
-        var privateProxy=s["Environment"] is "DEV" or "HML"&&True("PrivateTransportVerified")&&True("SourceVerified")&&
-            !string.IsNullOrWhiteSpace(s["ApprovalReference"])&&True("PrivateLoopbackProxyApproved")&&peers.Count==1&&peers[0].Equals(IPAddress.Loopback);
         var networkOnly=mode=="PrivateDevNetworkOnly";
-        if(networkOnly&&(s["Environment"]!="DEV"||s["PrivateListenerPort"]!="18086"||!privateProxy))return new();
-        return new(){SourceIdentity=s["SourceIdentity"]??"",HeaderName=s["HeaderName"]??"",SecretFile=s["SecretFile"]??"",AllowedPeers=peers.ToArray(),
+        int.TryParse(s["PrivateListenerPort"],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var port);
+        var ingress=ToledoCallbackIngress.Find(s["Environment"],port);
+        // SharedSecret retains its previous transport approval and still requires the key.
+        var privateProxy=(networkOnly?ingress is not null:s["Environment"] is "DEV" or "HML")&&True("PrivateTransportVerified")&&True("SourceVerified")&&
+            !string.IsNullOrWhiteSpace(s["ApprovalReference"])&&True("PrivateLoopbackProxyApproved")&&peers.Count==1&&peers[0].Equals(IPAddress.Loopback);
+        if(networkOnly&&(ingress is null||!privateProxy))return new();
+        return new(){Environment=s["Environment"]??"",PrivateListenerPort=port,SourceIdentity=s["SourceIdentity"]??"",HeaderName=s["HeaderName"]??"",SecretFile=s["SecretFile"]??"",AllowedPeers=peers.ToArray(),
             PrivateLoopbackProxyApproved=privateProxy,PrivateDevNetworkOnly=networkOnly};
     }
 }
@@ -57,7 +71,7 @@ public sealed class ProtectedToledoCallbackAdmission(ToledoCallbackAdmissionOpti
             return Task.FromResult(Deny(403,"TOLEDO_SOURCE_NOT_ALLOWED"));
         if(options.PrivateDevNetworkOnly)
         {
-            if(!privateProxy||context.Connection.LocalPort!=18086)
+            if(!privateProxy||options.Ingress is not { } ingress||context.Connection.LocalPort!=ingress.Port)
                 return Task.FromResult(Deny(403,"TOLEDO_SOURCE_NOT_ALLOWED"));
             // This proves only admission through the configured private ingress, not
             // Guardian sender identity. Deployment must retain Nginx allowlist/deny-all.
