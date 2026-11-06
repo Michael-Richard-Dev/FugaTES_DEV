@@ -38,6 +38,16 @@ Documento de fato errado continua respondendo 400 com a causa — a distinção 
 
 ## Como publicar
 
+SAO DOIS SERVICOS, e os dois precisam do `FugaTES.Aplicacao.dll` novo:
+
+- `fugates-toledo-callback` - RECEBE a devolutiva. Sem ele, o Enter cru continua dando 400 e a
+  pesagem nem chega;
+- `fugates-sd-protocolo` (motor SD) - COMPOE o texto da NF-e. Sem ele, o texto sai pelo leitor
+  antigo: sem lacre, e - pior - o PayloadJson guardado com Enter cru faz `LerComplemento` falhar
+  e devolver complemento VAZIO, entao a nota perde tambem placa e motorista, em silencio.
+
+Publique o receptor primeiro e o motor em seguida. Entre um e outro, nao crie remessa.
+
 No Windows, nesta pasta:
 
 ```powershell
@@ -62,6 +72,24 @@ Qualquer falha na conferência das rotas volta sozinha para o release anterior. 
 
 ```bash
 sudo ~/publicar-callback-sd.sh reverter
+```
+
+### Motor SD
+
+No Windows, nesta pasta:
+
+```powershell
+.nviar-MotorSd.ps1
+```
+
+Na VM:
+
+```bash
+sudo ~/instalar-motor-sd.sh conferir
+```
+
+```bash
+sudo ~/instalar-motor-sd.sh instalar
 ```
 
 ## Depois de publicar

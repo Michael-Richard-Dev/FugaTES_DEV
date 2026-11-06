@@ -28,9 +28,21 @@ foreach ($arquivo in $arquivos) {
 $sha = (Get-FileHash -LiteralPath 'fugates-sd-devolutiva.tgz' -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "pacote ... fugates-sd-devolutiva.tgz"
 Write-Host "sha256 ... $sha"
-Write-Host "esperado . 94c29efb5cc7b14334b915f8fee6938ec4cfe5cf466d1fc938b0a78aaf88d80f"
-if ($sha -ne '94c29efb5cc7b14334b915f8fee6938ec4cfe5cf466d1fc938b0a78aaf88d80f') {
+Write-Host "esperado . b8e94dafb4da09737dbd4cbcfc262f806bfd87dda17f79d3b66823d5694c2870"
+if ($sha -ne 'b8e94dafb4da09737dbd4cbcfc262f806bfd87dda17f79d3b66823d5694c2870') {
     throw 'O pacote nao confere com o SHA publicado. Nada foi enviado.'
+}
+
+# O publicador da VM carrega o SEU proprio SHA esperado, e sao arquivos diferentes: em 06/11/2026
+# eu atualizei um e esqueci o outro, o envio parou aqui - que e onde tem de parar - e a VM ficou
+# publicando o pacote antigo com relatorio de sucesso. Conferir os TRES entre si (pacote, este
+# script e o publicador) e o que impede de descobrir o desencontro so la, ou nao descobrir.
+$linha = Select-String -LiteralPath 'publicar-callback-sd.sh' -Pattern "^SHA_ESPERADO='([0-9a-f]{64})'"
+if (-not $linha) { throw 'Nao achei SHA_ESPERADO no publicar-callback-sd.sh. Nada foi enviado.' }
+$noPublicador = $linha.Matches[0].Groups[1].Value
+Write-Host "publicador $noPublicador"
+if ($noPublicador -ne $sha) {
+    throw 'O publicador da VM espera outro SHA que nao o deste pacote. Nada foi enviado.'
 }
 
 Write-Host ''
