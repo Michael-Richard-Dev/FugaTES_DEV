@@ -685,8 +685,19 @@ aplicar)
 
   systemctl daemon-reload
   echo "== subindo"
-  systemctl enable --now "$QAS_CB" >/dev/null 2>&1 || true
-  systemctl enable --now "$QAS_MT" >/dev/null 2>&1 || true
+  # ENGOLIR O ERRO DE SUBIDA FOI O QUE DEIXOU O MOTOR PARADO SEM NINGUEM SABER.
+  #
+  # A versao anterior fazia "enable --now ... >/dev/null 2>&1 || true" nas duas unidades, e o
+  # veredito final so conferia o HTTP do receptor. Em 06/11/2026 o motor ficou inativo e o script
+  # imprimiu "Pronto" assim mesmo - exatamente o tipo de sucesso falso que passei o dia
+  # perseguindo nas ferramentas dos outros.
+  #
+  # "enable" e "start" separados, porque so o segundo pode falhar de forma interessante, e o que
+  # ele disser vai para a tela.
+  for u in "$QAS_CB" "$QAS_MT"; do
+    systemctl enable "$u" >/dev/null 2>&1 || true
+    systemctl restart "$u" || echo "   o systemd recusou subir $u (veja o journal abaixo)"
+  done
   sleep 4
 
   echo
@@ -702,11 +713,28 @@ aplicar)
   printf '  %-34s %s\n' "$DEV_CB" "$(ativo "$DEV_CB")"
   printf '  %-34s %s\n' "$DEV_MT" "$(ativo "$DEV_MT")"
   echo
-  [ "$cod" = "200" ] || {
-    echo "O receptor do QAS nao respondeu 200. Veja o porque:"
-    echo "  sudo journalctl -u $QAS_CB -n 40 --no-pager"
-    CONCLUIDO=1; exit 1; }
-  echo "Pronto. Falta a rota no nginx: sudo ./instalar-rotas-qas.sh aplicar"
+  # O VEREDITO COBRE OS DOIS SERVICOS, e nao so o que responde HTTP.
+  #
+  # Ate 06/11/2026 so o HTTP do receptor era conferido, e o motor podia ficar parado sob um
+  # "Pronto". Um ambiente com metade dos servicos de pe nao esta pronto - e o motor e justamente
+  # quem cria a remessa no SAP.
+  PARADO=0
+  for u in "$QAS_CB" "$QAS_MT"; do
+    case "$(ativo "$u")" in
+      active) ;;
+      *) echo "O servico $u nao esta ativo. Veja o porque:"
+         echo "   sudo journalctl -u $u -n 40 --no-pager"
+         PARADO=1 ;;
+    esac
+  done
+  if [ "$cod" != "200" ]; then
+    echo "O receptor do QAS nao respondeu 200 na porta $PORTA_QAS. Veja o porque:"
+    echo "   sudo journalctl -u $QAS_CB -n 40 --no-pager"
+    PARADO=1
+  fi
+  [ "$PARADO" = 0 ] || { CONCLUIDO=1; exit 1; }
+  echo "Pronto: os DOIS servicos do QAS120 estao ativos e a rota responde."
+  echo "Falta a rota no nginx, se ainda nao: sudo ./instalar-rotas-qas.sh aplicar"
   CONCLUIDO=1
   ;;
 
