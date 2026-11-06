@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+XX#!/usr/bin/env bash
 # A cadeia de conexao do motor SD passaria pela guarda nova?
 #
 # NAO ALTERA NADA. Nao reinicia servico, nao publica, nao escreve arquivo.
@@ -22,9 +22,24 @@ CHAVE="${CHAVE:-SdProtocolo__ConnectionString}"
 
 [ "$(id -u)" = 0 ] || { echo "Rode com sudo (o EnvironmentFile e do root)."; exit 1; }
 
+# SAIR CALADO E PROIBIDO. Em 06/11/2026 a primeira versao deste script morreu sem dizer nada:
+# "campo()" termina num grep, que sai com 1 quando nao acha, e com set -e isso derrubava tudo na
+# primeira atribuicao. Quem rodou viu meia saida e nenhum erro - que e pior do que uma falha.
+#
+# Este trap transforma qualquer saida inesperada numa mensagem. Foi o quinto verificador furado
+# do dia; o padrao e sempre o mesmo - a ferramenta falha, nao avisa, e o silencio parece sucesso.
+CONCLUIDO=0
+trap '[ "$CONCLUIDO" = 1 ] || echo "
+INTERROMPIDO na linha $LINENO, sem veredito. Isto e um defeito DESTE script, nao do ambiente:
+nada foi conferido. Me mande esta saida." >&2' EXIT
+
 # Os EnvironmentFile da unidade, na ordem em que o systemd os aplica - o ultimo a definir vence.
+#
+# O systemd imprime "caminho (ignore_errors=no)", e quebrar por espaco fazia o "(ignore_errors=no)"
+# virar uma linha propria na lista - saia na tela como se fosse um arquivo. So caminho absoluto
+# entra.
 ARQUIVOS="$(systemctl show "$SERVICO" -p EnvironmentFiles --value 2>/dev/null \
-            | tr ' ' '\n' | sed 's/ (ignore_errors=.*//' | grep -v '^$' || true)"
+            | tr ' ' '\n' | grep -E '^/' || true)"
 
 [ -n "$ARQUIVOS" ] || { echo "O servico $SERVICO nao tem EnvironmentFile."; exit 1; }
 
@@ -46,9 +61,14 @@ echo "a cadeia vem de ..... $ONDE"
 echo
 
 # Um campo da cadeia, por nome, sem imprimir a cadeia inteira.
+#
+# O "|| true" no fim nao e preguica: campo AUSENTE e uma resposta legitima - o Npgsql tem padroes,
+# e a guarda compara o valor efetivo. Sem ele o grep sai com 1, o pipefail propaga e o set -e
+# derruba o script na primeira atribuicao, que foi exatamente o que aconteceu.
 campo() {
-  printf '%s' "$CADEIA" | tr ';' '\n' \
-    | grep -iE "^[[:space:]]*$1[[:space:]]*=" | tail -1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+  { printf '%s' "$CADEIA" | tr ';' '\n' \
+      | grep -iE "^[[:space:]]*$1[[:space:]]*=" | tail -1 | cut -d= -f2- \
+      | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; } || true
 }
 
 HOST="$(campo 'Host')"
@@ -84,8 +104,20 @@ conferir "Port" "$PORTA" "5433"
 conferir "Search Path" "$SCHEMA" "fugates"
 
 # O par banco+papel depende do ambiente SAP deste servico, que vem da mesma configuracao.
-SAP_URL="$(printf '%s' "$(while read -r f; do [ -f "$f" ] && grep -E '^[[:space:]]*Sap__BaseUrl=' "$f" 2>/dev/null | tail -1 | cut -d= -f2-; done <<< "$ARQUIVOS")" | tail -1)"
-SAP_CLI="$(printf '%s' "$(while read -r f; do [ -f "$f" ] && grep -E '^[[:space:]]*Sap__SapClient=' "$f" 2>/dev/null | tail -1 | cut -d= -f2-; done <<< "$ARQUIVOS")" | tail -1)"
+# A ultima definicao vence, como no systemd. O "|| true" existe pelo mesmo motivo de campo():
+# chave ausente e resposta legitima, e nao motivo para o script morrer.
+chave_do_ambiente() {
+  local achado="" f v
+  while read -r f; do
+    [ -f "$f" ] || continue
+    v="$( { grep -E "^[[:space:]]*$1=" "$f" 2>/dev/null | tail -1 | cut -d= -f2-; } || true )"
+    [ -n "$v" ] && achado="$v"
+  done <<< "$ARQUIVOS"
+  printf '%s' "$achado"
+}
+
+SAP_URL="$(chave_do_ambiente 'Sap__BaseUrl')"
+SAP_CLI="$(chave_do_ambiente 'Sap__SapClient')"
 case "$SAP_CLI" in
   110) conferir "Database" "$BANCO" "fugates_dev";     conferir "Username" "$USUARIO" "fugates_sd_app";;
   120) conferir "Database" "$BANCO" "fugates_qas";     conferir "Username" "$USUARIO" "fugates_qas_sd_app";;
@@ -94,6 +126,9 @@ esac
 echo
 echo "  (Sap__BaseUrl configurado: ${SAP_URL:-(ausente)})"
 echo
+
+# Chegou ao veredito: o trap nao precisa mais avisar de saida calada.
+CONCLUIDO=1
 
 if [ "$FALHAS" = 0 ]; then
   echo "A guarda nova ACEITARIA esta configuracao. A proxima publicacao do motor pode subir."
