@@ -59,10 +59,22 @@ public sealed class DevolutivaSdInvalidaException(string codigo, string detalhe,
 }
 
 /// <summary>
-/// A recusa que significa "este documento nao e do fluxo de venda", e nao "este documento esta
-/// errado". Hoje ha uma so: o tipo de pesagem e entrada.
+/// As recusas que significam "este documento nao e do fluxo de venda", e nao "este documento esta
+/// errado". Sao duas, e as duas respondem 200 sem gravar: recusar faria o Guardian marcar falha e
+/// reenviar para sempre um documento que esta certo e so nao e nosso.
 /// </summary>
 public static class DevolutivaSdCodigos
 {
+    /// <summary>Pesagem de entrada: pertence ao fluxo de recebimento.</summary>
     public const string TipoNaoEhSaida = "SD_DEVOLUTIVA_TIPO_NAO_E_SAIDA";
+
+    /// <summary>
+    /// Sem TipoPesagem: a pesagem nao nasceu de pre-cadastro nenhum, porque nos SEMPRE gravamos
+    /// "S" no campo adicional 1000. Pesagem avulsa da balanca cai aqui.
+    /// </summary>
+    public const string TipoAusente = "SD_DEVOLUTIVA_TIPO_AUSENTE";
+
+    /// <summary>Se esta recusa e "nao e nossa" - e nao "esta errada".</summary>
+    public static bool NaoEhDoSd(string? codigo)
+        => codigo is TipoNaoEhSaida or TipoAusente;
 }

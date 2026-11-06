@@ -69,8 +69,29 @@ public static class LeitorDevolutivaSd
                 throw new DevolutivaSdInvalidaException("SD_DEVOLUTIVA_JSON_INVALIDO", "O corpo não é um objeto.");
 
             var id = Obrigatorio(raiz, "IdPesagem");
-            var centro = Obrigatorio(raiz, "Centro");
-            var tipo = Obrigatorio(raiz, "TipoPesagem");
+
+            // PRIMEIRO "e nossa?", DEPOIS "esta completa?". A ordem nao e estilo.
+            //
+            // O Guardian manda a MESMA finalizacao para as duas rotas, e o modelo tira o tipo e o
+            // centro de campos adicionais que QUEM CRIOU O PRE-CADASTRO gravou. O SD grava 1000
+            // (tipo) e 1001 (centro); o ACM grava 1000, 1002 e 1003 - NAO grava o 1001. Logo, numa
+            // pesagem do ACM o "Centro" chega VAZIO.
+            //
+            // Ate 06/11/2026 o centro era exigido ANTES do tipo: a pesagem do ACM morria em
+            // CAMPO_AUSENTE, 400, e o Guardian reenviava para sempre um documento que esta certo e
+            // so nao e nosso. A verificacao de tipo e a de contrato nem chegavam a rodar.
+            //
+            // Exigir campo de um documento que nao vamos processar e cobrar completude de quem nao
+            // nos deve nada. Primeiro se decide o dono; completude so vale para o que e nosso.
+            var tipo = Texto(raiz, "TipoPesagem");
+
+            // Sem tipo nenhum: a pesagem nao nasceu de pre-cadastro nenhum - nem SD, nem ACM -,
+            // porque nos SEMPRE gravamos "S" no 1000. Nao e documento errado, e documento alheio.
+            // Decidido pelo operador em 06/11/2026: responde 200 e deixa linha no journal.
+            if (tipo is null)
+                throw new DevolutivaSdInvalidaException(DevolutivaSdCodigos.TipoAusente,
+                    "TipoPesagem não veio preenchido: a pesagem não tem pré-cadastro do SD.", id);
+
             // Venda e saida. Aceitar "E" aqui faria uma pesagem de recebimento virar remessa.
             //
             // Leva o IdPesagem junto: esta recusa em particular NAO e erro do documento - e uma
@@ -79,6 +100,9 @@ public static class LeitorDevolutivaSd
             if (!string.Equals(tipo, CamposProtocoloSd.Saida, StringComparison.OrdinalIgnoreCase))
                 throw new DevolutivaSdInvalidaException(DevolutivaSdCodigos.TipoNaoEhSaida,
                     $"TipoPesagem '{tipo}' não pertence ao fluxo de venda.", id);
+
+            // Daqui para baixo a pesagem E nossa, e a exigencia de completude vale inteira.
+            var centro = Obrigatorio(raiz, "Centro");
 
             if (!DateTime.TryParseExact(Obrigatorio(raiz, "DataPesagem"), FormatosData,
                     CultureInfo.InvariantCulture, DateTimeStyles.None, out var data))

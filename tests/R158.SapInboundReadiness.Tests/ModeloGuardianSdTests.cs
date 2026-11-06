@@ -35,7 +35,14 @@ public sealed class ModeloGuardianSdTests
     /// Guardian a manda - o usuario da balanca da Enter para separar o lacre de carga do de
     /// testemunha, e o JSON nao a escapa.
     /// </summary>
-    private static string Modelo(string tipoPesagem, string contratoAcm, string observacao)
+    /// <remarks>
+    /// <paramref name="centro"/> existe porque ele TAMBEM sai de campo adicional - o 1001, que so
+    /// o pre-cadastro do SD grava. Numa pesagem do ACM ele chega vazio, e modelar isso errado foi
+    /// o que escondeu, em 06/11/2026, que a pesagem do ACM morria em CAMPO_AUSENTE antes de
+    /// qualquer verificacao de dono.
+    /// </remarks>
+    private static string Modelo(string tipoPesagem, string contratoAcm, string observacao,
+        string centro = "3008")
         => $$"""
         {
           "SistemaBalanca": "Toledo",
@@ -43,7 +50,7 @@ public sealed class ModeloGuardianSdTests
           "TipoPesagem": "{{tipoPesagem}}",
           "IdPesagem": "0030384",
           "UsuarioPesagem": "leticia.colet",
-          "Centro": "3008",
+          "Centro": "{{centro}}",
           "PesoBruto": "56100,0",
           "PesoTara": "19500,0",
           "PesoAntesDesconto": "36600,0",
@@ -130,31 +137,43 @@ public sealed class ModeloGuardianSdTests
     // --- a pesagem do ACM, que chega na MESMA rota --------------------------------------------
 
     /// <summary>
-    /// O Guardian manda a mesma finalizacao para as duas rotas. Pelo 1000, que no ACM traz o tipo
-    /// de contrato ("AC3S"), e pelo ContratoACM preenchido - os dois dizem a mesma coisa.
+    /// A PESAGEM DO ACM COMO ELA REALMENTE CHEGA: tipo com o contrato do ACM no 1000, ContratoACM
+    /// preenchido e **Centro VAZIO** - porque o centro sai do campo adicional 1001, e o
+    /// pre-cadastro do ACM grava 1000, 1002 e 1003, nunca o 1001.
+    ///
+    /// Era aqui que estava o defeito ate 06/11/2026: o centro era exigido ANTES do tipo, e a
+    /// pesagem morria em CAMPO_AUSENTE com 400 - reenvio eterno - sem nunca chegar na verificacao
+    /// de dono. Meu proprio teste escondia isso, porque eu preenchia o centro no caso do ACM.
     /// </summary>
     [Theory]
     [InlineData("AC3S", "0000001175")]
     [InlineData("AC1C", "0000001206")]
-    public void A_pesagem_do_acm_e_reconhecida_pelos_dois_caminhos(string tipo, string contrato)
+    public void A_pesagem_do_acm_e_reconhecida_mesmo_sem_centro(string tipo, string contrato)
     {
-        // Pelo contrato: se o tipo fosse "S", o ContratoACM sozinho ja a separaria.
-        Assert.Equal(contrato, LeitorDevolutivaSd.Ler(Modelo("S", contrato, "")).ContratoAcm);
-
-        // Pelo tipo: o 1000 do ACM nao e "S".
         var erro = Assert.Throws<DevolutivaSdInvalidaException>(
-            () => LeitorDevolutivaSd.Ler(Modelo(tipo, contrato, "")));
+            () => LeitorDevolutivaSd.Ler(Modelo(tipo, contrato, "", centro: "")));
+
         Assert.Equal(DevolutivaSdCodigos.TipoNaoEhSaida, erro.Codigo);
+        Assert.True(DevolutivaSdCodigos.NaoEhDoSd(erro.Codigo));
+        Assert.Equal("0030384", erro.IdPesagem);
     }
 
+    /// <summary>
+    /// O segundo caminho, independente do primeiro: tipo "S" e ContratoACM preenchido. Aqui o
+    /// documento atravessa o leitor inteiro e quem separa e o contrato, depois.
+    /// </summary>
+    [Fact]
+    public void O_contrato_acm_separa_mesmo_quando_o_tipo_diz_venda()
+        => Assert.Equal("0000001175", LeitorDevolutivaSd.Ler(Modelo("S", "0000001175", "")).ContratoAcm);
+
     [Theory]
-    [InlineData("AC3S", "0000001175")]  // separada pelo tipo, no leitor
-    [InlineData("S", "0000001175")]     // separada pelo contrato, depois do leitor
-    public async Task A_pesagem_do_acm_responde_200_e_nao_grava(string tipo, string contrato)
+    [InlineData("AC3S", "0000001175", "")]        // ACM real: separada pelo tipo, sem centro
+    [InlineData("S", "0000001175", "3008")]       // separada pelo contrato, depois do leitor
+    public async Task A_pesagem_do_acm_responde_200_e_nao_grava(string tipo, string contrato, string centro)
     {
         var repositorio = new RepositorioFalso();
 
-        var (status, corpo) = await Postar(Modelo(tipo, contrato, ""), repositorio);
+        var (status, corpo) = await Postar(Modelo(tipo, contrato, "", centro), repositorio);
 
         Assert.Equal(200, status);
         Assert.Equal("OK", corpo.GetProperty("mensagem").GetString());
@@ -176,17 +195,47 @@ public sealed class ModeloGuardianSdTests
     }
 
     /// <summary>
-    /// O caso que ainda nao tem decisao, fixado para ninguem o descobrir por acidente: pesagem sem
-    /// pre-cadastro NENHUM nao tem campo 1000, o marcador expande vazio, e isso cai em
-    /// CAMPO_AUSENTE - 400, e o Guardian reenvia para sempre.
+    /// PESAGEM AVULSA DA BALANCA: sem pre-cadastro nenhum, nem SD nem ACM. Nenhum campo adicional
+    /// existe, entao tipo, centro, 1003 e 1009 chegam todos vazios.
     ///
-    /// Este teste documenta o comportamento de HOJE, nao o desejado. Quando o operador decidir que
-    /// tipo vazio e "nao e nossa" (200, nada gravado), este teste muda junto.
+    /// Nos SEMPRE gravamos "S" no 1000, entao tipo vazio quer dizer "nao nasceu de pre-cadastro
+    /// do SD". Nao e documento errado, e documento alheio: 200, nada gravado, e uma linha no
+    /// journal - decidido pelo operador em 06/11/2026. Sem isso, era 400 e reenvio eterno.
     /// </summary>
     [Fact]
-    public async Task PENDENTE_tipo_vazio_ainda_responde_400()
+    public async Task A_pesagem_sem_pre_cadastro_responde_200_e_nao_grava()
     {
-        var (status, corpo) = await Postar(Modelo("", "", ""), new RepositorioFalso());
+        var repositorio = new RepositorioFalso();
+
+        var (status, corpo) = await Postar(Modelo("", "", "", centro: ""), repositorio);
+
+        Assert.Equal(200, status);
+        Assert.Equal("OK", corpo.GetProperty("mensagem").GetString());
+        Assert.Equal("NAO_E_DO_SD", corpo.GetProperty("status").GetString());
+        Assert.Contains("sem pré-cadastro", corpo.GetProperty("detalhe").GetString()!);
+        Assert.Empty(repositorio.Gravadas);
+    }
+
+    [Fact]
+    public void A_pesagem_sem_pre_cadastro_leva_o_id_para_o_journal()
+    {
+        var erro = Assert.Throws<DevolutivaSdInvalidaException>(
+            () => LeitorDevolutivaSd.Ler(Modelo("", "", "", centro: "")));
+
+        Assert.Equal(DevolutivaSdCodigos.TipoAusente, erro.Codigo);
+        // Sem o id, a linha do journal diria que algo chegou sem dizer o que.
+        Assert.Equal("0030384", erro.IdPesagem);
+    }
+
+    /// <summary>
+    /// O LIMITE da permissividade: campo faltando numa pesagem QUE E NOSSA continua sendo 400 com
+    /// a causa. Trocar isso faria o Guardian desistir de reenviar uma venda que ele deveria
+    /// reenviar depois de corrigida.
+    /// </summary>
+    [Fact]
+    public async Task Venda_com_campo_faltando_continua_sendo_recusada()
+    {
+        var (status, corpo) = await Postar(Modelo("S", "", "", centro: ""), new RepositorioFalso());
 
         Assert.Equal(400, status);
         Assert.Equal("SD_DEVOLUTIVA_CAMPO_AUSENTE", corpo.GetProperty("codigo").GetString());

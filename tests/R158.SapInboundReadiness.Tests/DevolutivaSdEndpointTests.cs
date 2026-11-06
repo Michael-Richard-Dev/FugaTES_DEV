@@ -147,7 +147,11 @@ public sealed class DevolutivaSdEndpointTests
     [Fact]
     public async Task Documento_errado_continua_sendo_recusado_mesmo_sendo_de_saida()
     {
-        var (status, corpo) = await Postar(Venda.Replace("\"TipoPesagem\":\"S\"", "\"TipoPesagem\":\"\"", StringComparison.Ordinal));
+        // Sem o CENTRO, e com o tipo dizendo "S": e uma venda nossa, e esta incompleta. Tipo
+        // vazio servia de exemplo aqui ate 06/11/2026; deixou de servir porque sem tipo a pesagem
+        // nao e nossa, e passou a responder 200 (ver A_pesagem_sem_pre_cadastro_... em
+        // ModeloGuardianSdTests).
+        var (status, corpo) = await Postar(Venda.Replace("\"Centro\":\"3011\",", "", StringComparison.Ordinal));
 
         Assert.Equal(400, status);
         Assert.Equal("SD_DEVOLUTIVA_CAMPO_AUSENTE", corpo.GetProperty("codigo").GetString());

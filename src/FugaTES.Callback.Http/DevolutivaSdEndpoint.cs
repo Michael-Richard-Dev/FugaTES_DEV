@@ -58,19 +58,28 @@ public static class DevolutivaSdEndpoint
         // dele: a pesagem de recebimento nunca a alcancava. O Guardian marcava falha e reenviava
         // para sempre uma pesagem que esta certa - exatamente o que o comentario abaixo diz que
         // se queria evitar.
-        catch (DevolutivaSdInvalidaException erro) when (erro.Codigo == DevolutivaSdCodigos.TipoNaoEhSaida)
+        catch (DevolutivaSdInvalidaException erro) when (DevolutivaSdCodigos.NaoEhDoSd(erro.Codigo))
         {
+            // Linha propria por causa: no journal, "chegou uma de entrada" e "chegou uma sem
+            // pre-cadastro" sao sintomas diferentes. A segunda, se virar rotina, quer dizer que
+            // alguem esta pesando fora do fluxo - e e so pelo journal que isso aparece, porque a
+            // resposta e 200 e nada e gravado.
+            var (marca, detalhe) = erro.Codigo == DevolutivaSdCodigos.TipoAusente
+                ? ("SD_DEVOLUTIVA_SEM_TIPO", "Pesagem sem pré-cadastro do SD: nada a fazer com ela.")
+                : ("SD_DEVOLUTIVA_E_DE_ENTRADA", "Pesagem de entrada: pertence ao fluxo de recebimento.");
+
             context.RequestServices.GetService<ILoggerFactory>()
                 ?.CreateLogger(typeof(DevolutivaSdEndpoint))
-                .LogWarning("SD_DEVOLUTIVA_E_DE_ENTRADA: {Pesagem} — {Detalhe}; nada gravado.",
-                    erro.IdPesagem ?? "(sem id)", erro.Detalhe);
+                .LogWarning("{Marca}: {Pesagem} — {Detalhe}; nada gravado.",
+                    marca, erro.IdPesagem ?? "(sem id)", erro.Detalhe);
+
             await context.Response.WriteAsJsonAsync(new
             {
                 mensagem = MensagemSucesso,
                 status = "NAO_E_DO_SD",
                 idPesagem = erro.IdPesagem,
                 persisted = false,
-                detalhe = "Pesagem de entrada: pertence ao fluxo de recebimento."
+                detalhe
             }, context.RequestAborted);
             return;
         }

@@ -113,16 +113,39 @@ public sealed class DevolutivaSdTests
             Assert.Throws<DevolutivaSdInvalidaException>(() => LeitorDevolutivaSd.Ler(corpo)).Codigo,
             StringComparison.Ordinal);
 
+    // TipoPesagem saiu desta lista em 06/11/2026: ausente, ele deixou de ser "documento
+    // incompleto" e passou a ser "documento que nao e nosso". Ver o teste logo abaixo.
     [Theory]
     [InlineData("IdPesagem")]
     [InlineData("Centro")]
-    [InlineData("TipoPesagem")]
     public void Campo_de_identificacao_ausente_e_recusado(string campo)
     {
         var corpo = Corpo().Replace($"\"{campo}\"", "\"Ignorado_" + campo + "\"", StringComparison.Ordinal);
         var erro = Assert.Throws<DevolutivaSdInvalidaException>(() => LeitorDevolutivaSd.Ler(corpo));
         Assert.Equal("SD_DEVOLUTIVA_CAMPO_AUSENTE", erro.Codigo);
         Assert.Contains(campo, erro.Detalhe, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// TipoPesagem ausente ou vazio nao e documento incompleto: e documento ALHEIO. Nos sempre
+    /// gravamos "S" no campo adicional 1000, entao sem tipo a pesagem nao nasceu de pre-cadastro
+    /// do SD - e uma avulsa da balanca. Quem recebe responde 200 e nao grava, porque 400 faria o
+    /// Guardian reenviar para sempre um documento que esta certo.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]   // o campo nem existe no documento
+    [InlineData(false)]  // o campo existe e veio vazio - o marcador #CAT_VALOR_1000# sem valor
+    public void Tipo_de_pesagem_ausente_ou_vazio_nao_e_nosso(bool semOCampo)
+    {
+        var corpo = semOCampo
+            ? Corpo().Replace("\"TipoPesagem\"", "\"Ignorado_TipoPesagem\"", StringComparison.Ordinal)
+            : Corpo(tipo: "");
+
+        var erro = Assert.Throws<DevolutivaSdInvalidaException>(() => LeitorDevolutivaSd.Ler(corpo));
+
+        Assert.Equal(DevolutivaSdCodigos.TipoAusente, erro.Codigo);
+        Assert.True(DevolutivaSdCodigos.NaoEhDoSd(erro.Codigo));
+        Assert.Equal("0020327", erro.IdPesagem);
     }
 
     [Fact]
