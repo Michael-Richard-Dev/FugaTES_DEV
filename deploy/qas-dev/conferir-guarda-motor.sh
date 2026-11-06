@@ -1,4 +1,4 @@
-XX#!/usr/bin/env bash
+#!/usr/bin/env bash
 # A cadeia de conexao do motor SD passaria pela guarda nova?
 #
 # NAO ALTERA NADA. Nao reinicia servico, nao publica, nao escreve arquivo.
@@ -28,6 +28,10 @@ CHAVE="${CHAVE:-SdProtocolo__ConnectionString}"
 #
 # Este trap transforma qualquer saida inesperada numa mensagem. Foi o quinto verificador furado
 # do dia; o padrao e sempre o mesmo - a ferramenta falha, nao avisa, e o silencio parece sucesso.
+#
+# CONCLUIDO=1 marca que houve VEREDITO - inclusive um negativo. "Nao tem EnvironmentFile" e uma
+# resposta, nao uma queda, e no primeiro ensaio o trap acusava defeito proprio justamente nela.
+# Falso alarme corroi a confianca no aviso tanto quanto o silencio.
 CONCLUIDO=0
 trap '[ "$CONCLUIDO" = 1 ] || echo "
 INTERROMPIDO na linha $LINENO, sem veredito. Isto e um defeito DESTE script, nao do ambiente:
@@ -41,7 +45,7 @@ nada foi conferido. Me mande esta saida." >&2' EXIT
 ARQUIVOS="$(systemctl show "$SERVICO" -p EnvironmentFiles --value 2>/dev/null \
             | tr ' ' '\n' | grep -E '^/' || true)"
 
-[ -n "$ARQUIVOS" ] || { echo "O servico $SERVICO nao tem EnvironmentFile."; exit 1; }
+[ -n "$ARQUIVOS" ] || { echo "O servico $SERVICO nao tem EnvironmentFile."; CONCLUIDO=1; exit 1; }
 
 echo "servico .......... $SERVICO"
 echo "arquivos de ambiente, na ordem:"
@@ -56,7 +60,7 @@ while read -r f; do
   if [ -n "$v" ]; then CADEIA="$v"; ONDE="$f"; fi
 done <<< "$ARQUIVOS"
 
-[ -n "$CADEIA" ] || { echo "Nao achei $CHAVE em nenhum deles."; exit 1; }
+[ -n "$CADEIA" ] || { echo "Nao achei $CHAVE em nenhum deles."; CONCLUIDO=1; exit 1; }
 echo "a cadeia vem de ..... $ONDE"
 echo
 
