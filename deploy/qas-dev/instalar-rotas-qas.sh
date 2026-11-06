@@ -216,10 +216,30 @@ aplicar)
 
   # O fim do bloco /venda do DEV: e depois dele que as rotas novas entram. Ficar ao lado da rota
   # irma e proposital - quem for ler isto em janeiro acha as quatro juntas.
+  # A LINHA FINAL VEM DO ARQUIVO, NAO DE ARITMETICA SOBRE CONTAGEM.
+  #
+  # A primeira versao fazia FIM = INICIO + (linhas do bloco) - 1, contando as linhas com
+  # "grep -c ." - que conta so as NAO VAZIAS. O bloco /venda real tem linhas em branco dentro,
+  # entao o FIM saia curto e as rotas do QAS eram inseridas DENTRO do location do DEV. O nginx
+  # recusou com "location /venda-qas cannot be inside the exact location .../venda", e o desfazer
+  # devolveu o arquivo - funcionou, mas e uma falha que nao deveria ter chegado na VM.
+  #
+  # O ENSAIO NAO TINHA COMO PEGAR: o meu "nginx -t" falso respondia sucesso para qualquer
+  # conteudo. Ele provou os caminhos de desfazer e nao provou nada sobre a configuracao gerada -
+  # e eu li "nginx -t aceitou" na saida do ensaio como se significasse alguma coisa.
+  #
+  # Contar chaves ate fechar e dizer em QUE linha fechou nao tem como divergir do arquivo.
   INICIO="$(awk -v rota="$CANONICA_VENDA" 'index($0,"location") && index($0,rota) && index($0,"{"){print NR; exit}' "$A")"
   [ -n "$INICIO" ] || { echo "Nao achei o bloco $CANONICA_VENDA em $A."; CONCLUIDO=1; exit 1; }
-  QUANTAS="$(bloco_de "$CANONICA_VENDA" "$A" | grep -c .)"
-  FIM=$((INICIO + QUANTAS - 1))
+  FIM="$(awk -v rota="$CANONICA_VENDA" '
+    index($0,"location") && index($0,rota) && index($0,"{") && !achou { achou=1; prof=0 }
+    achou { n=gsub(/\{/,"{"); m=gsub(/\}/,"}"); prof += n - m; if (prof <= 0) { print NR; exit } }' "$A")"
+  [ -n "$FIM" ] || { echo "O bloco $CANONICA_VENDA nao fecha em $A."; CONCLUIDO=1; exit 1; }
+  # A linha do fim TEM de fechar o bloco, e tem de vir depois do inicio.
+  if [ "$FIM" -le "$INICIO" ] || ! sed -n "${FIM}p" "$A" | grep -q '}'; then
+    echo "Nao consegui achar o fim do bloco $CANONICA_VENDA (inicio $INICIO, fim $FIM)."
+    echo "Nada foi alterado."; CONCLUIDO=1; exit 1
+  fi
   echo "== o bloco /venda ocupa as linhas $INICIO a $FIM; as rotas do QAS entram depois"
 
   install -d -m 0750 "$GUARDA"
