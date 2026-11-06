@@ -92,4 +92,17 @@ public static class AmbientesBanco
     /// <summary>O ambiente de um banco, sem olhar papel. So para mensagem e diagnostico.</summary>
     public static AmbienteBanco? PorBanco(string? banco)
         => banco is null ? null : Array.Find(Aprovados, a => string.Equals(a.Banco, banco.Trim(), StringComparison.Ordinal));
+
+    /// <summary>
+    /// O ambiente de banco que corresponde a um ambiente SAP, pelo NOME.
+    ///
+    /// Existe para uma invariante que vale mais do que qualquer lista: O AMBIENTE DE UM PROCESSO
+    /// E UM SO. Um motor configurado para o SAP QAS120 tem de gravar no banco do QAS120 - gravar
+    /// no do DEV seria o cruzamento mais caro possivel, porque a pesagem entraria num ambiente e
+    /// a remessa no outro, as duas com credencial valida e sem erro nenhum.
+    ///
+    /// Por isso o motor nao "aceita os dois": ele deriva daqui o UNICO banco que lhe serve.
+    /// </summary>
+    public static AmbienteBanco? PorNome(string? nome)
+        => nome is null ? null : Array.Find(Aprovados, a => string.Equals(a.Nome, nome.Trim(), StringComparison.OrdinalIgnoreCase));
 }

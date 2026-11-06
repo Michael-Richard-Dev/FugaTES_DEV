@@ -55,6 +55,21 @@ public static class SdProtocoloComposition
 
         var conexao = config["SdProtocolo:ConnectionString"]
             ?? throw new InvalidOperationException("SD_MOTOR_CONEXAO_AUSENTE");
+
+        // O BANCO TEM DE SER O DO MESMO AMBIENTE DO SAP. Ate 06/11/2026 o motor conectava no que
+        // estivesse configurado, sem conferir banco, papel, porta ou schema - e com um ambiente
+        // so isso nunca apareceu, porque so havia um banco para onde ir.
+        //
+        // Com dois, e o cruzamento mais caro possivel: um motor apontado para o SAP QAS120 e para
+        // o banco do DEV gravaria a remessa num ambiente e a pesagem no outro, as duas com
+        // credencial valida e sem erro nenhum. Ninguem descobre ate alguem procurar uma remessa
+        // que existe no lugar errado.
+        //
+        // Por isso nao se "aceitam os dois" aqui: deriva-se do ambiente SAP o UNICO banco que
+        // serve. O par banco+papel continua sendo conferido junto - papel no PostgreSQL e do
+        // cluster, nao do banco.
+        ExigirBancoDoAmbiente(conexao, ambiente);
+
         services.AddSingleton(_ => new NpgsqlDataSourceBuilder(conexao).Build());
         services.AddSingleton<IRegistroProtocolosSd>(sp =>
             new RegistroProtocolosSdPostgreSql(sp.GetRequiredService<NpgsqlDataSource>()));
@@ -101,6 +116,32 @@ public static class SdProtocoloComposition
     /// inteira so roda em Linux, e por isso nunca era construida fora da VM - foi assim que a
     /// falta de IConsultarSetorAtividadeSd so apareceu ao subir o servico, em 02/11/2026.
     /// </summary>
+    /// <summary>
+    /// A cadeia de conexao tem de apontar para o banco DO MESMO AMBIENTE do SAP.
+    ///
+    /// Metodo proprio, e publico, por uma razao pratica: ConfigurarServicos recusa rodar fora do
+    /// Linux antes de chegar aqui, entao a regra nao teria como ser exercitada em teste. Uma
+    /// trava que nao se consegue testar e uma trava em que ninguem reparou quando parou de valer.
+    ///
+    /// O par banco+papel e conferido JUNTO - papel no PostgreSQL e do CLUSTER, nao do banco.
+    /// </summary>
+    public static void ExigirBancoDoAmbiente(string conexao, FugaTES.Aplicacao.Configuracao.AmbienteSap ambiente)
+    {
+        ArgumentNullException.ThrowIfNull(ambiente);
+        var bancoDoAmbiente = FugaTES.Aplicacao.Configuracao.AmbientesBanco.PorNome(ambiente.Nome)
+            ?? throw new InvalidOperationException("SD_MOTOR_BANCO_AMBIENTE_DESCONHECIDO");
+
+        NpgsqlConnectionStringBuilder cadeia;
+        try { cadeia = new NpgsqlConnectionStringBuilder(conexao); }
+        catch { throw new InvalidOperationException("SD_MOTOR_BANCO_NAO_CONFERE_COM_O_AMBIENTE"); }
+
+        if (cadeia.Port != 5433 || cadeia.SearchPath != "fugates"
+            || (cadeia.Host != "127.0.0.1" && cadeia.Host != "localhost")
+            || cadeia.Database != bancoDoAmbiente.Banco
+            || cadeia.Username != bancoDoAmbiente.PapelSd)
+            throw new InvalidOperationException("SD_MOTOR_BANCO_NAO_CONFERE_COM_O_AMBIENTE");
+    }
+
     public static void RegistrarClientesSdSap(IServiceCollection services)
     {
         // Os quatro clientes dos passos 3, 4 e 5. Faltavam: a composicao tinha sido escrita so

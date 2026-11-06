@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using FugaTES.Aplicacao.Configuracao;
 using FugaTES.WinForms.Runtime;
 using Npgsql;
 
@@ -28,7 +29,19 @@ public static class ConexaoSdPostgreSql
     /// (conferido em 31/10/2026), e reusar o papel do motor ACM misturaria responsabilidades -
     /// revogar um revogaria o outro.
     /// </summary>
-    public const string UsuarioExigido = "fugates_sd_app";
+    /// <remarks>
+    /// Ate 06/11/2026 isto era a constante "fugates_sd_app". Com dois ambientes, o par banco+papel
+    /// passou a sair do AMBIENTE DESTA JANELA: um desktop de QAS120 gravando no banco do DEV e o
+    /// cruzamento que esta trava existe para impedir - e ele nao daria erro nenhum, porque as duas
+    /// credenciais sao validas nos seus respectivos bancos.
+    ///
+    /// Ambiente nao identificado NAO cai no DEV por omissao: a tela do SD GRAVA, e gravar num
+    /// ambiente que ninguem sabe qual e seria pior do que nao abrir.
+    /// </remarks>
+    public static AmbienteBanco? AmbienteDaJanela => AmbientesBanco.PorNome(AmbienteDesktop.Nome);
+
+    /// <summary>O papel esperado nesta janela, ou nulo quando o ambiente nao foi identificado.</summary>
+    public static string? UsuarioExigido => AmbienteDaJanela?.PapelSd;
 
     public sealed record Resultado(NpgsqlDataSource? Fonte, IDisposable? Posse, string? Motivo);
 
@@ -50,8 +63,15 @@ public static class ConexaoSdPostgreSql
             // Travas proprias do SD, alem das que DesktopConfiguration ja faz.
             if (config.Ssh.RemoteDatabasePort != PortaRemotaExigida)
                 return new(null, null, "SD_PORTA_REMOTA_INVALIDA (esperado " + PortaRemotaExigida + ")");
-            if (config.Database.Username != UsuarioExigido)
-                return new(null, null, "SD_USUARIO_INVALIDO (esperado " + UsuarioExigido + ")");
+            // O ambiente da janela decide o par banco+papel, e os dois juntos: papel no
+            // PostgreSQL e do CLUSTER, entao conferir um sem o outro deixaria passar o banco de um
+            // ambiente com a credencial do outro.
+            if (AmbienteDaJanela is not { } amb)
+                return new(null, null, "SD_AMBIENTE_DA_JANELA_NAO_IDENTIFICADO");
+            if (config.Database.Username != amb.PapelSd)
+                return new(null, null, "SD_USUARIO_INVALIDO (esperado " + amb.PapelSd + ")");
+            if (config.Database.Database != amb.Banco)
+                return new(null, null, "SD_BANCO_INVALIDO (esperado " + amb.Banco + " no ambiente " + amb.Nome + ")");
 
             var senha = WindowsCredentialProvider.ReadPassword(
                 config.Database.CredentialTarget, config.Database.Username);
@@ -143,6 +163,9 @@ public static class ConexaoSdPostgreSql
             {
                 if (!await leitor.ReadAsync(ct).ConfigureAwait(false))
                     return await DescartarAsync(fonte, "SD_BANCO_SEM_RESPOSTA");
+                // UsuarioExigido e o papel do ambiente desta janela. Nulo - ambiente nao
+                // identificado - nunca casa com o que o servidor devolve, e a conexao e
+                // descartada: e o desfecho certo para quem nao sabe em qual ambiente esta.
                 if (leitor.GetString(0) != config.Database.Database || leitor.GetString(1) != UsuarioExigido)
                     return await DescartarAsync(fonte, "SD_IDENTIDADE_DO_BANCO_DIVERGENTE");
                 if (!leitor.GetBoolean(2))
