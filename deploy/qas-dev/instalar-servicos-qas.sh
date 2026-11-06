@@ -154,6 +154,35 @@ preparar)
   tar -xzf "$PACOTE_MT" -C "$REL_MT/$MARCA"
   U="$(usuario_de "$DEV_CB")"; [ -n "$U" ] || U=fugates-http
   chown -R "$U":"$U" "$REL_CB/$MARCA" "$REL_MT/$MARCA" 2>/dev/null || true
+
+  # O BIT DE EXECUCAO NAO SOBREVIVE AO PACOTE.
+  #
+  # Os .tgz sao montados no Windows, que nao tem bit de execucao; o tar extrai o apphost com
+  # 0644 e o systemd falha com 203/EXEC - "Main process exited", sem uma linha do aplicativo,
+  # porque o aplicativo nunca chegou a rodar. O instalador do DEV ja fazia este chmod; eu nao
+  # copiei essa linha quando escrevi este.
+  #
+  # PELO CONTEUDO, E NAO PELO NOME.
+  #
+  # A primeira versao pulava todo arquivo com ponto no nome, "porque apphost nao tem extensao".
+  # O apphost daqui se chama FugaTES.HostIntegracao - tem ponto - e era justamente o arquivo que
+  # a busca existia para achar. Pior: ela imprimia "nenhum apphost ELF", que se le como um fato
+  # sobre o pacote e nao como o filtro tendo descartado tudo.
+  #
+  # Os quatro bytes magicos do ELF nao dependem de convencao de nome. So .dll, .so, .json e .pdb
+  # sao pulados antes, para a saida nao listar biblioteca.
+  EXECUTAVEIS=0
+  for raiz in "$REL_CB/$MARCA" "$REL_MT/$MARCA"; do
+    while IFS= read -r arq; do
+      case "$(basename "$arq")" in *.dll|*.so|*.json|*.pdb|*.xml) continue ;; esac
+      head -c4 "$arq" 2>/dev/null | grep -q $'\x7fELF' || continue
+      chmod +x "$arq"
+      echo "   executavel . $arq"
+      EXECUTAVEIS=$((EXECUTAVEIS+1))
+    done < <(find "$raiz" -maxdepth 1 -type f)
+  done
+  [ "$EXECUTAVEIS" -gt 0 ] || echo "   (nenhum apphost ELF na raiz dos releases - o ExecStart deve usar o dotnet)"
+
   echo "   receptor ... $REL_CB/$MARCA"
   echo "   motor ...... $REL_MT/$MARCA"
 
@@ -526,6 +555,31 @@ aplicar)
 
   DIR_MT="$(dir_de "$DEV_MT" | sed "s|$REL_MT/[^/ ]*|$REL_MT/$MARCA|")"
   DIR_CB="$(dir_de "$DEV_CB" | sed "s|$REL_CB/[^/ ]*|$REL_CB/$MARCA|")"
+
+  # O QUE ESTA NO ExecStart TEM DE EXISTIR E SER EXECUTAVEL.
+  #
+  # O preparar ja da +x nos apphosts, mas isso cobre o que ele reconhece. Esta conferencia pega
+  # o caso geral, porque pergunta pelo arquivo que a unidade VAI MESMO executar - seja o apphost,
+  # seja o /usr/bin/dotnet.
+  #
+  # Sem ela, o erro e 203/EXEC: "Main process exited", sem uma linha do aplicativo, porque o
+  # aplicativo nunca chegou a rodar. Quem le isso procura defeito de configuracao durante um bom
+  # tempo antes de desconfiar da permissao de um arquivo.
+  for argv in "$ARGV_CB" "$ARGV_MT"; do
+    bin="${argv%% *}"
+    if [ ! -f "$bin" ]; then
+      echo "O ExecStart aponta para um arquivo que nao existe:"; echo "   $bin"
+      echo "Nada foi alterado."; CONCLUIDO=1; exit 1
+    fi
+    if [ ! -x "$bin" ]; then
+      echo "O ExecStart aponta para um arquivo SEM permissao de execucao:"
+      echo "   $bin   (modo $(stat -c '%a' "$bin" 2>/dev/null))"
+      echo "O systemd falharia com 203/EXEC, sem nenhuma linha do aplicativo. Corrija com:"
+      echo "   sudo chmod +x $bin"
+      echo "Nada foi alterado."; CONCLUIDO=1; exit 1
+    fi
+  done
+  echo "== os dois executaveis do ExecStart existem e sao executaveis"
 
   {
     echo "[Unit]"
