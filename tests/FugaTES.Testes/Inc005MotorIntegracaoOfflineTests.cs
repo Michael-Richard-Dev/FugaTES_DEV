@@ -388,7 +388,7 @@ public sealed class Inc005MotorIntegracaoOfflineTests
             ["CarrierSystemdCredentials.cs"] = "5F56079161364A136C8DAAD32CC1A27D6D1D21908E7D0A2B77C8F986B5DF6DA3",
             ["CarrierLinuxRuntimeBootstrap.cs"] = "F52E404D326073DBACF4D13EA1B7FD1C1E35D6C861DAA61B77F9190EEBA1C794",
             ["AcmR104OneShotEntrypoint.cs"] = "612425BD3DB1BCE6F924FD7DC70AC6B12E963535C1AE99080F5DF20455EDA1A7",
-            ["AcmProviderReadOnlyEntrypoint.cs"] = "8417019F29D1BC9F55CBC329281C5AF19352496F04B10F3F68C6BAEF2C88D56E"
+            ["AcmProviderReadOnlyEntrypoint.cs"] = "0D13E78ECA380321151FAFE15D1221C8AD4364E35EBDE92D3DF612B12136E0A1"
         }.ToDictionary(pair => Path.Combine(raiz,"src","FugaTES.HostIntegracao",pair.Key), pair => pair.Value);
         foreach (var (arquivo, hash) in operacionais)
             Assert.Equal(hash, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(arquivo))));
