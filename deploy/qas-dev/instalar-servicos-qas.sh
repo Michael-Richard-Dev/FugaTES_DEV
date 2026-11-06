@@ -215,16 +215,31 @@ preparar)
             echo "$k=http://127.0.0.1:$PORTA_QAS"
             TROCADAS="$TROCADAS $k" ;;
 
+          # O PAR (Environment, porta) DA ADMISSAO, que vale JUNTO.
+          #
+          # ToledoCallbackIngress aprova exatamente dois pares: ("DEV",18086) e ("QAS120",18087).
+          # Em modo PrivateDevNetworkOnly a admissao exige que o par exista E que a porta local da
+          # conexao seja a dele - a conferencia em tempo de execucao e o que prova que a
+          # requisicao entrou pelo ingresso configurado, e nao so que a configuracao diz isso.
+          #
+          # Os dois sao trocados aqui porque sao um so: deixar Environment=DEV com a porta 18087
+          # - que foi o estado do QAS durante 06/11/2026 - recusa toda requisicao com
+          # TOLEDO_SOURCE_NOT_ALLOWED, e trocar so um dos dois nunca e correto.
+          *Authentication__Environment)
+            echo "# QAS120: metade do par de ingresso; a outra e a porta, logo abaixo."
+            echo "$k=QAS120"
+            TROCADAS="$TROCADAS $k" ;;
+
           *PrivateListenerPort)
-            echo "# QAS120: a porta deste receptor."
-            echo "#"
-            echo "# ATENCAO: a admissao do /recebimento compara a porta local com 18086 ESCRITO NO"
-            echo "# CODIGO (ToledoCallbackAdmission, linhas 36 e 60), e exige Environment=DEV. Com"
-            echo "# $PORTA_QAS ela recusa com TOLEDO_SOURCE_NOT_ALLOWED. Isso NAO afeta o SD: a rota"
-            echo "# /venda nao passa por essa porteira - ela e a lista do nginx mais o loopback."
-            echo "# Para o /recebimento-qas120 funcionar, o par (Environment, porta) precisa ser"
-            echo "# estendido no codigo, do mesmo jeito que o par (banco, papel) foi hoje."
+            echo "# QAS120: a porta deste receptor, e a outra metade do par de ingresso."
             echo "$k=$PORTA_QAS"
+            TROCADAS="$TROCADAS $k" ;;
+
+          # O recebimento do QAS so funciona com o caminho ACM ligado. Ate 06/11/2026 ele nascia
+          # desligado porque o vinculo com o banco so aceitava o DEV; agora ele deriva o ambiente.
+          ToledoInbound__Enabled)
+            echo "# QAS120: o caminho ACM e o que serve /recebimento-qas120."
+            echo "$k=true"
             TROCADAS="$TROCADAS $k" ;;
 
           Sap__BaseUrl)   echo "# QAS120"; echo "$k=$SAP_QAS_URL"; TROCADAS="$TROCADAS $k" ;;
@@ -491,6 +506,31 @@ aplicar)
   done
   [ "${FALTA:-0}" = 0 ] || { echo "Nada foi alterado."; CONCLUIDO=1; exit 1; }
   echo "== o par (banco, papel), o sap-client e a rota de retorno conferem com o QAS120"
+
+  # O PAR DE INGRESSO DA ADMISSAO, conferido antes de subir.
+  #
+  # ToledoCallbackIngress aprova ("DEV",18086) e ("QAS120",18087), e so JUNTOS. Environment=DEV
+  # com a porta 18087 recusa toda requisicao com TOLEDO_SOURCE_NOT_ALLOWED - sem erro na subida,
+  # sem linha no journal do receptor: a requisicao simplesmente nao entra. Conferir aqui, por
+  # nome, evita procurar isso no Guardian.
+  if grep -qE '^ToledoInbound__Enabled=true' "$ENV_QAS/callback.env"; then
+    amb="$(grep -E '^[A-Za-z_]*Authentication__Environment=' "$ENV_QAS/callback.env" | tail -1 | cut -d= -f2-)"
+    prt="$(grep -E '^[A-Za-z_]*PrivateListenerPort=' "$ENV_QAS/callback.env" | tail -1 | cut -d= -f2-)"
+    if [ "$amb" != QAS120 ] || [ "$prt" != "$PORTA_QAS" ]; then
+      echo "callback.env: o par de ingresso nao e o do QAS120."
+      echo "   Environment=\"$amb\" (esperado QAS120), PrivateListenerPort=\"$prt\" (esperado $PORTA_QAS)."
+      echo "   Os dois valem JUNTOS: trocar so um recusa toda requisicao em silencio."
+      FALTA=1
+    else
+      echo "== o par de ingresso da admissao e (QAS120, $PORTA_QAS)"
+    fi
+  else
+    echo "== caminho ACM desligado neste receptor (ToledoInbound__Enabled nao e true)"
+  fi
+  # A conferencia acima vem DEPOIS do ponto em que FALTA e avaliado, entao ela precisa do seu
+  # proprio. Sem isto ela imprimia a recusa e o script seguia escrevendo as unidades - um aviso
+  # que nao impede nada e so ruido, e o pior tipo: parece que algo foi feito a respeito.
+  [ "${FALTA:-0}" = 0 ] || { echo "Nada foi alterado."; CONCLUIDO=1; exit 1; }
 
   U="$(usuario_de "$DEV_CB")"; [ -n "$U" ] || U=fugates-http
 

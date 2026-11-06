@@ -17,15 +17,31 @@ public static class ToledoCallbackComposition
         var flag=configuration["ToledoInbound:Enabled"];
         if(flag is not null&&!bool.TryParse(flag,out _))throw new InvalidOperationException("ToledoInbound:Enabled must be explicit true/false.");
         if(!bool.TryParse(flag,out var enabled)||!enabled)return;
-        var cs=ValidateDedicatedBinding(configuration.GetConnectionString("Toledo"));
-        services.AddKeyedSingleton<NpgsqlDataSource>(DataSourceKey,(_,_)=>NpgsqlDataSourceFactory.CriarAcm(cs));
+
+        // O AMBIENTE DESTE PROCESSO, DERIVADO DO PAR SAP - e nao "os dois aprovados".
+        //
+        // A conferencia do endpoint SAP ja existia, mas vinha DEPOIS do vinculo com o banco. Subiu
+        // para ca porque e ela que diz QUAL banco este processo pode alcancar: um receptor de
+        // QAS120 apontado para o banco do DEV gravaria a pesagem num ambiente e a devolutiva no
+        // outro, as duas com credencial valida e sem erro nenhum.
+        //
+        // Ate 06/11/2026 o vinculo aceitava so o DEV110, escrito como padrao. Com dois ambientes
+        // isso nao era mais uma trava: era o receptor do QAS nao subir. Trocar por "aceita os dois"
+        // seria pior do que o que havia - deixaria o par cruzado passar. Derivar mantem a trava e
+        // resolve o impedimento, que e o mesmo desenho do motor SD (SdProtocoloComposition).
+        if(!Uri.TryCreate(configuration["Sap:BaseUrl"],UriKind.Absolute,out var sap)||sap.Scheme!="https"||sap.UserInfo.Length!=0||sap.Query.Length!=0||sap.Fragment.Length!=0)
+            throw new InvalidOperationException("TOLEDO_SAP_AUTHORIZED_DEV_ENDPOINT_REQUIRED");
+        var ambienteSap=FugaTES.Aplicacao.Configuracao.AmbientesSap.Por(sap.GetLeftPart(UriPartial.Authority),configuration["Sap:SapClient"])
+            ??throw new InvalidOperationException("TOLEDO_SAP_AUTHORIZED_DEV_ENDPOINT_REQUIRED");
+        var ambienteBanco=AmbientesBanco.PorNome(ambienteSap.Nome)
+            ??throw new InvalidOperationException("TOLEDO_AMBIENTE_BANCO_DESCONHECIDO");
+
+        var cs=ValidateDedicatedBinding(configuration.GetConnectionString("Toledo"),ambienteBanco);
+        services.AddKeyedSingleton<NpgsqlDataSource>(DataSourceKey,(_,_)=>NpgsqlDataSourceFactory.CriarAcm(cs,ambienteBanco));
         var sapAdmission=ToledoSapReturnComposition.Configure(services,configuration);
         services.TryAddScoped<IRegistroPesagemToledoStore>(sp=>new RegistroPesagemToledoPostgreSql(sp.GetRequiredKeyedService<NpgsqlDataSource>(DataSourceKey),sapAdmission));
         // Admission requires a proven supplier before any new receipt commit, independently of the send window.
         ToledoSapReturnComposition.ConfigureAuthentication(services,configuration);
-        if(!Uri.TryCreate(configuration["Sap:BaseUrl"],UriKind.Absolute,out var sap)||sap.Scheme!="https"||sap.UserInfo.Length!=0||sap.Query.Length!=0||sap.Fragment.Length!=0||
-           !FugaTES.Aplicacao.Configuracao.AmbientesSap.EhAprovado(sap.GetLeftPart(UriPartial.Authority),configuration["Sap:SapClient"]))
-            throw new InvalidOperationException("TOLEDO_SAP_AUTHORIZED_DEV_ENDPOINT_REQUIRED");
         services.AddKeyedScoped<ToledoSapHttpTransport>("TOLEDO_SUPPLIER_READ",(_,_)=>new());
         services.TryAddScoped<FugaTES.Aplicacao.Servicos.Recebimento.IToledoSupplierLookup>(sp=>new ToledoSupplierSapLookup(new(
             sp.GetRequiredKeyedService<ToledoSapHttpTransport>("TOLEDO_SUPPLIER_READ").Client,
