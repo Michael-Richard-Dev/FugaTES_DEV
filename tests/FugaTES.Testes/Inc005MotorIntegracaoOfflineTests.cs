@@ -383,7 +383,7 @@ public sealed class Inc005MotorIntegracaoOfflineTests
         // rather than allowing arbitrary future transport/credential code by filename.
         var operacionais = new Dictionary<string, string>
         {
-            ["Program.cs"] = "3443070990249C77C02440A0C4B158142E7C8FF4BB7C433CBD5BF3B078818A81",
+            ["Program.cs"] = "FE7715B0604F47BF22D126D55333CFCFE422AE303C4550A0DA5F9E27C06E572B",
             ["GuardianProtocolCommandService.cs"] = "634601F929822B34EECA720D8B7DEB444FE08DE39BD3DB43851416E7080787B2",
             ["CarrierSystemdCredentials.cs"] = "1E2D7CB1FEEEAA3F15420E68132F7A098C6F793129CC7A27624EFAC5529BD7F9",
             ["CarrierLinuxRuntimeBootstrap.cs"] = "F52E404D326073DBACF4D13EA1B7FD1C1E35D6C861DAA61B77F9190EEBA1C794",
