@@ -70,7 +70,7 @@ public static class CarrierManualReadOnlyComposition
             var sapUri=new Uri(config["Sap:BaseUrl"]!);var guardianUri=new Uri(config["Guardian:BaseUrl"]!);
             using var http=new HttpClient(new CarrierManualReadOnlyHttpGuard(sapUri,guardianUri,new HttpClientHandler{AllowAutoRedirect=false}));
             var timeout=TimeSpan.FromSeconds(int.Parse(config["Carrier:ManualReadOnly:TimeoutSeconds"]!));
-            var sap=new CarrierManualSapReadOnlyAdapter(new ClienteHttpParceiroNegocioSap(http,new OpcoesSap{BaseUrl=sapUri,SapClient="110",Timeout=timeout},new CarrierServiceSapAuthentication(config)));
+            var sap=new CarrierManualSapReadOnlyAdapter(new ClienteHttpParceiroNegocioSap(http,new OpcoesSap{BaseUrl=sapUri,SapClient=config["Sap:SapClient"],Timeout=timeout},new CarrierServiceSapAuthentication(config)));
             var credentials=new CarrierServiceGuardianCredentials(config);
             var options=new GuardianHttpOptions{BaseUrl=guardianUri,Timeout=timeout};
             var tokens=new GuardianTokenClient(http,options,credentials);

@@ -14,7 +14,7 @@ public sealed class OrdensVendaSdComposicaoTests
     {
         var valores = new Dictionary<string, string?>
         {
-            ["Sap:BaseUrl"] = OrdensVendaSdComposition.OrigemAprovada + "/sap/opu/odata/sap/API_BUSINESS_PARTNER/",
+            ["Sap:BaseUrl"] = FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem + "/sap/opu/odata/sap/API_BUSINESS_PARTNER/",
             ["Sap:SapClient"] = OrdensVendaSdComposition.SapClientAprovado,
             ["Carrier:Secrets:SapUser"] = "FUGATES",
             ["Carrier:Secrets:SapCredentialTarget"] = "FugaTES/Sap/Dev"
@@ -31,7 +31,7 @@ public sealed class OrdensVendaSdComposicaoTests
     // o caminho da colecao SD vem do adapter.
     [Fact]
     public void Origem_e_conferida_pela_autoridade_e_nao_pelo_caminho()
-        => OrdensVendaSdComposition.Validar(Perfil(("Sap:BaseUrl", OrdensVendaSdComposition.OrigemAprovada)));
+        => OrdensVendaSdComposition.Validar(Perfil(("Sap:BaseUrl", FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem)));
 
     [Theory]
     [InlineData("Sap:BaseUrl", "http://vhfufds4ci.sap.fugacouros.com.br:44300")]  // sem TLS
@@ -71,7 +71,7 @@ public sealed class OrdensVendaSdComposicaoTests
     public async Task Get_na_colecao_aprovada_passa()
     {
         var (status, chamadas) = await Enviar(HttpMethod.Get,
-            OrdensVendaSdComposition.OrigemAprovada + "/sap/opu/odata/sap/API_SALES_ORDER_SRV/A_SalesOrder?sap-client=110");
+            FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110.Origem + "/sap/opu/odata/sap/API_SALES_ORDER_SRV/A_SalesOrder?sap-client=110");
         Assert.Equal(HttpStatusCode.OK, status);
         Assert.Equal(1, chamadas);
     }

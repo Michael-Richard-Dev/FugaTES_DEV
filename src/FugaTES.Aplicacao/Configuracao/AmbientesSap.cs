@@ -63,4 +63,18 @@ public static class AmbientesSap
     /// </summary>
     public static AmbienteSap? Por(Uri? uri, string? sapClient)
         => uri is { IsAbsoluteUri: true } ? Por(uri.GetLeftPart(UriPartial.Authority), sapClient) : null;
+
+    /// <summary>
+    /// Se esta origem e a de algum ambiente aprovado, sem olhar client.
+    ///
+    /// E MAIS FRACO do que <see cref="EhAprovado"/> e serve a um caso so: guardas de transporte,
+    /// que veem a requisicao e nao o perfil, e cuja pergunta e "este host e um SAP nosso?". Quem
+    /// tem o par em maos usa <see cref="EhAprovado"/>; usar este no lugar daquele aceitaria o host
+    /// de um ambiente com o client do outro, que e justamente o que nao pode passar.
+    /// </summary>
+    public static bool EhOrigemAprovada(string? origem)
+    {
+        var o = origem?.Trim();
+        return !string.IsNullOrEmpty(o) && Aprovados.Any(a => string.Equals(a.Origem, o, StringComparison.Ordinal));
+    }
 }

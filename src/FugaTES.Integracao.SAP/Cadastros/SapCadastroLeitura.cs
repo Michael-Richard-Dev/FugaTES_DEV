@@ -13,7 +13,6 @@ namespace FugaTES.Integracao.SAP.Cadastros;
 // A read session owns only temporary memory, not a master-data repository or worker.
 public abstract class SapCadastroConsultaBase:ICadastroSapConsulta
 {
- public const string Origem="https://vhfufds4ci.sap.fugacouros.com.br:44300";
  readonly SapODataHttpExecutor sap;
  readonly SemaphoreSlim gate=new(1,1);
  readonly TimeProvider tempo;

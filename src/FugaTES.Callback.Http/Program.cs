@@ -14,7 +14,7 @@ if(DevUnifiedReadApi.Selected(args))
 
 if(ToledoSapAuthenticationReadOnly.Selected(args))
 {
-    Environment.ExitCode=await ToledoSapAuthenticationReadOnly.RunAsync(args[1]);
+    Environment.ExitCode=await ToledoSapAuthenticationReadOnly.RunAsync(args[1],args[2]);
     return;
 }
 

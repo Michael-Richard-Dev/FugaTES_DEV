@@ -46,7 +46,7 @@ public sealed class AmbientesSapTests
     [Fact]
     public void As_duas_urls_diferem_por_uma_letra()
     {
-        Assert.Equal(Dev.Replace("ds4ci", "qs4ci"), Qas);
+        Assert.Equal(Qas, Dev.Replace("ds4ci", "qs4ci"));
         Assert.NotEqual(Dev, Qas);
     }
 

@@ -25,9 +25,6 @@ namespace FugaTES.WinForms.Sd;
 /// </summary>
 public static class OrdensVendaSdComposition
 {
-    /// <summary>Origem SAP de DEV aprovada, a mesma das demais leituras do desktop.</summary>
-    public const string OrigemAprovada = "https://vhfufds4ci.sap.fugacouros.com.br:44300";
-
     /// <summary>Unica rota liberada: a colecao de ordens de venda do servico da planilha.</summary>
     public const string RotaAprovada = "/sap/opu/odata/sap/API_SALES_ORDER_SRV/";
 

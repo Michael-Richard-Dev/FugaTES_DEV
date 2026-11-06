@@ -11,15 +11,17 @@ public sealed record SapProviderReadOnlyProof(bool Passed,string Phase,int? Http
 // Its caller creates a fresh redirect-disabled, cookie-disabled transport. No POST is possible here.
 public static class SapProviderReadOnlyVerification
 {
- public static async Task<SapProviderReadOnlyProof> CheckAsync(HttpClient http,IAutenticacaoSap authentication,CancellationToken ct)
+ // O ambiente vem de quem chama. Antes de 05/11/2026 estava escrito aqui dentro, e o
+ // --verify-provider com credenciais de QAS120 teria sondado o DEV e dito PASS.
+ public static async Task<SapProviderReadOnlyProof> CheckAsync(HttpClient http,IAutenticacaoSap authentication,FugaTES.Aplicacao.Configuracao.AmbienteSap ambiente,CancellationToken ct)
  {
   var phase="METADATA";int? status=null;var metadata=false;
   using var timeout=CancellationTokenSource.CreateLinkedTokenSource(ct);timeout.CancelAfter(TimeSpan.FromSeconds(45));
   try
   {
-   var origin=new Uri("https://vhfufds4ci.sap.fugacouros.com.br:44300");
+   var origin=new Uri(ambiente.Origem);
    var cookies=new CookieContainer();
-   var executor=new SapODataHttpExecutor(http,new(){BaseUrl=origin,SapClient="110",Timeout=TimeSpan.FromSeconds(20)},authentication,cookies);
+   var executor=new SapODataHttpExecutor(http,new(){BaseUrl=origin,SapClient=ambiente.SapClient,Timeout=TimeSpan.FromSeconds(20)},authentication,cookies);
    using(var request=new HttpRequestMessage(HttpMethod.Get,executor.ConstruirUri("/sap/opu/odata/sap/ZUI_ACM_RECPESAGEM/$metadata")))
    {
     request.Headers.TryAddWithoutValidation("Accept","*/*");

@@ -14,7 +14,6 @@ namespace FugaTES.Integracao.SAP.BusinessPartner;
 // Read-only monitor capability. No Guardian gateway, master-data store or write method.
 public sealed class EmissoresSapConsultaAdapter : IEmissoresSapConsulta
 {
- public const string Origem="https://vhfufds4ci.sap.fugacouros.com.br:44300";
  const string Colecao="/sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner";
  const int TamanhoPagina=50;
  const string Selecao="BusinessPartner,BusinessPartnerFullName,BusinessPartnerCategory,BusinessPartnerGrouping,BusinessPartnerIsBlocked,to_Customer/Customer,to_Customer/CustomerAccountGroup,to_Supplier/Supplier,to_Supplier/SupplierAccountGroup";

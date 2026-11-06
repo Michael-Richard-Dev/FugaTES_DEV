@@ -80,7 +80,7 @@ public sealed class CarrierMasterdataSession : IAsyncDisposable
         transport=new(sapUri,guardianUri,bp,identity.Codigo,identity.IdAssinatura,
             ()=>!disposed&&LeaseValid(),new HttpClientHandler{AllowAutoRedirect=false});
         http=new(transport){Timeout=timeout};
-        sap=new SapBpReadAdapterR20B(new ClienteHttpParceiroNegocioSap(http,new OpcoesSap{BaseUrl=sapUri,SapClient="110",Timeout=timeout},new CarrierServiceSapAuthentication(config)));
+        sap=new SapBpReadAdapterR20B(new ClienteHttpParceiroNegocioSap(http,new OpcoesSap{BaseUrl=sapUri,SapClient=config["Sap:SapClient"],Timeout=timeout},new CarrierServiceSapAuthentication(config)));
         options=new(){BaseUrl=guardianUri,Timeout=timeout};tokens=new(http,options,new CarrierServiceGuardianCredentials(config));
         var manual=CarrierProtocolBinding.BuildGuardianManualContract(config)??throw new DesktopStartupException("MASTERDATA_READ_CONTRACT_NOT_PROVEN");
         guardian=new GuardianCarrierManualReadOnlyAdapter(http,options,tokens,manual with
