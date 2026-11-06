@@ -66,7 +66,7 @@ mostrar_estado() {
   for linha in "${PAPEIS[@]}"; do
     papel="${linha%%|*}"
     if existe_papel "$papel"; then
-      senha="$(pg_q postgres "select case when rolpassword is null then 'SEM SENHA (nao autentica ainda)' else 'com senha definida' end from pg_roles where rolname='$papel'")"
+      senha="$(pg_q postgres "select case when rolpassword is null then 'SEM SENHA (nao autentica ainda)' else 'com senha definida' end from pg_authid where rolname='$papel'")"
       echo "  $papel ... existe, $senha"
     else
       echo "  $papel ... ausente"
@@ -239,10 +239,19 @@ validar)
   done
   [ "$falhas" = 0 ] && echo "   Nenhum alcanca. Os ambientes estao separados por credencial."
 
+  # DE pg_authid, E NAO DE pg_roles. A view pg_roles devolve a constante '********' no campo
+  # rolpassword para TODO papel, entao "rolpassword is not null" nela e SEMPRE verdadeiro - a
+  # conferencia passava com os seis papeis recem-criados, nenhum deles com senha. Era um
+  # verificador que nunca reprova, que e o pior tipo: ele nao erra de vez em quando, ele mente
+  # sempre, e com cara de prova. Em 06/11/2026 chegou a dizer "VALIDADO: 0 pendencia(s)" sobre um
+  # banco cujos papeis nao autenticavam.
+  #
+  # pg_authid guarda o valor de verdade e so superusuario le - aqui somos postgres. O valor nunca
+  # e selecionado: so se ele EXISTE.
   echo "== cada papel do QAS tem senha?"
   for linha in "${PAPEIS[@]}"; do
     papel="${linha%%|*}"
-    if pg_q postgres "select rolpassword is not null from pg_roles where rolname='$papel'" | grep -qi '^t'; then
+    if pg_q postgres "select rolpassword is not null from pg_authid where rolname='$papel'" | grep -qi '^t'; then
       echo "   $papel ... sim"
     else
       echo "   $papel ... AINDA SEM SENHA (nao autentica)"; falhas=$((falhas+1))

@@ -61,11 +61,13 @@ psql_q postgres "select r.rolname, r.rolsuper, r.rolcreatedb, r.rolcreaterole, r
        r.rolpassword is not null as tem_senha,
        coalesce((select string_agg(g.rolname,',') from pg_auth_members m
                  join pg_roles g on g.oid=m.roleid where m.member=r.oid),'')
-  from pg_roles r where r.rolname like 'fugates%' or r.rolname='postgres' order by r.rolname" \
+  from pg_authid r where r.rolname like 'fugates%' or r.rolname='postgres' order by r.rolname" \
 | awk -F'|' 'BEGIN{printf "  %-26s %-6s %-7s %-7s %-6s %-6s %s\n","PAPEL","SUPER","CREATEDB","CREATEROLE","LOGIN","SENHA","MEMBRO DE"}
              {printf "  %-26s %-6s %-7s %-7s %-6s %-6s %s\n",$1,$2,$3,$4,$5,$6,$7}'
 echo
-echo "  (SENHA = t significa apenas que existe uma; o valor nao e lido por este script.)"
+echo "  (SENHA vem de pg_authid, e nao de pg_roles: a view pg_roles devolve a constante '********'
+   para TODO papel, entao 'rolpassword is not null' nela e sempre verdadeiro e nao prova nada.
+   Aqui le-se apenas SE existe senha; o valor nunca e consultado.)"
 
 echo
 echo "=============================================================="
