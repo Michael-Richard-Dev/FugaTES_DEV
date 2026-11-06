@@ -273,8 +273,27 @@ preparar)
   CONCLUIDO=1
   ;;
 aplicar)
+  # A MARCA VEM DO ARGUMENTO, E NAO SO DO AMBIENTE.
+  #
+  # "cmd aplicar MARCA=x" NAO define variavel nenhuma: o shell so trata ATRIBUICAO ANTES do
+  # comando ("MARCA=x cmd aplicar"); depois do subcomando, "MARCA=x" e texto posicional. Eu
+  # ensaiei com a forma de prefixo e DOCUMENTEI a de sufixo - entao o ensaio passou e a primeira
+  # chamada de verdade caiu em "Informe a marca", logo depois de informar a marca.
+  #
+  # Aceita as tres formas, porque discutir com o operador sobre sintaxe de shell nao e o trabalho.
   MARCA="${MARCA:-}"
-  [ -n "$MARCA" ] || { echo "Informe a marca: sudo $0 aplicar MARCA=QAS120_..."; CONCLUIDO=1; exit 1; }
+  case "${2:-}" in
+    MARCA=*) MARCA="${2#MARCA=}" ;;
+    QAS120_*) MARCA="$2" ;;
+  esac
+  [ -n "$MARCA" ] || {
+    echo "Informe a marca, de qualquer um destes jeitos:"
+    echo "   sudo $0 aplicar MARCA=QAS120_..."
+    echo "   sudo $0 aplicar QAS120_..."
+    echo
+    echo "As que existem agora:"
+    ls -1 "$REL_CB" 2>/dev/null | grep '^QAS120_' | sed 's/^/   /' || echo "   (nenhuma: rode preparar)"
+    CONCLUIDO=1; exit 1; }
   [ -d "$REL_CB/$MARCA" ] && [ -d "$REL_MT/$MARCA" ] || { echo "Release $MARCA nao existe. Rode preparar."; CONCLUIDO=1; exit 1; }
 
   for a in "$ENV_QAS/callback.env" "$ENV_QAS/motor.env"; do
