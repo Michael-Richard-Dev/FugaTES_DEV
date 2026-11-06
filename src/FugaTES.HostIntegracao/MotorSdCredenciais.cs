@@ -21,10 +21,34 @@ namespace FugaTES.HostIntegracao;
 /// </summary>
 public sealed class MotorSdCredenciais(string diretorio)
 {
-    /// <summary>O mesmo nome usado pela unidade em instalar-motor-sd.sh.</summary>
+    /// <summary>
+    /// As unidades do motor SD, uma por ambiente. O systemd monta as credenciais em
+    /// /run/credentials/&lt;nome da unidade&gt;, entao o nome da unidade E a identidade do diretorio.
+    ///
+    /// Ate 06/11/2026 havia um nome so, escrito aqui como constante. O motor do QAS120 roda numa
+    /// unidade de nome proprio - as duas nao podem compartilhar unidade - e recusava subir com
+    /// SD_MOTOR_CREDENCIAL_DIRETORIO_INVALIDO lendo o diretorio CERTO: o dele.
+    ///
+    /// NAO ENFRAQUECE A GUARDA. O que ela impede e o motor ler as credenciais de OUTRO servico, e
+    /// isso continua: o diretorio tem de ser exatamente o que o systemd informou para ESTE
+    /// processo (CREDENTIALS_DIRECTORY), e ainda precisa ser o de uma unidade de motor SD
+    /// aprovada. Um processo so recebe o diretorio da unidade sob a qual ele roda; aceitar os dois
+    /// nomes nao da a um deles acesso ao do outro.
+    ///
+    /// Estes nomes sao os mesmos de instalar-motor-sd.sh (DEV110) e instalar-servicos-qas.sh
+    /// (QAS120). Renomear uma unidade sem mexer aqui faz aquele motor parar de subir.
+    /// </summary>
+    public static readonly IReadOnlyList<string> ServicosAprovados =
+    [
+        "fugates-sd-protocolo.service",      // DEV110
+        "fugates-sd-protocolo-qas.service",  // QAS120
+    ];
+
+    /// <summary>O nome da unidade do DEV110, preservado para quem ja o referenciava.</summary>
     public const string Servico = "fugates-sd-protocolo.service";
 
-    public const string DiretorioEsperado = "/run/credentials/" + Servico;
+    public static readonly IReadOnlyList<string> DiretoriosAprovados =
+        [.. ServicosAprovados.Select(s => "/run/credentials/" + s)];
 
     public static readonly IReadOnlyList<string> Exigidas =
     [
@@ -44,9 +68,13 @@ public sealed class MotorSdCredenciais(string diretorio)
 
         try
         {
-            // O diretorio tem de ser o do proprio servico, e o mesmo que o systemd informou.
-            if (diretorio != DiretorioEsperado
-                || Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY") != DiretorioEsperado)
+            // O diretorio tem de ser o que o systemd informou para ESTE processo, e tem de ser o
+            // de uma unidade de motor SD aprovada. As duas conferencias juntas: a primeira
+            // impede ler o diretorio de outro servico, a segunda impede que uma unidade de nome
+            // qualquer se passe por motor.
+            var informado = Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY");
+            if (diretorio != informado
+                || !DiretoriosAprovados.Contains(diretorio, StringComparer.Ordinal))
                 throw new CarrierServiceStartupException("SD_MOTOR_CREDENCIAL_DIRETORIO_INVALIDO");
 
             var pasta = new DirectoryInfo(diretorio);
