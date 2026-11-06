@@ -206,7 +206,7 @@ preparar)
           *ConnectionString|ConnectionStrings__*)
             echo "# QAS120: banco e papel do QAS. A senha NAO vem aqui - vem do $PASSFILE,"
             echo "# porque a fabrica exige Passfile com Password nulo."
-            echo "$k=Host=127.0.0.1;Port=5433;Database=$BANCO_QAS;Search Path=fugates;Username=$PAPEL;Passfile=$PASSFILE"
+            echo "$k=Host=127.0.0.1;Port=5433;Database=$BANCO_QAS;Search Path=fugates;Username=$PAPEL;Enlist=false;Passfile=$PASSFILE"
             TROCADAS="$TROCADAS $k" ;;
 
           PGPASSFILE)
@@ -427,6 +427,21 @@ aplicar)
           fi
           if ! printf '%s' "$valor" | tr ';' '\n' | grep -qiE '^ *Passfile *= *\/'; then
             echo "$(basename "$a"): a cadeia nao tem Passfile= absoluto. Esperado: $PASSFILE"; FALTA=1
+          fi
+          # ENLIST PRECISA ESTAR ESCRITO, PORQUE O PADRAO DELE E "true".
+          #
+          # ValidateDedicatedBinding recusa a cadeia quando Enlist esta ligado - ele liga o
+          # auto-alistamento em TransactionScope ambiente, e o vinculo dedicado nao admite isso.
+          # Como o Npgsql assume true quando a chave FALTA, uma cadeia sem Enlist e recusada
+          # exatamente como uma com Enlist=true: a ausencia nao e neutra.
+          #
+          # Foi o que derrubou o receptor do QAS em 06/11/2026. A cadeia que eu gerava tinha
+          # banco, papel, porta, schema e passfile certos; faltava uma chave que ninguem escreve
+          # porque "nao esta la" parece significar "desligado".
+          if ! printf '%s' "$valor" | tr ';' '\n' | grep -qiE '^ *Enlist *= *false'; then
+            echo "$(basename "$a"): a cadeia nao declara Enlist=false. O padrao do Npgsql e TRUE,"
+            echo "   e o vinculo dedicado recusa com Enlist ligado - faltar e o mesmo que ligado."
+            FALTA=1
           fi
           # Search Path: CriarAcm (receptor) EXIGE "fugates". O motor SD aceita ausente, mas aqui
           # as duas cadeias nascem com ele, entao divergir e sinal de edicao a mao.

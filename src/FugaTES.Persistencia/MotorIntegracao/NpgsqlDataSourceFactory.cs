@@ -110,8 +110,25 @@ public static class NpgsqlDataSourceFactory
 
         // Callers outside HostIntegracao (including callback TryAddSingleton registrations)
         // cannot bypass physical identity by using the ordinary factory com uma role guardada.
-        if (EhRoleGuardada(new NpgsqlConnectionStringBuilder(connectionString).Username))
-            return CriarAcm(connectionString);
+        //
+        // AQUI A LISTA E A INTEIRA, E ISSO APERTA EM VEZ DE AFROUXAR.
+        //
+        // A pergunta desta linha nao e "este destino e permitido?" - e "este papel precisa ser
+        // guardado?". Sao perguntas opostas: em ValidateDedicatedBinding, aceitar mais ambientes
+        // ALARGA o que o processo alcanca; aqui, reconhecer mais papeis manda MAIS conexoes para
+        // a guarda de identidade fisica.
+        //
+        // Com a lista restrita ao DEV110, um papel fugates_qas_* nao era reconhecido como
+        // guardado e caia no NpgsqlDataSource.Create() cru - sem conferir que current_user e
+        // session_user sao mesmo aquela role, e sem conferir em que banco a conexao caiu. Era um
+        // buraco aberto pela conversao parcial de 06/11/2026: o QAS existia para o SD, e esta
+        // funcao continuava enxergando so os papeis do DEV.
+        //
+        // O par (banco, papel) continua sendo conferido JUNTO dentro de CriarAcm, entao um papel
+        // do QAS apontado para o banco do DEV continua sendo recusado.
+        if (EhRoleGuardada(new NpgsqlConnectionStringBuilder(connectionString).Username,
+                           AmbientesBanco.Aprovados))
+            return CriarAcm(connectionString, AmbientesBanco.Aprovados);
 
         return NpgsqlDataSource.Create(connectionString);
     }
