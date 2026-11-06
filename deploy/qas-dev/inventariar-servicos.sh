@@ -67,7 +67,11 @@ for u in $UNIDADES; do
   d="/etc/systemd/system/$u.d"
   if [ -d "$d" ]; then
     ls -1 "$d"/*.conf 2>/dev/null | sort | while read -r f; do
-      printf '      %-58s %s\n' "$(basename "$f")" "$(grep -c '^ExecStart' "$f" 2>/dev/null || echo 0) linha(s) ExecStart"
+      # grep -c imprime "0" E sai com 1 quando nao acha: o "|| echo 0" de antes acrescentava um
+      # segundo zero, e a coluna saia com "0\n0". Pequeno, mas e um relatorio dizendo duas coisas
+      # onde ha uma.
+      n="$(grep -c '^ExecStart' "$f" 2>/dev/null || true)"
+      printf '      %-58s %s linha(s) ExecStart\n' "$(basename "$f")" "${n:-0}"
     done
   else
     echo "      (nenhum)"
