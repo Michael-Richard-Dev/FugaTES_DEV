@@ -46,6 +46,26 @@ $PortaTunelQas = 15434
 
 if (-not (Test-Path -LiteralPath $Origem)) { throw "Origem nao existe: $Origem" }
 
+# ESCREVER JSON SEM BOM, PORQUE O APLICATIVO LE OS BYTES CRUS.
+#
+# CarrierDesktopProfile.Load faz File.ReadAllBytes + JsonDocument.Parse(bytes). O Utf8JsonReader
+# NAO aceita a marca de ordem de bytes: ele lanca, o catch vira
+# CARRIER_DESKTOP_HML_PROFILE_INVALID, e o AmbienteDesktop devolve "ambiente nao identificado".
+#
+# "Set-Content -Encoding utf8" no PowerShell 5.1 escreve COM BOM. Em 06/11/2026 foi isso que fez a
+# janela do QAS120 abrir dizendo que nao sabia em que ambiente estava - com o par correto dentro
+# do arquivo. O mesmo -Encoding utf8 ja tinha posto um BOM no assunto de um commit horas antes, e
+# eu nao liguei as duas coisas.
+function Escrever-JsonSemBom([object]$objeto, [string]$caminho) {
+    $texto = $objeto | ConvertTo-Json -Depth 32
+    [IO.File]::WriteAllText($caminho, $texto, [Text.UTF8Encoding]::new($false))
+    # Conferir o EFEITO: os primeiros bytes tem de ser o proprio JSON.
+    $b = [IO.File]::ReadAllBytes($caminho)
+    if ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF) {
+        throw "O arquivo $caminho saiu com BOM; o aplicativo nao conseguiria le-lo."
+    }
+}
+
 # A URL DO SAP E DERIVADA, NAO DIGITADA.
 #
 # O carrier.json do DEV traz a URL COM CAMINHO
@@ -75,7 +95,7 @@ function Url-DoQas([string]$urlDev) {
 # As marcas do DEV que nao deveriam sobreviver num perfil do QAS. Nao sao segredo: sao nomes de
 # banco, de papel e o host do SAP de desenvolvimento.
 $MarcasDev = @('fugates_dev', 'fugates_sd_app', 'fugates_acm_hml_app', 'fugates_mm_app',
-               'vhfufdv4ci', '"SapClient": "110"', 'DEV110')
+               'vhfufds4ci', '"SapClient": "110"', 'DEV110')
 
 function Mostrar-PerfisComMarcaDev([string]$pasta) {
     $achados = @()
@@ -128,14 +148,14 @@ switch ($Acao) {
     Write-Host ''
     Write-Host 'perfis que seriam COPIADOS AINDA APONTANDO PARA O DEV:'
     $restantes = Mostrar-PerfisComMarcaDev $Origem |
-        Where-Object { $_.Arquivo -notin @('FugaTES.carrier.json', 'FugaTES.sd.json') }
+        Where-Object { $true }   # TODOS, inclusive os que eu reescrevi - ver nota abaixo
     if (-not $restantes) {
         Write-Host '   nenhum'
     } else {
         $restantes | ForEach-Object { Write-Host ("   {0,-32} {1}" -f $_.Arquivo, $_.Marcas) }
         Write-Host ''
-        Write-Host '   Estes sao de MM e ACM, que nao sao escopo desta copia. Ficam apontando para'
-        Write-Host '   o DEV ate serem convertidos - nao use as telas deles na janela do QAS120.'
+        Write-Host '   Estes ficam apontando para o DEV ate serem convertidos. No carrier.json e a'
+        Write-Host '   APROVACAO (Origin, ApprovalReference) - ver a nota do commit; nos demais, o banco.'
     }
     Write-Host ''
     Write-Host 'Nada foi alterado. Para criar:  .\Criar-Desktop-QAS.ps1 aplicar'
@@ -156,7 +176,7 @@ switch ($Acao) {
     $carrier = Get-Content -LiteralPath $carrierPath -Raw | ConvertFrom-Json
     $carrier.Sap.BaseUrl   = Url-DoQas $carrier.Sap.BaseUrl
     $carrier.Sap.SapClient = $SapQasClient
-    $carrier | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $carrierPath -Encoding utf8
+    Escrever-JsonSemBom $carrier $carrierPath
     Write-Host '== FugaTES.carrier.json: Sap.BaseUrl e Sap.SapClient trocados'
 
     # SD: banco, papel, alvo da credencial e porta local do tunel.
@@ -167,7 +187,7 @@ switch ($Acao) {
     $sd.Database.Username         = $PapelSdQas
     $sd.Database.CredentialTarget = $AlvoCredQas
     $sd.Database.Port             = $PortaTunelQas
-    $sd | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $sdPath -Encoding utf8
+    Escrever-JsonSemBom $sd $sdPath
     Write-Host '== FugaTES.sd.json: banco, papel, alvo da credencial e porta do tunel trocados'
 
     # A REESCRITA PRESERVOU O RESTO? ConvertTo-Json reordena, reescreve e pode perder o que
@@ -220,12 +240,12 @@ switch ($Acao) {
     Write-Host '     o carrier.json nao casou com nenhum ambiente aprovado - me avise.'
 
     $restantes = Mostrar-PerfisComMarcaDev $Destino |
-        Where-Object { $_.Arquivo -notin @('FugaTES.carrier.json', 'FugaTES.sd.json') }
+        Where-Object { $true }   # TODOS, inclusive os que eu reescrevi - ver nota abaixo
     if ($restantes) {
         Write-Host ''
         Write-Host '  ATENCAO: estes perfis foram copiados e CONTINUAM apontando para o DEV:'
         $restantes | ForEach-Object { Write-Host ("     {0,-32} {1}" -f $_.Arquivo, $_.Marcas) }
-        Write-Host '     Sao de MM e ACM, fora do escopo desta copia. Nao use as telas deles'
+        Write-Host '     Fora do escopo desta copia. Nao use as telas deles'
         Write-Host '     nesta janela ate serem convertidos.'
     }
 }
