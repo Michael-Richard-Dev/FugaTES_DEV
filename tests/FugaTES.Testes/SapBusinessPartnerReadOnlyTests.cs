@@ -519,9 +519,33 @@ public sealed class SapBusinessPartnerReadOnlyTests
                 Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, true, binding with { Environment = "PRD" }));
                 Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, true, binding with { SourceAllowlistVerified = false }));
                 Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback + "?other=1", true, binding));
-                var literal = "\"" + approvedCallback + "\"";
-                Assert.Single(Regex.Matches(source, Regex.Escape(literal)).Cast<Match>());
-                source = source.Replace(literal, "\"https://example.invalid\"", StringComparison.Ordinal);
+                // A SEGUNDA rota em HTTP puro, do QAS120, aprovada pelo operador em 06/11/2026
+                // junto com o par /recebimento-qas e /venda-qas. Mesmo Guardian, mesmo host
+                // interno: muda so o caminho, porque os dois ambientes atendem na mesma maquina.
+                //
+                // As condicoes do binding valem IGUAL para ela - o teste abaixo prova que a URL
+                // nova sem binding, ou com Environment errado, continua sendo recusada.
+                const string approvedCallbackQas = "http://192.168.17.40/api/guardian/set26/callback/recebimento-qas";
+                Assert.Equal(approvedCallbackQas, FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.InternalHmlUrlQas);
+                var bindingQas = binding with { Url = approvedCallbackQas };
+                Assert.True(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallbackQas, true, bindingQas));
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallbackQas, true, null));
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallbackQas, true, bindingQas with { Environment = "PRD" }));
+                // O binding tem de apontar para a MESMA url: cruzar as duas nao passa.
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallbackQas, true, binding));
+                Assert.False(FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.Validar(approvedCallback, true, bindingQas));
+
+                // SAO DUAS, e nem uma a mais. Uma terceira entrada aqui faz este Assert falhar, e
+                // e esse o controle: cada URL em HTTP puro e uma excecao que alguem precisa dizer
+                // sim, nao um ajuste de configuracao.
+                Assert.Equal(2, FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.UrlsHttpAprovadas.Length);
+
+                foreach (var aprovada in FugaTES.Aplicacao.Servicos.Mvp.AcmR104CallbackPolicy.UrlsHttpAprovadas)
+                {
+                    var literal = "\"" + aprovada + "\"";
+                    Assert.Single(Regex.Matches(source, Regex.Escape(literal)).Cast<Match>());
+                    source = source.Replace(literal, "\"https://example.invalid\"", StringComparison.Ordinal);
+                }
             }
             // O registro dos ambientes SAP aprovados. As duas URLs estao aqui de proposito: e o
             // UNICO lugar do codigo que diz quais ambientes existem, e foi assim que o DEV110
