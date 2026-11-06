@@ -8,6 +8,37 @@ using Npgsql;
 
 namespace FugaTES.Callback.Http;
 
+/// <summary>
+/// Os ingressos aprovados da API privada de leitura: ambiente, frase de aprovacao e porta.
+///
+/// OS TRES VALEM JUNTOS. A porta e a identidade do ingresso - e por ela que o tunel do desktop
+/// chega - e a frase de aprovacao e o que o operador declara. Aceitar a frase do DEV numa porta
+/// de QAS, ou o contrario, seria servir dados de um ambiente por um canal autorizado para outro.
+///
+/// Ate 06/11/2026 havia um so: a frase estava comparada com um literal e a porta 18762 escrita
+/// dentro do CreateReadOnlyHostBuilder. O banco, o diretorio de MM e a origem SAP ja eram
+/// derivados do ambiente - so o canal nao era.
+///
+/// A porta do QAS e 18763, vizinha da do DEV e fora das faixas ja usadas (18080, 18086, 18087).
+/// Quem a reconhece do outro lado e o LocalReadTunnel, no desktop: as duas listas sao a mesma
+/// decisao escrita em dois lugares, e mudar uma sem a outra deixa a tela sem conectar.
+/// </summary>
+internal sealed record LeituraPrivadaIngresso(string Ambiente, string Aprovacao, int Porta)
+{
+    private static readonly LeituraPrivadaIngresso[] Aprovados =
+    [
+        new("DEV110", "FUGATES-UNIFIED-POSTGRESQL-DEV",    18762),
+        new("QAS120", "FUGATES-UNIFIED-POSTGRESQL-QAS120", 18763),
+    ];
+
+    /// <summary>O ingresso deste par, ou nulo quando a frase nao e a do ambiente.</summary>
+    internal static LeituraPrivadaIngresso? Por(string? ambiente, string? aprovacao)
+        => Array.Find(Aprovados, i => i.Ambiente == ambiente && i.Aprovacao == aprovacao);
+
+    /// <summary>As portas servidas, para quem precisa reconhece-las sem saber o ambiente.</summary>
+    internal static int[] Portas => Array.ConvertAll(Aprovados, i => i.Porta);
+}
+
 // Explicit DEV-only host mode. It does not configure inbound, callbacks, workers, Guardian or SAP.
 public static class DevUnifiedReadApi
 {
@@ -19,21 +50,27 @@ public static class DevUnifiedReadApi
     }
     public static async Task RunAsync()
     {
-        if(!OperatingSystem.IsLinux() || Environment.GetEnvironmentVariable("FUGATES_DEV_READ_APPROVAL")!="FUGATES-UNIFIED-POSTGRESQL-DEV")
-            throw new InvalidOperationException("UNIFIED_DEV_READ_MODE_NOT_AUTHORIZED");
+        if(!OperatingSystem.IsLinux())throw new InvalidOperationException("UNIFIED_DEV_READ_MODE_NOT_AUTHORIZED");
+        // O AMBIENTE PRIMEIRO, porque e ele que diz qual frase e qual porta valem aqui. A
+        // configuracao era lida mais abaixo; subiu porque a autorizacao depende dela.
+        var configuracao=new ConfigurationBuilder().AddEnvironmentVariables().Build();
+        var ambienteDoProcesso=FugaTES.HostIntegracao.AcmEnvironmentBinding.Banco(configuracao);
+        var ingresso=LeituraPrivadaIngresso.Por(ambienteDoProcesso.Nome,
+            Environment.GetEnvironmentVariable("FUGATES_DEV_READ_APPROVAL"))
+            ?? throw new InvalidOperationException("UNIFIED_DEV_READ_MODE_NOT_AUTHORIZED");
         var keyFile=Reference("FUGATES_DEV_READ_KEY_FILE");
         if(new FileInfo(keyFile).Length!=64 || (File.GetAttributes(keyFile)&(FileAttributes.ReparsePoint|FileAttributes.Directory))!=0 ||
             (File.GetUnixFileMode(keyFile)&(UnixFileMode.GroupRead|UnixFileMode.GroupWrite|UnixFileMode.GroupExecute|UnixFileMode.OtherRead|UnixFileMode.OtherWrite|UnixFileMode.OtherExecute))!=0)
             throw new InvalidOperationException("UNIFIED_DEV_PRIVATE_KEY_REFERENCE_REJECTED");
         var key=File.ReadAllText(keyFile).Trim();
-        var config=new ConfigurationBuilder().AddEnvironmentVariables().Build();
-        var ambiente=FugaTES.HostIntegracao.AcmEnvironmentBinding.Banco(config);
+        var config=configuracao;
+        var ambiente=ambienteDoProcesso;
         var connection=BuildConnection(config,Reference("R165AL_APPROVED_PASSFILE"),RoleDeLeitura(ambiente));
         await using var source=NpgsqlDataSourceFactory.CriarAcm(connection.ConnectionString,ambiente);
         // A role configurada atravessa o store: sem isto o guard de identidade compara current_user
         // com a role ACM compartilhada e recusa a identidade GET-only na partida.
         var store=new DevUnifiedReadStore(source,RoleDeLeitura(ambiente),ambiente);await store.IdentityAsync(CancellationToken.None);
-        var builder=CreateReadOnlyHostBuilder();
+        var builder=CreateReadOnlyHostBuilder(ingresso.Porta);
         await using var app=builder.Build();
         var mmDirectory=Environment.GetEnvironmentVariable("FUGATES_DEV_MM_SNAPSHOT_DIRECTORY");
         if(mmDirectory is not null&&mmDirectory!=(ambiente==AmbientesBanco.Dev110?"/var/lib/fugates-mm":"/var/lib/fugates-mm-qas"))throw new InvalidOperationException("MM_VM_OBSERVATION_DIRECTORY_REJECTED");
@@ -45,11 +82,16 @@ public static class DevUnifiedReadApi
         if(AmbientesBanco.Por(a.Banco,role,a)!=a||role!=a.PapelAcm&&role!=a.PapelLeitura)throw new InvalidOperationException("UNIFIED_DEV_READ_ROLE_NOT_AUTHORIZED");
         return new(){Host="127.0.0.1",Port=5433,Database=a.Banco,SearchPath="fugates",Username=role,Passfile=passfile,IncludeErrorDetail=false,ApplicationName="FugaTES.UnifiedDev.ReadOnly",Options="-c default_transaction_read_only=on"};
     }
-    public static WebApplicationBuilder CreateReadOnlyHostBuilder()
+    /// <summary>
+    /// A porta e parametro, com o DEV110 como padrao: quem ja chamava isto - testes e qualquer
+    /// outro uso - continua recebendo exatamente o que recebia.
+    /// </summary>
+    public static WebApplicationBuilder CreateReadOnlyHostBuilder(int porta = 18762)
     {
         var builder=WebApplication.CreateBuilder(new WebApplicationOptions{Args=[]});
         builder.Configuration.Sources.Clear();builder.Configuration.AddInMemoryCollection();builder.Logging.ClearProviders();
-        builder.WebHost.UseUrls("http://127.0.0.1:18762");return builder;
+        builder.WebHost.UseUrls("http://127.0.0.1:"+porta.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return builder;
     }
     // R164: identidade de banco desta API. O padrao continua sendo a role operacional
     // compartilhada, para que nada mude sem acao explicita do operador. A unica alternativa

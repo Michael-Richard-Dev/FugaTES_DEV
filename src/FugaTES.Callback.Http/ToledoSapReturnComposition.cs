@@ -14,6 +14,35 @@ using Npgsql;
 using FugaTES.HostIntegracao;
 namespace FugaTES.Callback.Http;
 
+/// <summary>
+/// Os ambientes em que o envio Toledo-&gt;SAP esta autorizado, e o SAP a que cada um corresponde.
+///
+/// O par e INDIVISIVEL, e e a mesma forma do ingresso da admissao e do par (banco, papel): o nome
+/// DECLARADO em ToledoSapReturn:Environment tem de corresponder ao SAP que o processo realmente
+/// fala. Um receptor de DEV declarando QAS120, ou o contrario, nao e ambiente nenhum.
+///
+/// POR QUE O NOME DECLARADO NAO E O NOME DO AMBIENTE. O DEV declara "DEV" desde antes de existir
+/// um segundo ambiente, e esse valor esta no EnvironmentFile em producao. Renomear para "DEV110"
+/// faria o receptor do DEV parar de subir na proxima publicacao, para ganhar simetria de nome -
+/// troca ruim. O mapeamento resolve sem tocar no que roda.
+///
+/// A AuthorizationReference continua sendo o REGISTRO da autorizacao, escrito pelo operador, e
+/// nao e conferida contra lista: fixar as referencias aceitas aqui exigiria que eu soubesse a do
+/// DEV em producao, e supor errado faria o receptor do DEV recusar subir.
+/// </summary>
+internal sealed record ToledoSapReturnAmbiente(string Declarado, string Sap)
+{
+    private static readonly ToledoSapReturnAmbiente[] Aprovados =
+    [
+        new("DEV", "DEV110"),
+        new("QAS120", "QAS120"),
+    ];
+
+    /// <summary>O ambiente deste par, ou nulo quando o declarado nao corresponde ao SAP real.</summary>
+    internal static ToledoSapReturnAmbiente? Por(string? declarado, string? sap)
+        => Array.Find(Aprovados, a => a.Declarado == declarado && a.Sap == sap);
+}
+
 public static class ToledoSapReturnComposition
 {
     public const string Key = "TOLEDO_SAP_RETURN";
@@ -26,7 +55,15 @@ public static class ToledoSapReturnComposition
         if(!bool.TryParse(flag,out var enabled))throw new InvalidOperationException("TOLEDO_SAP_EXPLICIT_ACTIVATION_REQUIRED");
         if(!enabled){if(ackMode=="SapConfirmed")throw new InvalidOperationException("TOLEDO_SAP_ACK_REQUIRES_EXISTING_WORKER");return null;}
         static bool True(string? v)=>bool.TryParse(v,out var value)&&value;
-        if(config["ToledoSapReturn:Environment"]!="DEV" || !True(config["ToledoSapReturn:ExecutionAuthorized"]) ||
+        // O ambiente DECLARADO tem de corresponder ao SAP que este processo fala. Ate 06/11/2026
+        // isto era "Environment != DEV", o que impedia o QAS de enviar - e, no dia em que o QAS
+        // passasse a declarar o que quisesse, nao impediria nada: so o nome era conferido, nunca
+        // contra quem o processo realmente conversa.
+        var sapDeclarado=Uri.TryCreate(config["Sap:BaseUrl"],UriKind.Absolute,out var baseUrl)
+            ? AmbientesSap.Por(baseUrl.GetLeftPart(UriPartial.Authority),config["Sap:SapClient"])?.Nome
+            : null;
+        if(ToledoSapReturnAmbiente.Por(config["ToledoSapReturn:Environment"],sapDeclarado) is null
+           || !True(config["ToledoSapReturn:ExecutionAuthorized"]) ||
            !True(config["ToledoSapReturn:AutomaticProcessingEnabled"]) || !True(config["ToledoSapReturn:OriginalDocumentApproved"]))
             throw new InvalidOperationException("TOLEDO_SAP_EXPLICIT_ACTIVATION_REQUIRED");
         if(bool.TryParse(config["FUGATES_INTEGRATION_WORKER_ENABLED"],out var global)&&global)
