@@ -521,60 +521,37 @@ aplicar)
   # tem configurado e o que comprovadamente funciona com ESTE binario.
   #
   # Entao cada diretiva vem da unidade do DEV, e so e escrita se o DEV a tiver de fato.
+  # O TEXTO DA UNIDADE, E NAO O RELATORIO DELA.
+  #
+  # Duas versoes anteriores liam "systemctl show -p <nome>", enumerando as propriedades que eu
+  # tinha LEMBRADO. As duas falharam pela mesma razao, em formas diferentes:
+  #
+  #   RestrictAddressFamilies veio como "~" - a representacao de uma lista negada vazia no
+  #   RELATORIO, que nao e um valor que se escreve num arquivo de unidade.
+  #
+  #   LoadCredential veio como "[unprintable]": o systemd RECUSA imprimir esse valor, de
+  #   proposito. A unidade do QAS nasceu sem ela, o motor nao achou CREDENTIALS_DIRECTORY e
+  #   morreu em SD_MOTOR_CREDENCIAIS_SYSTEMD_AUSENTES - com a unidade parecendo correta.
+  #
+  # "systemctl cat" devolve o TEXTO dos arquivos, a unidade e os drop-ins na ordem em que o
+  # systemd os aplica. Copiar esse texto nao depende de eu saber o que procurar, e e a mesma
+  # correcao que o bloco do nginx precisou: copiar o que esta la, em vez de montar parecido.
+  #
+  # O que NAO e copiado, e por que:
+  #   ExecStart*        reescrito com o release e a porta do QAS
+  #   EnvironmentFile   o QAS tem o seu, com um arquivo so
+  #   WorkingDirectory  reescrito com o release do QAS
+  #   SyslogIdentifier  ganha sufixo, para o journal distinguir os ambientes
+  #   User/Group        escritos logo abaixo, derivados do DEV
+  #   SetCredential     carrega o VALOR da credencial; copiar segredo nao e trabalho deste
+  #                     script. Se o DEV usar essa forma, o QAS vai DIZER que falta credencial.
   herdar() {
-    local u="$1" p item
-
-    # LoadCredential PRIMEIRO, E EM LINHA PROPRIA CADA UMA.
-    #
-    # E a diretiva que faz o systemd montar o diretorio de credenciais e definir
-    # CREDENTIALS_DIRECTORY. Sem ela o motor nao acha as credenciais do SAP e morre em
-    # SD_MOTOR_CREDENCIAIS_SYSTEMD_AUSENTES - o que aconteceu em 06/11/2026, porque minha lista
-    # de diretivas era aquilo de que eu tinha LEMBRADO. Enumerar de cabeca o que uma unidade usa
-    # e o mesmo erro de escrever a configuracao do nginx em vez de copiar a que esta no ar.
-    #
-    # NAO entra junto o SetCredential: ele carrega o VALOR da credencial dentro da unidade, e
-    # copiar valor de credencial nao e coisa que este script faz. Se o DEV usar SetCredential, o
-    # QAS vai faltar credencial e dizer isso - que e melhor do que eu espalhar segredo por ai.
-    #
-    # O show devolve as entradas separadas por espaco; cada uma precisa da sua linha.
-    for item in $(systemctl show "$u" -p LoadCredential --value 2>/dev/null); do
-      case "$item" in ""|"[not set]") continue ;; esac
-      printf 'LoadCredential=%s\n' "$item"
-    done
-
-    # Diretivas de LISTA: o show devolve todas numa linha so, separadas por espaco, e cada uma
-    # precisa da sua. ReadWritePaths importa de verdade quando ProtectSystem=strict - sem ele o
-    # processo nao escreve em lugar nenhum.
-    for p in ReadWritePaths RuntimeDirectory StateDirectory; do
-      for item in $(systemctl show "$u" -p "$p" --value 2>/dev/null); do
-        case "$item" in ""|"[not set]") continue ;; esac
-        printf '%s=%s\n' "$p" "$item"
-      done
-    done
-
-    # Diretivas de valor unico.
-    for p in Type NoNewPrivileges PrivateTmp ProtectSystem ProtectHome ProtectKernelTunables \
-             RestrictAddressFamilies LimitNOFILE SyslogIdentifier StandardOutput StandardError \
-             UMask TimeoutStartSec KillSignal; do
-      v="$(systemctl show "$u" -p "$p" --value 2>/dev/null)"
-      # O QUE O "systemctl show" RELATA NEM SEMPRE SE ESCREVE DE VOLTA NUM ARQUIVO DE UNIDADE.
-      #
-      # Em 06/11/2026 as unidades do QAS nasceram com "RestrictAddressFamilies=~": e assim que o
-      # show representa uma lista negada VAZIA, nao e um valor que se digita. Copiar a saida do
-      # relatorio como se fosse entrada e o mesmo erro de ler um estado e trata-lo como comando.
-      # "inherit" e "[not set]" sao da mesma familia.
-      #
-      # Na duvida, NAO escrever: a diretiva ausente deixa o systemd usar o padrao dele, que e o
-      # que a unidade do DEV tem quando o show relata esses valores.
-      case "$v" in ""|no|"[not set]"|infinity|"~"|inherit|null) continue ;; esac
-      # O rotulo do journal e a UNICA diretiva que NAO deve ser herdada igual: com os dois
-      # ambientes gravando sob "fugates-callback", a linha do QAS seria lida como linha do DEV -
-      # e e justamente no journal que se diagnostica qual ambiente recusou o que.
-      # (if, e nao "[ ] && v=...": com set -e uma AND-list que termina falsa derruba o script -
-      #  e aqui ela seria falsa em dez das onze voltas do laco.)
-      if [ "$p" = SyslogIdentifier ]; then v="$v-qas"; fi
-      printf '%s=%s\n' "$p" "$v"
-    done
+    local u="$1"
+    systemctl cat "$u" 2>/dev/null \
+      | awk '/^\[Service\]/{dentro=1;next} /^\[/{dentro=0} dentro' \
+      | grep -vE '^[[:space:]]*([#;]|$)' \
+      | grep -vE '^[[:space:]]*(ExecStart|ExecStartPre|ExecStartPost|ExecStop|EnvironmentFile|WorkingDirectory|SyslogIdentifier|SetCredential|User|Group)[[:space:]]*=' \
+      | sed "s|$REL_CB/[^/ ]*|$REL_CB/$MARCA|g; s|$REL_MT/[^/ ]*|$REL_MT/$MARCA|g"
   }
 
   echo "== escrevendo as unidades do QAS"
@@ -586,6 +563,11 @@ aplicar)
 
   DIR_MT="$(dir_de "$DEV_MT" | sed "s|$REL_MT/[^/ ]*|$REL_MT/$MARCA|")"
   DIR_CB="$(dir_de "$DEV_CB" | sed "s|$REL_CB/[^/ ]*|$REL_CB/$MARCA|")"
+
+  # O rotulo do journal de cada unidade do DEV, para o do QAS sair com sufixo. Vazio e resposta:
+  # sem rotulo no DEV, o QAS tambem nao ganha um inventado.
+  ROTULO_CB="$(systemctl show "$DEV_CB" -p SyslogIdentifier --value 2>/dev/null)"
+  ROTULO_MT="$(systemctl show "$DEV_MT" -p SyslogIdentifier --value 2>/dev/null)"
 
   # O QUE ESTA NO ExecStart TEM DE EXISTIR E SER EXECUTAVEL.
   #
@@ -619,14 +601,21 @@ aplicar)
     echo "Wants=network-online.target"
     echo
     echo "[Service]"
+    # Padroes ANTES do herdar: se a unidade do DEV declarar os seus, os dela vencem - num arquivo
+    # de unidade a ultima definicao e a que vale. Assim o QAS nao perde um Restart deliberado do
+    # DEV so porque eu tinha um padrao.
+    echo "Restart=on-failure"
+    echo "RestartSec=5"
     herdar "$DEV_CB"
     echo "User=$U"
     echo "Group=$U"
     echo "EnvironmentFile=$ENV_QAS/callback.env"
     if [ -n "$DIR_CB" ]; then echo "WorkingDirectory=$DIR_CB"; fi
     echo "ExecStart=$ARGV_CB"
-    echo "Restart=on-failure"
-    echo "RestartSec=5"
+    # O rotulo do journal e a UNICA diretiva que NAO se herda igual: com os dois ambientes
+    # gravando sob o mesmo nome, a linha do QAS seria lida como linha do DEV - e e no journal
+    # que se descobre qual ambiente recusou o que.
+    if [ -n "$ROTULO_CB" ]; then echo "SyslogIdentifier=$ROTULO_CB-qas120"; fi
     echo
     echo "[Install]"
     echo "WantedBy=multi-user.target"
@@ -639,14 +628,15 @@ aplicar)
     echo "Wants=network-online.target"
     echo
     echo "[Service]"
+    echo "Restart=on-failure"
+    echo "RestartSec=10"
     herdar "$DEV_MT"
     echo "User=$U"
     echo "Group=$U"
     echo "EnvironmentFile=$ENV_QAS/motor.env"
     if [ -n "$DIR_MT" ]; then echo "WorkingDirectory=$DIR_MT"; fi
     echo "ExecStart=$ARGV_MT"
-    echo "Restart=on-failure"
-    echo "RestartSec=10"
+    if [ -n "$ROTULO_MT" ]; then echo "SyslogIdentifier=$ROTULO_MT-qas120"; fi
     echo
     echo "[Install]"
     echo "WantedBy=multi-user.target"
@@ -664,8 +654,13 @@ aplicar)
   FALTOU_DIRETIVA=0
   for par in "$QAS_CB:$DEV_CB" "$QAS_MT:$DEV_MT"; do
     qas="${par%%:*}"; dev="${par##*:}"
-    for p in LoadCredential ReadWritePaths RuntimeDirectory StateDirectory; do
-      n_dev="$(systemctl show "$dev" -p "$p" --value 2>/dev/null | wc -w)"
+    for p in LoadCredential ReadWritePaths RuntimeDirectory StateDirectory ProtectSystem Type; do
+      # Contando do TEXTO dos dois lados. O "systemctl show" nao serve nem para contar: ele
+      # devolve "[unprintable]" para LoadCredential - uma unica palavra onde podem existir tres
+      # credenciais, e nenhuma onde existe uma.
+      n_dev="$(systemctl cat "$dev" 2>/dev/null \
+               | awk '/^\[Service\]/{d=1;next} /^\[/{d=0} d' \
+               | grep -cE "^[[:space:]]*$p[[:space:]]*=" || true)"
       n_qas="$(grep -cE "^$p=" "$UNIDADES/$qas.service" 2>/dev/null || true)"
       if [ "$n_dev" != "$n_qas" ]; then
         printf '   %s: %s - o DEV tem %s entrada(s), a unidade do QAS ficou com %s\n' \
