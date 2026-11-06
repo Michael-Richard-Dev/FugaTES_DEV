@@ -153,16 +153,22 @@ conferir)
   A="$(alvo)" || { CONCLUIDO=1; exit 1; }
   echo "arquivo de configuracao .... $A"
   echo
-  echo "o bloco /venda que esta no ar hoje, de onde as origens serao copiadas:"
+  echo "o bloco /venda que esta no ar hoje, que sera COPIADO inteiro:"
   bloco_de "$CANONICA_VENDA" "$A" | sed 's/^/   /'
   echo
-  echo "as origens que serao reaproveitadas:"
+  # Esta lista NAO e mais o que se copia - o bloco inteiro e. Ela serve a uma pergunta so:
+  # existe controle de acesso ali? Chamar isso de "origens que serao reaproveitadas", como
+  # dizia ate 06/11/2026, descrevia a versao ANTERIOR do script, que achatava estas linhas num
+  # bloco novo e perdia o limit_except. Rotulo que descreve o que o programa fazia ANTES e pior
+  # do que rotulo nenhum: ele e lido como se fosse verdade.
+  echo "ele tem controle de acesso proprio?"
   o="$(origens_de "$CANONICA_VENDA" "$A")"
   if [ -z "$o" ]; then
-    echo "   NENHUMA. O bloco /venda nao tem allow/deny - as rotas do QAS nasceriam abertas."
+    echo "   NAO: nenhum allow/deny no bloco - as rotas do QAS nasceriam abertas."
     echo "   NAO aplique: confira se o controle de origem esta em outro lugar (nftables, server)."
   else
-    printf '%s\n' "$o" | sed 's/^[[:space:]]*/   /'
+    echo "   sim, $(printf '%s\n' "$o" | grep -c .) linha(s) de allow/deny/satisfy - e elas vao"
+    echo "   junto na copia, com o limit_except e o tratamento de cabecalhos."
   fi
   echo
   echo "as rotas, agora (as -qas devem dar 404: ainda nao existem):"
