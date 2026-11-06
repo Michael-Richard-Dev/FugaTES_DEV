@@ -45,9 +45,24 @@ public sealed record DevolutivaPesagemSd(
 }
 
 /// <summary>Por que uma devolutiva nao pode ser aceita. Nada e descartado em silencio.</summary>
-public sealed class DevolutivaSdInvalidaException(string codigo, string detalhe)
+public sealed class DevolutivaSdInvalidaException(string codigo, string detalhe, string? idPesagem = null)
     : Exception(codigo + ": " + detalhe)
 {
     public string Codigo { get; } = codigo;
     public string Detalhe { get; } = detalhe;
+
+    /// <summary>
+    /// A pesagem, quando ja tinha sido lida antes da recusa. Nula quando o documento sequer
+    /// chegou a dar o IdPesagem - um JSON invalido, por exemplo.
+    /// </summary>
+    public string? IdPesagem { get; } = idPesagem;
+}
+
+/// <summary>
+/// A recusa que significa "este documento nao e do fluxo de venda", e nao "este documento esta
+/// errado". Hoje ha uma so: o tipo de pesagem e entrada.
+/// </summary>
+public static class DevolutivaSdCodigos
+{
+    public const string TipoNaoEhSaida = "SD_DEVOLUTIVA_TIPO_NAO_E_SAIDA";
 }

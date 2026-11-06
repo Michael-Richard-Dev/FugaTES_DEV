@@ -48,6 +48,32 @@ public static class DevolutivaSdEndpoint
         DevolutivaPesagemSd devolutiva;
         try { devolutiva = LeitorDevolutivaSd.Ler(corpo); }
         // O motivo volta para o Guardian: uma recusa sem causa nao ajuda ninguem a corrigir.
+        // Pesagem de ENTRADA. O Guardian manda a mesma finalizacao para as duas rotas, entao todo
+        // recebimento passa por aqui - e nao ha nada de errado com ele, ele so pertence ao outro
+        // fluxo. E o mesmo caso do contrato ACM logo abaixo, e a mesma resposta: 200 com
+        // "mensagem": OK, e nada gravado.
+        //
+        // Ate 06/11/2026 isto saia como 400. O raciocinio de nao recusar ja estava escrito aqui
+        // para o contrato ACM, mas aquela protecao vem DEPOIS do leitor, e o tipo estoura DENTRO
+        // dele: a pesagem de recebimento nunca a alcancava. O Guardian marcava falha e reenviava
+        // para sempre uma pesagem que esta certa - exatamente o que o comentario abaixo diz que
+        // se queria evitar.
+        catch (DevolutivaSdInvalidaException erro) when (erro.Codigo == DevolutivaSdCodigos.TipoNaoEhSaida)
+        {
+            context.RequestServices.GetService<ILoggerFactory>()
+                ?.CreateLogger(typeof(DevolutivaSdEndpoint))
+                .LogWarning("SD_DEVOLUTIVA_E_DE_ENTRADA: {Pesagem} — {Detalhe}; nada gravado.",
+                    erro.IdPesagem ?? "(sem id)", erro.Detalhe);
+            await context.Response.WriteAsJsonAsync(new
+            {
+                mensagem = MensagemSucesso,
+                status = "NAO_E_DO_SD",
+                idPesagem = erro.IdPesagem,
+                persisted = false,
+                detalhe = "Pesagem de entrada: pertence ao fluxo de recebimento."
+            }, context.RequestAborted);
+            return;
+        }
         catch (DevolutivaSdInvalidaException erro)
         {
             // E tambem fica no journal. Em 01/11/2026 duas recusas chegaram e so o Guardian sabia

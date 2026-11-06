@@ -151,9 +151,11 @@ public sealed class TextoNfeSdTests
     [Fact]
     public void Complemento_sai_do_documento_recebido()
     {
+        // O lacre vem da "Observacao" desde 05/11/2026; o 1003 segue sendo a ordem, por numero.
         var complemento = MapeadorTextoNfeSd.LerComplemento("""
         {"Placa":"COF7595","NomeMotorista":"MARCIO FERENZ","CpfMotorista":"03064148990",
-         "camposAdicionais":[{"numero":1006,"valor":"77881"},{"numero":1003,"valor":"2985"}]}
+         "Observacao":"77881",
+         "camposAdicionais":[{"numero":1003,"valor":"2985"}]}
         """);
         Assert.Equal("77881", complemento.Lacre);
         Assert.Equal("COF7595", complemento.Placa);

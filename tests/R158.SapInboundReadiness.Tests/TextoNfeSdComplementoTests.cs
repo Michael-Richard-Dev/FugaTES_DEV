@@ -16,6 +16,10 @@ namespace R158.SapInboundReadiness.Tests;
 ///      vazia. Os tres dados simplesmente nao eram enviados.
 ///
 /// Estes testes fixam o contrato de leitura para quando o Guardian passar a envia-los.
+///
+/// FONTE DO LACRE, desde 05/11/2026: a "Observacao". Antes eram os campos adicionais 1006 e 1010
+/// a 1013; o operador trocou depois de a pesagem 0030384 trazer os lacres na observacao, em duas
+/// linhas, e nenhum 1010-1013. Carreta e transportadora seguem vindo da raiz.
 /// </summary>
 public sealed class TextoNfeSdComplementoTests
 {
@@ -73,14 +77,14 @@ public sealed class TextoNfeSdComplementoTests
           "NomeTransportadora": "TRANSPORTES SAO JORGE LTDA",
           "CamposAdicionais": [
             { "valor": "4291", "numero": 1003 },
-            { "valor": "10", "numero": 1009 },
-            { "valor": "65593 / 65594 / 65595", "numero": 1006 }
-          ]
+            { "valor": "10", "numero": 1009 }
+          ],
+          "Observacao": "65593 / 65594 / 65595"
         }
         """;
 
     [Fact]
-    public void O_lacre_vem_por_numero_e_os_outros_dois_pela_raiz()
+    public void O_lacre_vem_da_observacao_e_os_outros_dois_pela_raiz()
     {
         var c = Ler(PayloadComOsTres);
         Assert.Equal("65593 / 65594 / 65595", c.Lacre);
@@ -135,17 +139,17 @@ public sealed class TextoNfeSdComplementoTests
     [InlineData("camposAdicionais")]
     public void As_duas_grafias_da_lista_sao_aceitas(string chave)
         => Assert.Equal("65593", Ler($$"""
-            { "{{chave}}": [ { "valor": "65593", "numero": 1006 } ] }
+            { "{{chave}}": [ { "nome": "Lacre", "valor": "65593" } ] }
             """).Lacre);
 
-    // O numero pode chegar como numero JSON ou como texto; os dois sao o campo 1006.
-    [Theory]
-    [InlineData("1006")]
-    [InlineData("\"1006\"")]
-    public void O_numero_do_campo_vale_como_numero_ou_como_texto(string numero)
-        => Assert.Equal("65593", Ler($$"""
-            { "CamposAdicionais": [ { "valor": "65593", "numero": {{numero}} } ] }
-            """).Lacre);
+    // NAO HA TESTE DE "numero como numero ou como texto" AQUI.
+    //
+    // Havia, sobre o campo 1006. Desde 05/11/2026 nenhum dado do complemento e lido por NUMERO
+    // de campo adicional - o lacre vem da observacao, e carreta e transportadora vem da raiz -,
+    // entao este arquivo nao tem mais como exercitar aquela tolerancia.
+    //
+    // Ela continua coberta onde o caminho esta vivo: a correlacao le 1003 e 1009 por numero, e
+    // DevolutivaSdTests prova as duas formas ("numero":1003 e "numero":"1003").
 
     // "nao precisa limitar a quantidade de caracteres" - operador, 05/11/2026. O valor vai inteiro.
     [Fact]
@@ -153,15 +157,15 @@ public sealed class TextoNfeSdComplementoTests
     {
         var longo = string.Join(" / ", Enumerable.Range(1, 60).Select(n => $"LACRE{n:D6}"));
         var c = Ler($$"""
-            { "CamposAdicionais": [ { "valor": "{{longo}}", "numero": 1006 } ] }
+            { "Observacao": "{{longo}}" }
             """);
         Assert.Equal(longo, c.Lacre);
         Assert.Contains(longo, MapeadorTextoNfeSd.Compor(null, c));
     }
 
-    // O Guardian de 05/11/2026 devolve o campo 1006 como "#CAT_VALOR_1006#" - o valor que NOS
-    // enviamos no protocolo, que e "0" (NaoSeAplica), quando ninguem digita o lacre na balanca.
-    // Sem este corte a NF-e sairia com "Lacres: 0" impresso.
+    // Observacao zerada ou em branco nao e lacre. Vale tambem para o "0" que o Guardian devolve
+    // no 1006 ("#CAT_VALOR_1006#"), que e o valor que NOS enviamos no protocolo quando o lacre
+    // ainda nao existe. Sem este corte a NF-e sairia com "Lacres: 0" impresso.
     [Theory]
     [InlineData("0")]
     [InlineData("00")]
@@ -170,7 +174,7 @@ public sealed class TextoNfeSdComplementoTests
     [InlineData("")]
     public void Zero_nao_e_lacre(string valor)
         => Assert.Null(Ler($$"""
-            { "CamposAdicionais": [ { "valor": "{{valor}}", "numero": 1006 } ] }
+            { "Observacao": "{{valor}}" }
             """).Lacre);
 
     [Fact]
@@ -187,7 +191,7 @@ public sealed class TextoNfeSdComplementoTests
     [Fact]
     public void Lacre_com_zero_a_esquerda_continua_valendo()
         => Assert.Equal("065593", Ler("""
-            { "CamposAdicionais": [ { "valor": "065593", "numero": 1006 } ] }
+            { "Observacao": "065593" }
             """).Lacre);
 
     // Como o operador configurou o Guardian em 05/11/2026: carreta como chave solta com espaco no
@@ -200,7 +204,8 @@ public sealed class TextoNfeSdComplementoTests
               "Placa": "ABC1D23",
               "IdTransportadora": "4821",
               "Placa Carreta": "XYZ9W87",
-              "CamposAdicionais": [ { "valor": "65593", "numero": 1006 } ]
+              "CamposAdicionais": [ { "valor": "65593", "numero": 1009 } ],
+              "Observacao": "65593"
             }
             """);
         Assert.Equal("ABC1D23", c.Placa);
@@ -251,7 +256,8 @@ public sealed class TextoNfeSdComplementoTests
         var c = Ler(PayloadComTransportadora);
         Assert.Equal("GVD3489 / ADV9874", c.Placas);
         Assert.Equal("14300001 - Transporte Jabuti", c.Transportadora);
-        // 1006 chegou "0", que e o que NOS enviamos no protocolo. Nao e lacre.
+        // A observacao veio vazia, e o 1006 nao e mais lido - chegou "0" de qualquer forma,
+        // que e o que NOS enviamos no protocolo. Por nenhum dos dois caminhos ha lacre.
         Assert.Null(c.Lacre);
     }
 
@@ -295,7 +301,7 @@ public sealed class TextoNfeSdComplementoTests
     [Fact]
     public void Varios_lacres_separados_por_virgula_chegam_inteiros()
         => Assert.Equal(QuatroLacres, Ler($$"""
-            { "CamposAdicionais": [ { "valor": "{{QuatroLacres}}", "numero": 1006 } ] }
+            { "Observacao": "{{QuatroLacres}}" }
             """).Lacre);
 
     [Fact]
@@ -335,7 +341,7 @@ public sealed class TextoNfeSdComplementoTests
     [InlineData("15265 12658")]
     public void O_separador_dos_lacres_nao_e_interpretado(string lacres)
         => Assert.Equal(lacres, Ler($$"""
-            { "CamposAdicionais": [ { "valor": "{{lacres}}", "numero": 1006 } ] }
+            { "Observacao": "{{lacres}}" }
             """).Lacre);
 
     // --- o texto montado --------------------------------------------------------------------

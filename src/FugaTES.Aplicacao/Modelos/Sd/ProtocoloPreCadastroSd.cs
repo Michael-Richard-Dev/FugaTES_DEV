@@ -44,22 +44,19 @@ public static class CamposProtocoloSd
     public const int Quadrante = 1008;
     public const int LinhaDaOrdem = 1009;
 
-    /// <summary>
-    /// TODOS os campos adicionais que trazem lacre na devolutiva.
-    ///
-    /// Uma pesagem pode levar varios lacres, e o Guardian os entrega em campos separados. O
-    /// operador ampliou o JSON em 05/11/2026 para mandar de 1010 a 1013 alem do 1006.
-    ///
-    /// ATENCAO ao reaproveitar numeros: 1010 e 1011 chegaram a ser reservados aqui para
-    /// transportadora e placa da carreta, antes de se descobrir que o Guardian manda esses dois
-    /// na RAIZ (IdTransportadora, NomeTransportadora, "Placa Carreta"). A reserva nunca foi usada,
-    /// e manter as duas leituras sobre o mesmo numero poria o nome da transportadora no texto como
-    /// se fosse lacre. Por isso ela foi desfeita no mesmo movimento, e nao depois.
-    ///
-    /// O 1006 continua sendo enviado por nos como "0" no protocolo - no momento do pre-cadastro o
-    /// lacre ainda nao existe. Zero nao e lacre, e some do texto.
-    /// </summary>
-    public static readonly int[] Lacres = [Lacre, 1010, 1011, 1012, 1013];
+    // NAO HA LISTA DE CAMPOS ADICIONAIS DE LACRE.
+    //
+    // Houve, entre 05/11/2026 e o mesmo dia: [1006, 1010, 1011, 1012, 1013]. O operador decidiu
+    // que o lacre vem da "Observacao" e que esses numeros nao serao mais usados, depois de a
+    // pesagem 0030384 mostrar os lacres justamente la e nenhum 1010-1013 na devolutiva.
+    //
+    // O 1006 (<see cref="Lacre"/>) CONTINUA EXISTINDO e continua sendo enviado por nos como "0"
+    // no protocolo de pre-cadastro - naquele momento o lacre ainda nao existe. O que saiu foi a
+    // LEITURA por numero, nao o campo.
+    //
+    // ATENCAO ao reaproveitar 1010 a 1013: eles ja foram reservados duas vezes e abandonados nas
+    // duas (transportadora/carreta, depois lacre). Quem for usa-los comeca de um numero sem
+    // histórico de leitura, e nao de um que ja significou outra coisa.
 
     /// <summary>Os dez campos, na ordem do mapeamento. Nem um a mais, nem um a menos.</summary>
     public static readonly int[] Todos =

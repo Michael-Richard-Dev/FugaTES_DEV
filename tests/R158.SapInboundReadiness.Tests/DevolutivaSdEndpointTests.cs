@@ -115,15 +115,64 @@ public sealed class DevolutivaSdEndpointTests
         Assert.False(Assert.Single(repositorio.Gravadas).TemCorrelacao);
     }
 
-    // Recebimento tem rota propria e regras proprias; aceitar aqui faria uma entrada virar venda.
+    /// <summary>
+    /// Recebimento tem rota propria e regras proprias; aceitar aqui faria uma entrada virar
+    /// venda, entao NADA e gravado. Mas tambem nao e recusa: o Guardian manda a mesma
+    /// finalizacao para as duas rotas, e o documento esta certo - so pertence ao outro fluxo.
+    ///
+    /// Ate 06/11/2026 isto respondia 400, e com "Valor em Caso de Sucesso = OK" configurado no
+    /// Guardian o 400 fazia ele marcar falha e REENVIAR PARA SEMPRE uma pesagem que esta certa.
+    /// E o mesmo tratamento que o contrato ACM ja recebia; o que faltava era o tipo chegar la.
+    /// </summary>
     [Fact]
-    public async Task Pesagem_de_entrada_e_recusada_com_motivo()
+    public async Task Pesagem_de_entrada_nao_e_gravada_e_nao_manda_o_guardian_reenviar()
     {
         var repositorio = new RepositorioFalso();
         var (status, corpo) = await Postar(Venda.Replace("\"TipoPesagem\":\"S\"", "\"TipoPesagem\":\"E\"", StringComparison.Ordinal), repositorio: repositorio);
-        Assert.Equal(400, status);
-        Assert.Equal("SD_DEVOLUTIVA_TIPO_NAO_E_SAIDA", corpo.GetProperty("codigo").GetString());
+
+        Assert.Equal(200, status);
+        // "mensagem": OK e o unico campo que o Guardian le para decidir sucesso.
+        Assert.Equal("OK", corpo.GetProperty("mensagem").GetString());
+        Assert.Equal("NAO_E_DO_SD", corpo.GetProperty("status").GetString());
+        Assert.Equal("0020327", corpo.GetProperty("idPesagem").GetString());
+        Assert.False(corpo.GetProperty("persisted").GetBoolean());
         Assert.Empty(repositorio.Gravadas);
+    }
+
+    /// <summary>
+    /// A distincao que importa: "nao e do SD" responde 200, mas documento ERRADO continua
+    /// respondendo 400 com a causa. Trocar os dois faria o Guardian desistir de reenviar uma
+    /// pesagem que ele deveria reenviar depois de corrigida.
+    /// </summary>
+    [Fact]
+    public async Task Documento_errado_continua_sendo_recusado_mesmo_sendo_de_saida()
+    {
+        var (status, corpo) = await Postar(Venda.Replace("\"TipoPesagem\":\"S\"", "\"TipoPesagem\":\"\"", StringComparison.Ordinal));
+
+        Assert.Equal(400, status);
+        Assert.Equal("SD_DEVOLUTIVA_CAMPO_AUSENTE", corpo.GetProperty("codigo").GetString());
+    }
+
+    /// <summary>
+    /// O Enter cru na observacao - parte do processo, nao acidente: e o que separa o lacre da
+    /// carga do lacre do envelope da amostra testemunha. Ate 06/11/2026 isto dava 400
+    /// "SD_DEVOLUTIVA_JSON_INVALIDO" e a pesagem 0030384 ficou duas vezes de fora.
+    /// </summary>
+    [Fact]
+    public async Task Observacao_com_enter_cru_e_aceita_e_gravada()
+    {
+        var repositorio = new RepositorioFalso();
+        var comEnter = Venda.Replace(
+            "\"Placa\":\"COF7595\"",
+            "\"Placa\":\"COF7595\",\"Observacao\":\"148594,148595 \r\n59187,59188\"",
+            StringComparison.Ordinal);
+
+        var (status, corpo) = await Postar(comEnter, repositorio: repositorio);
+
+        Assert.Equal(200, status);
+        Assert.Equal("OK", corpo.GetProperty("mensagem").GetString());
+        Assert.True(corpo.GetProperty("persisted").GetBoolean());
+        Assert.Single(repositorio.Gravadas);
     }
 
     [Fact]
@@ -191,9 +240,11 @@ public sealed class DevolutivaSdEndpointTests
     [Fact]
     public async Task Recusa_devolve_mensagem_diferente_de_OK_com_a_causa()
     {
-        // Tipo "E" e recebimento, nao venda.
-        var entrada = Venda.Replace("\"TipoPesagem\":\"S\"", "\"TipoPesagem\":\"E\"", StringComparison.Ordinal);
-        var (status, corpo) = await Postar(entrada, repositorio: new RepositorioFalso());
+        // Um documento de fato ERRADO - sem o centro. O tipo "E" servia de exemplo aqui ate
+        // 06/11/2026; deixou de servir porque recebimento nao e recusa, e sim outro fluxo: ele
+        // agora responde 200 (ver Pesagem_de_entrada_nao_e_gravada_e_nao_manda_o_guardian_reenviar).
+        var semCentro = Venda.Replace("\"Centro\":\"3011\",", "", StringComparison.Ordinal);
+        var (status, corpo) = await Postar(semCentro, repositorio: new RepositorioFalso());
         Assert.Equal(400, status);
         var mensagem = corpo.GetProperty("mensagem").GetString();
         Assert.NotEqual("OK", mensagem);

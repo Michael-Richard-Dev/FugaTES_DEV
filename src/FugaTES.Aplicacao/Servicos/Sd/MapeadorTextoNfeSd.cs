@@ -23,6 +23,9 @@ public static class MapeadorTextoNfeSd
     private static readonly (string[] Rotulos, Func<ComplementoTextoNfeSd, string?> Valor)[] Campos =
     [
         (TextoNfeSd.RotulosLacre, c => c.Lacre),
+        // O segundo tipo de lacre, com rotulo proprio. Vem logo depois do de carga, que e a ordem
+        // em que os dois aparecem na nota.
+        (TextoNfeSd.RotulosTestemunha, c => c.Testemunha),
         // As DUAS placas no mesmo rotulo, que ja nasce no plural num dos modelos.
         (TextoNfeSd.RotulosPlaca, c => c.Placas),
         (TextoNfeSd.RotulosMotorista, c => c.Motorista),
@@ -197,16 +200,22 @@ public static class MapeadorTextoNfeSd
         if (string.IsNullOrWhiteSpace(payloadJson)) return new();
         try
         {
-            using var doc = JsonDocument.Parse(payloadJson);
+            // O MESMO saneamento da admissao, porque o que se guarda em PayloadJson e o documento
+            // ORIGINAL - a evidencia do que chegou. Sem isto, a observacao com Enter cru faria o
+            // parse falhar aqui, e o catch abaixo devolveria complemento VAZIO: a nota sairia sem
+            // lacre, sem placa e sem motorista, sem uma linha de aviso.
+            using var doc = JsonDocument.Parse(JsonDoGuardian.Sanear(payloadJson));
             var raiz = doc.RootElement;
             if (raiz.ValueKind != JsonValueKind.Object) return new();
+            var lacres = LacresPorTipo(raiz);
             return new(
-                Lacre: Lacres(raiz),
+                Lacre: lacres.Carga,
+                Testemunha: lacres.Testemunha,
                 Placa: Texto(raiz, "Placa"),
                 Motorista: Texto(raiz, "NomeMotorista"),
                 Cpf: Texto(raiz, "CpfMotorista"),
                 // Carreta e transportadora chegam na RAIZ, por nome. Nao ha numero reservado para
-                // elas: os que havia (1010, 1011) passaram a ser lacre.
+                // elas: os que havia (1010, 1011) chegaram a ser reservados e foram abandonados.
                 PlacaCarreta: Complemento(raiz, numero: -1, NomesCarreta),
                 TransportadoraCodigo: Complemento(raiz, numero: -1, NomesTransportadoraCodigo),
                 TransportadoraNome: Complemento(raiz, numero: -1, NomesTransportadoraNome));
@@ -248,37 +257,81 @@ public static class MapeadorTextoNfeSd
         ["NomeTransportadora", "RazaoSocialTransportadora", "Transportadora", "Transportador"];
 
     /// <summary>
-    /// TODOS os lacres da pesagem, numa linha so.
+    /// Os lacres da pesagem, SEPARADOS POR TIPO: os da carga e os dos envelopes das amostras
+    /// testemunhas. Testemunha tambem e lacre - muda a nomenclatura, nao a natureza -, e a nota
+    /// tem um espaco proprio para cada um (ver <see cref="TextoNfeSd.RotuloTestemunha"/>).
     ///
-    /// Diferente dos outros dados do complemento: aqui nao vence o primeiro que responder - vale
-    /// cada campo que tiver conteudo, porque uma carga pode levar varios lacres e o Guardian os
-    /// entrega em campos separados (1006 e, desde 05/11/2026, de 1010 a 1013).
+    /// A FONTE E A "Observacao" - decisao do operador em 05/11/2026. Antes disso os lacres eram
+    /// procurados nos campos adicionais 1006 e 1010 a 1013; esses numeros sairam de cena porque
+    /// o Guardian passou a trazer os lacres na observacao, e foi la que eles de fato apareceram.
     ///
-    /// Campo zerado ou em branco some, a pedido do operador: o 1006 volta "0" quando ninguem
-    /// digita, porque e o valor que NOS enviamos no protocolo, e os demais vem vazios quando a
-    /// carga tem menos lacres do que campos. Imprimir "Lacres: 0, 0, 0" seria pior do que nao
-    /// imprimir nada.
+    /// A QUEBRA DE LINHA E O QUE DIZ QUAL E QUAL, e e deliberada: o Guardian nao tem campo
+    /// separado para os dois tipos, entao o operador pede ao usuario da balanca que de um Enter
+    /// entre eles. PRIMEIRA linha e lacre de carga, da SEGUNDA em diante e testemunha.
     ///
-    /// Valor repetido entra uma vez so: o mesmo lacre em dois campos e erro de digitacao na
-    /// balanca, e a nota nao precisa herdar o erro.
+    /// Em 05/11/2026 esta leitura JUNTAVA as duas linhas num "Lacres:" so - eu tinha lido a
+    /// quebra como ruido de digitacao, e era o contrario: era a unica informacao que distinguia
+    /// os dois tipos. A nota saia com os lacres das testemunhas no campo dos lacres de carga.
+    ///
+    /// Da terceira linha em diante tudo vai para testemunha, junto com a segunda. Nao e um
+    /// formato previsto - sao duas linhas -, mas descartar perderia lacre em silencio, que e
+    /// exatamente o que este codigo inteiro existe para evitar.
+    ///
+    /// EU LEVANTEI A RESSALVA E ELA FOI MANTIDA: "Observacao" e campo de TEXTO LIVRE. O que
+    /// alguem digitar nela vai para a NF-e como lacre - nao ha como este codigo distinguir um
+    /// lacre de um recado. Nao filtramos por formato de proposito: filtrar descartaria lacre que
+    /// nao parecesse numero.
+    ///
+    /// Os nomes (Lacre, Lacres, NumeroLacre) continuam valendo, em campo adicional e na raiz, e
+    /// alimentam o lacre de CARGA: sao a forma antiga, anterior aos dois tipos.
+    ///
+    /// Dentro de uma linha, virgula, ponto-e-virgula, barra e espaco NAO separam - o valor passa
+    /// como veio. Isso e deliberado e anterior a esta mudanca.
+    ///
+    /// Linha zerada ou em branco some, a pedido do operador; valor repetido entra uma vez so
+    /// DENTRO DO SEU TIPO, porque o mesmo lacre digitado duas vezes e erro de digitacao na
+    /// balanca. Entre tipos nao se compara: um numero igual nos dois e coincidencia entre coisas
+    /// diferentes, e apagar um deles esconderia dado.
     /// </summary>
-    private static string? Lacres(JsonElement raiz)
+    private static (string? Carga, string? Testemunha) LacresPorTipo(JsonElement raiz)
     {
-        var achados = new List<string>();
+        var carga = new List<string>();
+        var testemunha = new List<string>();
 
-        void Juntar(string? valor)
+        static void Juntar(List<string> destino, string? valor)
         {
             if (SemZero(valor) is not string limpo) return;
-            if (!achados.Contains(limpo, StringComparer.OrdinalIgnoreCase)) achados.Add(limpo);
+            if (!destino.Contains(limpo, StringComparer.OrdinalIgnoreCase)) destino.Add(limpo);
         }
 
-        // Na ordem dos numeros, que e a ordem em que o operador os preenche na balanca.
-        foreach (var numero in CamposProtocoloSd.Lacres) Juntar(CampoAdicionalPorNumero(raiz, numero));
-        foreach (var nome in NomesLacre) Juntar(CampoAdicionalPorNome(raiz, nome));
-        foreach (var nome in NomesLacre) Juntar(Texto(raiz, nome));
+        var observacao = Texto(raiz, "Observacao") ?? Texto(raiz, "observacao") ?? Texto(raiz, "Observação");
+        if (observacao is not null)
+        {
+            // Linhas em branco somem antes da contagem: um CRLF nao pode empurrar a testemunha
+            // para a terceira posicao, e uma linha vazia no meio nao pode trocar os tipos.
+            var linhas = observacao
+                .Split(SeparadoresLacre, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Where(l => SemZero(l) is not null)
+                .ToArray();
 
-        return achados.Count == 0 ? null : string.Join(", ", achados);
+            if (linhas.Length > 0) Juntar(carga, linhas[0]);
+            foreach (var linha in linhas.Skip(1)) Juntar(testemunha, linha);
+        }
+
+        foreach (var nome in NomesLacre) Juntar(carga, CampoAdicionalPorNome(raiz, nome));
+        foreach (var nome in NomesLacre) Juntar(carga, Texto(raiz, nome));
+
+        return (Unir(carga), Unir(testemunha));
+
+        static string? Unir(List<string> valores)
+            => valores.Count == 0 ? null : string.Join(", ", valores);
     }
+
+    /// <summary>
+    /// O que separa uma linha de lacres da seguinte. "\r\n" nao precisa estar aqui: separado em
+    /// "\r" e "\n", um CRLF so produz um pedaco vazio no meio, que e descartado.
+    /// </summary>
+    private static readonly char[] SeparadoresLacre = ['\r', '\n'];
 
     /// <summary>
     /// Um dado do complemento, procurado nas tres formas do contrato acima. A primeira que

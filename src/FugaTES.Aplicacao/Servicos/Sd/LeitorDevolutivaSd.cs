@@ -56,7 +56,9 @@ public static class LeitorDevolutivaSd
             throw new DevolutivaSdInvalidaException("SD_DEVOLUTIVA_VAZIA", "O corpo da requisição está vazio.");
 
         JsonDocument doc;
-        try { doc = JsonDocument.Parse(corpoJson); }
+        // Saneado, nao confiado: so caractere de controle dentro de string e escapado, e o resto
+        // do documento continua tendo de ser JSON valido. Ver JsonDoGuardian.
+        try { doc = JsonDocument.Parse(JsonDoGuardian.Sanear(corpoJson)); }
         catch (JsonException erro)
         { throw new DevolutivaSdInvalidaException("SD_DEVOLUTIVA_JSON_INVALIDO", erro.Message); }
 
@@ -70,9 +72,13 @@ public static class LeitorDevolutivaSd
             var centro = Obrigatorio(raiz, "Centro");
             var tipo = Obrigatorio(raiz, "TipoPesagem");
             // Venda e saida. Aceitar "E" aqui faria uma pesagem de recebimento virar remessa.
+            //
+            // Leva o IdPesagem junto: esta recusa em particular NAO e erro do documento - e uma
+            // pesagem de recebimento que o Guardian mandou para as duas rotas -, e quem a recebe
+            // responde 200 e precisa dizer de qual pesagem esta falando. Ver DevolutivaSdCodigos.
             if (!string.Equals(tipo, CamposProtocoloSd.Saida, StringComparison.OrdinalIgnoreCase))
-                throw new DevolutivaSdInvalidaException("SD_DEVOLUTIVA_TIPO_NAO_E_SAIDA",
-                    $"TipoPesagem '{tipo}' não pertence ao fluxo de venda.");
+                throw new DevolutivaSdInvalidaException(DevolutivaSdCodigos.TipoNaoEhSaida,
+                    $"TipoPesagem '{tipo}' não pertence ao fluxo de venda.", id);
 
             if (!DateTime.TryParseExact(Obrigatorio(raiz, "DataPesagem"), FormatosData,
                     CultureInfo.InvariantCulture, DateTimeStyles.None, out var data))

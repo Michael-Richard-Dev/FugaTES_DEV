@@ -33,7 +33,7 @@ public static class TextoNfeSd
         // remessa 80003915, em 05/11/2026, com o lacre 0150059,0150060 chegando e nao entrando.
         // A comparacao agora tolera diferenca de espaco (ver MapeadorTextoNfeSd.Casa), entao a
         // forma grudada de eventuais ordens antigas tambem continua sendo reconhecida.
-        "N dos envelopes de seguranca das amostras testemunhas:",
+        RotuloTestemunha,
         // Os dois modelos. A comparacao ignora caixa, entao "MOTORISTA:" cai em "Motorista:".
         "Mot.:", "Motorista:", "CPF:", "Placas:", "Placa:", "Lacre:", "Transportadora:"
     ];
@@ -59,7 +59,20 @@ public static class TextoNfeSd
     /// O PRIMEIRO de cada lista e o canonico: e ele que vai ao texto quando nenhum dos rotulos
     /// existe e o dado precisa ser acrescentado ao fim.
     /// </summary>
+    /// <summary>
+    /// O segundo tipo de lacre. Testemunha TAMBEM e lacre - muda a nomenclatura, nao a natureza:
+    /// e o lacre do envelope de seguranca da amostra testemunha, e a nota tem um espaco proprio
+    /// para ele, ao lado do espaco dos lacres de carga.
+    ///
+    /// Os dois chegam na MESMA "Observacao" do Guardian, separados por uma quebra de linha. A
+    /// quebra e deliberada: foi a forma que o operador encontrou, em 05/11/2026, para dizer qual
+    /// e qual, ja que o Guardian nao tem campo separado para os dois. Primeira linha e lacre de
+    /// carga, segunda e testemunha.
+    /// </summary>
+    public const string RotuloTestemunha = "N dos envelopes de seguranca das amostras testemunhas:";
+
     public static readonly string[] RotulosLacre = [RotuloLacre, "Lacre:"];
+    public static readonly string[] RotulosTestemunha = [RotuloTestemunha];
     public static readonly string[] RotulosPlaca = [RotuloPlaca, "Placa:"];
     public static readonly string[] RotulosMotorista = [RotuloMotorista, "Motorista:"];
     public static readonly string[] RotulosCpf = [RotuloCpf];
@@ -76,6 +89,9 @@ public static class TextoNfeSd
 /// <summary>O que a balanca tem a acrescentar. Campo nulo ou vazio significa "nao tenho".</summary>
 public sealed record ComplementoTextoNfeSd(
     string? Lacre = null, string? Placa = null, string? Motorista = null, string? Cpf = null,
+    // Lacre do envelope da amostra testemunha: o SEGUNDO tipo de lacre, com rotulo proprio na
+    // nota. Chega na segunda linha da "Observacao" - ver TextoNfeSd.RotuloTestemunha.
+    string? Testemunha = null,
     // Placa da CARRETA, pedida pelo operador em 04/11/2026. Vai junto com a do veiculo, no mesmo
     // rotulo "Placas:" - que ja nasce no plural no texto da ordem de venda.
     string? PlacaCarreta = null,
@@ -86,7 +102,8 @@ public sealed record ComplementoTextoNfeSd(
 {
     public bool TemAlgo => !string.IsNullOrWhiteSpace(Lacre) || !string.IsNullOrWhiteSpace(Placa)
         || !string.IsNullOrWhiteSpace(Motorista) || !string.IsNullOrWhiteSpace(Cpf)
-        || !string.IsNullOrWhiteSpace(PlacaCarreta) || !string.IsNullOrWhiteSpace(Transportadora);
+        || !string.IsNullOrWhiteSpace(PlacaCarreta) || !string.IsNullOrWhiteSpace(Transportadora)
+        || !string.IsNullOrWhiteSpace(Testemunha);
 
     /// <summary>
     /// A transportadora como vai para o texto: "codigo - nome". So um deles, vai sozinho - perder
