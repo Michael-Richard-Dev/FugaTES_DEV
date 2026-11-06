@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using FugaTES.Aplicacao.Servicos.Recebimento;
 using System.Net.Http.Json;
 using FugaTES.Aplicacao.Consultas.ContratosAcm;
@@ -9,7 +9,7 @@ namespace FugaTES.Infraestrutura.ManualRetry;
 public sealed record AcmRetryCommandBinding(Uri Endpoint,bool Homologated,string ApprovalReference,string OperatorSid,DateTimeOffset UntilUtc);
 
 // Dedicated internal command client only. Never holds Guardian/SAP credentials or invokes business adapters.
-public sealed class AuthenticatedAcmRetryCommandClient:IAcmManualRetryCommandClient,IComandoReenvioToledoSapClient,IDisposable
+public sealed partial class AuthenticatedAcmRetryCommandClient:IAcmManualRetryCommandClient,IComandoReenvioToledoSapClient,IDisposable
 {
     readonly HttpClient http;readonly AcmRetryCommandBinding binding;readonly TimeProvider time;
     readonly Func<CancellationToken,Task>? prepare;

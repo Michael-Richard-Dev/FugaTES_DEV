@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Modelos.Mm;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;

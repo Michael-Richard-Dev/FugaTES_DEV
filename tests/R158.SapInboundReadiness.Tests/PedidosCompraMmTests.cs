@@ -84,9 +84,11 @@ public sealed class PedidosCompraMmTests
     [Fact] public async Task Canceled_collection_does_not_dispatch_get()
     {var transport=new Transport(_=>Page(Header()));using var http=new HttpClient(transport);using var cancel=new CancellationTokenSource();cancel.Cancel();await Assert.ThrowsAnyAsync<OperationCanceledException>(()=>Query(http).ConsultarAsync(cancel.Token));Assert.Empty(transport.Uris);}
 
-    internal static IPedidosCompraMmConsulta Query(HttpClient http,IAutenticacaoSap? auth=null)
-    {var type=typeof(ConsultaPedidoCompraSapAdapter).Assembly.GetType("FugaTES.Integracao.SAP.BusinessDocuments.PedidosCompraMmConsultaAdapter");Assert.NotNull(type);return Assert.IsAssignableFrom<IPedidosCompraMmConsulta>(Activator.CreateInstance(type,http,auth??new Auth()));}
-    internal static JsonObject Header(string po="4455000001")=>new(){["PurchaseOrder"]=po,["PurchaseOrderType"]="ZCOL",["CompanyCode"]="3000",["Supplier"]="0000200001",["PurchasingProcessingStatus"]="05",["PurchaseOrderDeletionCode"]="",["ReleaseIsNotCompleted"]=false,["PurchasingCompletenessStatus"]=false,["_PurchaseOrderItem"]=new JsonArray(Item("00010",po))};
+    // O ambiente e explicito: Activator nao preenche parametro opcional, e um teste de QAS120 so
+    // precisa passar o seu aqui.
+    internal static IPedidosCompraMmConsulta Query(HttpClient http,IAutenticacaoSap? auth=null,FugaTES.Aplicacao.Configuracao.AmbienteSap? ambiente=null)
+    {var type=typeof(ConsultaPedidoCompraSapAdapter).Assembly.GetType("FugaTES.Integracao.SAP.BusinessDocuments.PedidosCompraMmConsultaAdapter");Assert.NotNull(type);return Assert.IsAssignableFrom<IPedidosCompraMmConsulta>(Activator.CreateInstance(type,http,auth??new Auth(),ambiente??FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110));}
+    internal static JsonObject Header(string po="4455000001")=>new(){["PurchaseOrder"]=po,["PurchaseOrderType"]="ZCOL",["CreationDate"]="2026-11-01",["CompanyCode"]="3000",["Supplier"]="0000200001",["PurchasingProcessingStatus"]="05",["PurchaseOrderDeletionCode"]="",["ReleaseIsNotCompleted"]=false,["PurchasingCompletenessStatus"]=false,["_PurchaseOrderItem"]=new JsonArray(Item("00010",po))};
     internal static JsonObject Item(string item="00010",string po="4455000001")=>new(){["PurchaseOrder"]=po,["PurchaseOrderItem"]=item,["CompanyCode"]="3000",["Plant"]="3011",["Material"]="00001000249",["MaterialGroup"]="L002",["OrderQuantity"]="50000.123",["PurchaseOrderQuantityUnit"]="KG",["PurchasingDocumentDeletionCode"]=""};
     internal static string Page(params JsonObject[] rows)=>new JsonObject{["value"]=new JsonArray(rows.Cast<JsonNode?>().ToArray())}.ToJsonString();
     private sealed class Auth:IAutenticacaoSap{public int Calls;public Task AplicarAsync(HttpRequestMessage request,CancellationToken ct){Calls++;request.Headers.TryAddWithoutValidation("Authorization","TEST_ONLY");return Task.CompletedTask;}}

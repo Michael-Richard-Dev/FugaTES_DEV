@@ -74,6 +74,7 @@ public static partial class GuardianCallbackEndpoint
     }
     private static async Task HandleToledoAsync(HttpContext context,JsonElement root)
     {
+        var started=System.Diagnostics.Stopwatch.GetTimestamp();
         try
         {
             var dto=ToledoPesagemCallbackDto.Deserializar(root);
@@ -85,6 +86,15 @@ public static partial class GuardianCallbackEndpoint
             if(!actor.Accepted){await WriteErrorAsync(context,actor.HttpStatus,actor.Code);return;}
             var receipt=await context.RequestServices.GetRequiredService<RegistrarPesagemToledoCasoDeUso>().ExecutarAsync(
                 dto.Mapear() with{OrigemAutenticada=actor.SourceIdentity},context.RequestAborted);
+            var ackMode=context.RequestServices.GetService<IConfiguration>()?["ToledoSapReturn:GuardianAckMode"];
+            if(ackMode is not null&&ackMode!="Receipt")
+            {
+                var observer=context.RequestServices.GetService<ToledoSapCallbackAcknowledgement>();
+                var verdict=ackMode=="SapConfirmed"&&observer is not null
+                    ?await observer.WaitAsync(receipt,RegistrarPesagemToledoCasoDeUso.Fingerprint(dto.DocumentoJson),System.Diagnostics.Stopwatch.GetElapsedTime(started),context.RequestAborted)
+                    :ToledoSapCallbackAck.Unavailable;
+                await ToledoSapCallbackAcknowledgement.WriteAsync(context,receipt,verdict);return;
+            }
             context.Response.StatusCode=200;
             await context.Response.WriteAsJsonAsync(new{status=receipt.SapIntegracaoId.HasValue?(receipt.Idempotente?"RECEIVED_SAP_PREVIOUSLY_ADMITTED":"RECEIVED_SAP_QUEUED"):"RECEIVED_PENDING_CORRELATION",receiptId=receipt.ReciboId,
                 receivedAt=receipt.RecebidoEm,idempotent=receipt.Idempotente,persisted=true,

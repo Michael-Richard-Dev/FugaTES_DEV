@@ -7,6 +7,7 @@ partial class FrmIntegracoes
     private Button contratos = null!;
     private Button transportadoras = null!;
     private Button guardian = null!;
+    private Button cadastros = null!;
     private Button contratosJson = null!;
     private Button protocolosPreCadastro = null!;
     private Button toledoRecebimentos = null!;
@@ -35,14 +36,16 @@ partial class FrmIntegracoes
         layout.Controls.Add(new Label { Text = "Integrações", Dock = DockStyle.Fill, Font = new Font("Segoe UI", 17F, FontStyle.Bold) }, 0, 0);
         contratos = new Button { Text = "Contratos ACM", Dock = DockStyle.Fill, Margin = new Padding(0, 8, 0, 8) };
         layout.Controls.Add(contratos, 0, 1);
-        var cadastros = new GroupBox { Text = "Cadastros SAP → Guardian", Dock = DockStyle.Fill };
+        var grupoCadastros = new GroupBox { Text = "Cadastros SAP → Guardian", Dock = DockStyle.Fill };
         transportadoras = new Button { Text = "Transportadoras", Dock = DockStyle.Fill, Margin = new Padding(8) };
-        cadastros.Text = "Cadastros SAP";
+        grupoCadastros.Text = "Cadastros SAP";
         guardian = new Button {Text="Guardian",Dock=DockStyle.Left,Width=180,Margin=new Padding(8)};
 
-        cadastros.Controls.Add(transportadoras);
-        cadastros.Controls.Add(guardian);
-        layout.Controls.Add(cadastros, 0, 2);
+        grupoCadastros.Controls.Add(transportadoras);
+        grupoCadastros.Controls.Add(guardian);
+        cadastros = new Button { Text = "Cadastros", Name = "cadastros", Dock = DockStyle.Left, Width = 140, TabIndex = 0, Margin = new Padding(8) };
+        grupoCadastros.Controls.Add(cadastros);
+        layout.Controls.Add(grupoCadastros, 0, 2);
         // Entrada propria para a tela de contratos por contrato + item, onde fica o JSON.
         // So aparece quando o botao acima abre o Monitor ACM, de modo a acrescentar um
         // caminho sem substituir nem duplicar o acesso ja existente.

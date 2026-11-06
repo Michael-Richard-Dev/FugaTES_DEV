@@ -14,13 +14,25 @@ public static class MmPurchaseOrderComposition
     {
         var config=CarrierDesktopProfile.Load(Path.Combine(directory,"FugaTES.carrier.json"));Validate(config);
         var http=new HttpClient(new HttpClientHandler{AllowAutoRedirect=false,UseProxy=false,UseCookies=false}){Timeout=Timeout.InfiniteTimeSpan};
-        return new(http,new PedidosCompraMmConsultaAdapter(http,new CarrierServiceSapAuthentication(config)));
+        return new(http,new PedidosCompraMmConsultaAdapter(http,new CarrierServiceSapAuthentication(config),Ambiente(config)));
     }
+
+    /// <summary>
+    /// O ambiente deste desktop, lido do perfil ao lado do executavel. Lanca se o par
+    /// origem+sap-client nao for um dos aprovados - e o MESMO par, nao uma origem aprovada com um
+    /// cliente aprovado de OUTRO ambiente, que e o que a conferencia separada deixava passar.
+    /// </summary>
+    public static FugaTES.Aplicacao.Configuracao.AmbienteSap Ambiente(IConfiguration config)
+    {
+        if(!Uri.TryCreate(config["Sap:BaseUrl"],UriKind.Absolute,out var origin)||origin.Scheme!="https"||origin.UserInfo.Length!=0)
+            throw new DesktopStartupException("MM_SAP_ORIGIN_NOT_APPROVED");
+        return FugaTES.Aplicacao.Configuracao.AmbientesSap.Por(origin,config["Sap:SapClient"])
+            ??throw new DesktopStartupException("MM_SAP_AMBIENTE_NOT_APPROVED");
+    }
+
     public static void Validate(IConfiguration config)
     {
-        if(!Uri.TryCreate(config["Sap:BaseUrl"],UriKind.Absolute,out var origin)||origin.Scheme!="https"||origin.UserInfo.Length!=0||origin.GetLeftPart(UriPartial.Authority)!=PedidosCompraMmConsultaAdapter.Origem)
-            throw new DesktopStartupException("MM_SAP_ORIGIN_NOT_APPROVED");
-        if(!FugaTES.Aplicacao.Configuracao.AmbientesSap.Aprovados.Any(a=>a.SapClient==config["Sap:SapClient"]))throw new DesktopStartupException("MM_SAP_CLIENT_NOT_APPROVED");
+        Ambiente(config);
         if(string.IsNullOrWhiteSpace(config["Carrier:Secrets:SapUser"])||string.IsNullOrWhiteSpace(config["Carrier:Secrets:SapCredentialTarget"]))throw new DesktopStartupException("MM_SAP_PROVIDER_NOT_REFERENCED");
     }
     public static bool IsVmObserver(string directory)

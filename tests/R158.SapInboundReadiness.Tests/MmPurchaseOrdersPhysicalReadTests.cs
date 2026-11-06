@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Modelos.Mm;
 using System.Text.Json;
 using FugaTES.HostIntegracao;
 using FugaTES.Integracao.SAP.BusinessDocuments;
@@ -9,11 +10,13 @@ public sealed class MmPurchaseOrdersPhysicalReadTests
     {
         var path=Environment.GetEnvironmentVariable("FUGATES_MM_PHYSICAL_RESULT");if(string.IsNullOrEmpty(path))return;
         var config=CarrierDesktopProfile.Load(@"C:\FugaTES_DEV110\FugaTES.carrier.json");
-        Assert.Equal("110",config["Sap:SapClient"]);
-        Assert.Equal(PedidosCompraMmConsultaAdapter.Origem,new Uri(config["Sap:BaseUrl"]!).GetLeftPart(UriPartial.Authority));
+        // Esta leitura fisica e do DEV110 por ser o perfil que ela abre (C:\FugaTES_DEV110).
+        var ambiente=FugaTES.Aplicacao.Configuracao.AmbientesSap.Dev110;
+        Assert.Equal(ambiente.SapClient,config["Sap:SapClient"]);
+        Assert.Equal(ambiente.Origem,new Uri(config["Sap:BaseUrl"]!).GetLeftPart(UriPartial.Authority));
         using var http=new HttpClient(new HttpClientHandler{AllowAutoRedirect=false,UseProxy=false,UseCookies=false}){Timeout=Timeout.InfiniteTimeSpan};
-        var result=await new PedidosCompraMmConsultaAdapter(http,new CarrierServiceSapAuthentication(config)).ConsultarAsync(default);
-        File.WriteAllText(path,JsonSerializer.Serialize(new{atUtc=DateTimeOffset.UtcNow,method="GET",sapClient="110",company="3000",plants=new[]{"3011","3008"},
+        var result=await new PedidosCompraMmConsultaAdapter(http,new CarrierServiceSapAuthentication(config),ambiente).ConsultarAsync(default);
+        File.WriteAllText(path,JsonSerializer.Serialize(new{atUtc=DateTimeOffset.UtcNow,method="GET",sapClient=ambiente.SapClient,company="3000",plants=new[]{"3011","3008"},
             result.Sucesso,result.Codigo,result.Http,result.Paginas,items=result.Itens.Count,orders=result.Itens.Select(x=>x.Pedido).Distinct().Count(),
             plantCounts=result.Itens.GroupBy(x=>x.Centro).ToDictionary(x=>x.Key,x=>x.Count()),statusCounts=result.Itens.GroupBy(x=>x.EstadoSap).ToDictionary(x=>x.Key,x=>x.Count()),
             posts=0,databaseWrites=0,secretsExported=false},new JsonSerializerOptions{WriteIndented=true}));

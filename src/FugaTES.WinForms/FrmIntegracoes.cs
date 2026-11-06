@@ -1,15 +1,31 @@
-namespace FugaTES.WinForms;
+﻿namespace FugaTES.WinForms;
 
 public partial class FrmIntegracoes : Form
 {
     public FrmIntegracoes(Transportadoras.CarrierDesktopLifecycle? lifecycle=null,Transportadoras.SafeDemoReadOnlySessionR50? demo=null,Func<FrmMonitorMvp>? monitorAcm=null,
         Func<FrmContratosAcm>? contractsRead=null,Func<Transportadoras.MasterdataR3.FrmTransportadoraMasterdata>? carriersRead=null,
-        Func<Guardian.FrmProtocolosPreCadastro>? protocolsRead=null,Func<Toledo.FrmRecebimentosToledo>? toledoRead=null)
+        Func<Guardian.FrmProtocolosPreCadastro>? protocolsRead=null,Func<Toledo.FrmRecebimentosToledo>? toledoRead=null,Func<FrmPedidosCompraMm>? mmRead=null)
     {
         InitializeComponent();
         var r57=File.Exists(Path.Combine(AppContext.BaseDirectory,"Acm.execution.R57.json"));
         var r55=File.Exists(Path.Combine(AppContext.BaseDirectory,"Acm.preview.R55.json"));
         if(demo is not null)Text=r57?"Integrações — DEMO R57 — offline":r55?"Integrações — DEMO R55 — offline":File.Exists(Path.Combine(AppContext.BaseDirectory,"Acm.preview.R53.json"))?"Integrações — DEMO R53 — somente leitura":"Integrações — DEMO R50 — somente leitura";
+        cadastros.Click += (_,_) =>
+        {
+            using var menu=new FrmCadastros(categoria=>
+            {
+                if(categoria==Transportadoras.MasterdataR3.CategoriaMasterdataR3.Emissores&&demo is null)
+                    return Cadastros.EmissoresSapComposition.Criar();
+                if(demo is null&&(categoria==Transportadoras.MasterdataR3.CategoriaMasterdataR3.Materiais||categoria==Transportadoras.MasterdataR3.CategoriaMasterdataR3.Transportadoras))
+                    return Cadastros.CadastrosSapComposition.Criar(categoria==Transportadoras.MasterdataR3.CategoriaMasterdataR3.Materiais?FugaTES.Aplicacao.Consultas.CadastrosSap.CategoriaCadastroSap.Materiais:FugaTES.Aplicacao.Consultas.CadastrosSap.CategoriaCadastroSap.Transportadoras);
+                if(categoria==Transportadoras.MasterdataR3.CategoriaMasterdataR3.Transportadoras)
+                    return demo is not null
+                        ?new Transportadoras.MasterdataR3.FrmCadastrosGuardianR3(lifecycle?.Masterdata,lifecycle,demo,categoria)
+                        :carriersRead?.Invoke()??new Transportadoras.MasterdataR3.FrmTransportadoraMasterdata(readOnly:monitorAcm is not null);
+                return new Transportadoras.MasterdataR3.FrmCadastrosGuardianR3(lifecycle?.Masterdata,lifecycle,demo,categoria);
+            });
+            menu.ShowDialog(this);
+        };
         guardian.Click += (_,_) => {using var tela=new Transportadoras.MasterdataR3.FrmCadastrosGuardianR3(lifecycle?.Masterdata,lifecycle,demo);tela.ShowDialog(this);};
         contratos.Click += (_, _) => { if(monitorAcm is not null){using var read=monitorAcm();read.ShowDialog(this);return;} using var tela = demo is null?Acm.ContratosAcmComposition.Criar():r57?new FrmContratosAcm(new FugaTES.Aplicacao.Consultas.ContratosAcm.ContratosAcmConsulta(new DemoAcmDisconnected()),execucaoR57:true):(r55||File.Exists(Path.Combine(AppContext.BaseDirectory,"Acm.preview.R53.json")))?new FrmContratosAcm(new FugaTES.Aplicacao.Consultas.ContratosAcm.ContratosAcmConsulta(new DemoAcmDisconnected()),restPreview:true):new FrmContratosAcm(new FugaTES.Aplicacao.Consultas.ContratosAcm.ContratosAcmConsulta(new DemoAcmDisconnected()),operationalBlocker:"ACM: BLOQUEADO — PostgreSQL DEV não conectado/atestado.\r\nCentro 3011; contrato 0000001031/V2: nenhuma consulta realizada.\r\nSOAP ConsultaContrato isolada não executada; igualdade Guardian não comprovada.\r\nCadastraContrato, AlteraContrato e SAP POST desabilitados; nenhum processamento automático."); tela.ShowDialog(this); };
         // No modo unificado o botao "Contratos ACM" abre o Monitor ACM do leitor fisico,
@@ -25,7 +41,7 @@ public partial class FrmIntegracoes : Form
         // No modo demo o SAP e consulta manual por BP; abrir a varredura SD daria a impressao de
         // uma busca que essa sessao nao faz.
         pedidosCompraMm.Enabled = demo is null;
-        pedidosCompraMm.Click += (_, _) => { using var tela = new FrmPedidosCompraMm(); tela.ShowDialog(this); };
+        pedidosCompraMm.Click += (_, _) => { using var tela = mmRead?.Invoke()??new FrmPedidosCompraMm(); tela.ShowDialog(this); };
         // Abertura assincrona: a conexao com o 5433 sobe um tunel SSH, e esperar por ele na
         // thread da interface trava a janela.
         devolutivasSd.Enabled = demo is null;

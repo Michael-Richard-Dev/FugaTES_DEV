@@ -22,7 +22,7 @@ public sealed record UnifiedDesktopProfile
 public sealed class UnifiedDesktopSession:IDisposable
 {
     public const string Release="DEV110-TOLEDO-RECEIPTS-MONITOR-20261028-R1";
-    public const string Version="1.2.12";
+    public const string Version="1.2.18";
     private readonly UnifiedDesktopProfile profile;
     private readonly string directory;
     private readonly object readerLock=new();
@@ -160,6 +160,19 @@ public sealed class UnifiedDesktopSession:IDisposable
         void Refresh(){if(!protocols.IsDisposed&&protocols.IsHandleCreated)protocols.BeginInvoke(async()=>await protocols.ConsultarAsync());}
         RetryChanged+=Refresh;protocols.FormClosed+=(_,_)=>RetryChanged-=Refresh;
         return protocols;
+    }
+    private Mm.MmRetryController? mmRetryController;
+    public FrmPedidosCompraMm CreateMm()
+    {
+        try
+        {
+            // Keep shared Desktop publications compatible until the explicit MM cutover.
+            if(!Mm.MmPurchaseOrderComposition.IsVmObserver(directory))return new FrmPedidosCompraMm();
+            var form=new FrmPedidosCompraMm(ct=>GetReader().ReadMmAsync(ct));
+            lock(readerLock)mmRetryController??=new(GetRetryClient() as FugaTES.Aplicacao.Modelos.Mm.IMmRetryCommandClient);
+            form.ConfigureRetry(mmRetryController,()=>RetryChanged?.Invoke());return form;
+        }
+        catch{return new FrmPedidosCompraMm(_=>Task.FromException<FugaTES.Aplicacao.Modelos.Mm.MmRemoteReadback>(new InvalidOperationException("MM_HOST_BINDING_INVALID")));}
     }
     public Toledo.FrmRecebimentosToledo CreateToledoReceipts()
     {

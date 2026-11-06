@@ -26,6 +26,11 @@ public static class HostIntegracaoComposition
             CarrierSyncComposition.ConfigurarServicos(builder.Services, builder.Configuration);
             return;
         }
+        if (string.Equals(builder.Configuration["HostIntegracao:Mode"], "MmPurchaseOrders", StringComparison.Ordinal))
+        {
+            Mm.MmLinuxComposition.Configure(builder.Services,builder.Configuration);
+            return;
+        }
         // Motor do fluxo SD na VM: varre ordens de venda e cria protocolo no Guardian sozinho.
         // Modo proprio, e nao mais um worker do motor geral, porque o recorte e as credenciais
         // sao dele e nada mais deve subir junto neste processo.

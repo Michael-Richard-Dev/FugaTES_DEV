@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Modelos.Mm;
 using System.Net;
 using System.Net.Http.Json;
 using FugaTES.Aplicacao.Servicos.ManualRetry;

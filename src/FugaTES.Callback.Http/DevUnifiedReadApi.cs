@@ -32,7 +32,10 @@ public static class DevUnifiedReadApi
         // com a role ACM compartilhada e recusa a identidade GET-only na partida.
         var store=new DevUnifiedReadStore(source,RoleDeLeitura());await store.IdentityAsync(CancellationToken.None);
         var builder=CreateReadOnlyHostBuilder();
-        await using var app=builder.Build();Map(app,store,key);await app.RunAsync();
+        await using var app=builder.Build();
+        var mmDirectory=Environment.GetEnvironmentVariable("FUGATES_DEV_MM_SNAPSHOT_DIRECTORY");
+        if(mmDirectory is not null&&mmDirectory!="/var/lib/fugates-mm")throw new InvalidOperationException("MM_VM_OBSERVATION_DIRECTORY_REJECTED");
+        Map(app,store,key,mmDirectory is null?null:new MmSnapshotReadSource(mmDirectory));await app.RunAsync();
     }
     public static WebApplicationBuilder CreateReadOnlyHostBuilder()
     {
@@ -61,7 +64,7 @@ public static class DevUnifiedReadApi
             throw new InvalidOperationException("UNIFIED_DEV_EXISTING_PROVIDER_REFERENCE_REQUIRED");
         return value;
     }
-    public static void Map(WebApplication app,IDevUnifiedReadStore store,string key)
+    public static void Map(WebApplication app,IDevUnifiedReadStore store,string key,IMmSnapshotReadSource? mm=null)
     {
         if(key.Length!=64||!key.All(Uri.IsHexDigit))throw new InvalidOperationException("UNIFIED_DEV_READ_KEY_INVALID");
         var expected=Encoding.UTF8.GetBytes(key);
@@ -78,6 +81,26 @@ public static class DevUnifiedReadApi
             catch(PostgresException error) when(error.SqlState=="42501")
             {if(!context.Response.HasStarted){context.Response.StatusCode=503;await context.Response.WriteAsJsonAsync(new{code="UNIFIED_DEV_READ_PRIVILEGE_REQUIRED"});}}
             catch{if(!context.Response.HasStarted){context.Response.StatusCode=503;await context.Response.WriteAsJsonAsync(new{code="UNIFIED_DEV_READ_UNAVAILABLE"});}}
+        });
+        app.MapGet("/dev/read/mm",async(CancellationToken ct)=>
+        {
+            var identity=await store.IdentityAsync(ct);identity.Validate();
+            if(mm is null)return Results.Json(new{scope="mm",code="MM_VM_OBSERVATION_NOT_CONFIGURED",identity},statusCode:503);
+            try
+            {
+                var value=await mm.ReadAsync(ct);
+                return Results.Json(new DevReadEnvelope<FugaTES.Aplicacao.Modelos.Mm.MmRemoteReadback>(identity,value));
+            }
+            catch(OperationCanceledException) when(ct.IsCancellationRequested){throw;}
+            catch(Exception error)
+            {
+                // No exception text, document, path or credential crosses the diagnostic boundary.
+                var code=error is System.Text.Json.JsonException?"MM_VM_OBSERVATION_DOCUMENT_REJECTED":
+                    error is InvalidOperationException {Message:"MM_VM_OBSERVATION_SCOPE_REJECTED"}?"MM_VM_OBSERVATION_SCOPE_REJECTED":
+                    error is InvalidOperationException {Message:"MM_VM_OBSERVATION_DOCUMENT_REJECTED" or "MM_CACHE_POLICY_INVALID" or "MM_CACHE_IDENTITY_INVALID" or "MM_CACHE_SCOPE_INVALID" or "MM_GUARDIAN_CACHE_INVALID" or "MM_CACHE_INVALID" or "MM_CACHE_SIZE_LIMIT"}?"MM_VM_OBSERVATION_DOCUMENT_REJECTED":
+                    "MM_VM_OBSERVATION_UNAVAILABLE";
+                return Results.Json(new{scope="mm",code,identity},statusCode:503);
+            }
         });
         app.MapGet("/dev/read/identity",async(CancellationToken ct)=>await store.IdentityAsync(ct));
         app.MapGet("/dev/read/{resource}",async(string resource,string? selector,CancellationToken ct)=>

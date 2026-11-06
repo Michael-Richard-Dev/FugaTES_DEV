@@ -24,7 +24,7 @@ public sealed class AcmMonitorStartupTests
         Assert.Equal($"{declarada.Major}.{declarada.Minor}.{declarada.Build}.0",
             assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()!.Version);
         // Baseline comprovada neste gate, para que a ancoragem nao possa apontar para qualquer coisa.
-        Assert.Equal("1.2.11", UnifiedDesktopSession.Version);
+        Assert.Equal("1.2.18", UnifiedDesktopSession.Version);
         var main = assembly.GetType("FugaTES.WinForms.Program")!.GetMethod("Main", BindingFlags.NonPublic | BindingFlags.Static)!;
         var calls = Calls(main).ToArray();
         Assert.Contains(calls,x=>x.DeclaringType==typeof(UnifiedDesktopStartup)&&x.Name=="Run");

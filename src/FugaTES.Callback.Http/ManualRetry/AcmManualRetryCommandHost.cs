@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using FugaTES.Aplicacao.Contratos.MotorIntegracao;
 using FugaTES.Aplicacao.Modelos.MotorIntegracao;
@@ -67,10 +67,12 @@ public static class AcmManualRetryCommandHost
         else builder.Services.AddScoped<IAcmManualRetryStore, UnapprovedStore>();
         builder.Services.AddScoped<AcmManualRetryService>();
         var toledoRetry=ToledoSapCommandComposition.Configure(builder.Services,profile);
+        var mmRetry=MmRetryCommandComposition.Configure(builder.Services,profile);
         await using var app = builder.Build();
         app.UseAuthentication(); app.UseAuthorization();
         AcmManualRetryEndpoint.MapCandidate(app);
         if(toledoRetry)ToledoSapRetryEndpoint.MapCandidate(app);
+        if(mmRetry)MmRetryEndpoint.MapCandidate(app);
         app.MapGet("/health", () => Results.Json(new { service = "ACM_MANUAL_RETRY_COMMAND", approvals = approvals.Length, scopedWorker = approvals.Length == 1 }))
             .RequireAuthorization(AcmManualRetryEndpoint.Policy);
         await app.RunAsync();

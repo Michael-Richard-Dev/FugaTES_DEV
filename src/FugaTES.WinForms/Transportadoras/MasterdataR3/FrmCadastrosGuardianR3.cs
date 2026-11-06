@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -29,13 +29,19 @@ public sealed class FrmCadastrosGuardianR3 : Form
     private readonly TextBox _logs;
     private readonly Label _resumo;
     private bool _fechando;
+    private readonly CategoriaMasterdataR3? _categoria;
 
     public FrmCadastrosGuardianR3(OrquestradorCompartilhadoMasterdataR3? orquestrador = null, CarrierDesktopLifecycle? lifecycle=null,SafeDemoReadOnlySessionR50? demo=null)
+        :this(orquestrador,lifecycle,demo,null) { }
+
+    public FrmCadastrosGuardianR3(OrquestradorCompartilhadoMasterdataR3? orquestrador,CarrierDesktopLifecycle? lifecycle,SafeDemoReadOnlySessionR50? demo,CategoriaMasterdataR3? categoria)
     {
+        if(categoria is {} selected)_=FrmCadastros.NomeCategoria(selected);
+        _categoria=categoria;
         // Abertura sem injeção = seguranca fail-closed, nenhuma execucao externa.
         _lifecycle=lifecycle;_demo=demo;
         _orquestrador = demo?.Shared ?? lifecycle?.Masterdata ?? orquestrador ?? new OrquestradorCompartilhadoMasterdataR3();
-        Text = "Integrações > Cadastros SAP > Guardian";
+        Text = categoria is {} category ? "Integração de cadastro — "+FrmCadastros.NomeCategoria(category) : "Integrações > Cadastros SAP > Guardian";
         MinimumSize = new Size(850, 520);
         Size = new Size(1050, 690);
         StartPosition = FormStartPosition.CenterParent;
@@ -81,16 +87,23 @@ public sealed class FrmCadastrosGuardianR3 : Form
             _guardianDemo=new Button{Text="Consultar Guardian",Width=160,Height=30,AccessibleName="Consultar Guardian — somente leitura HML"};
             _guardianDemo.Click+=async(_,_)=>await ConsultarDemoGuardianAsync();barra.Controls.Add(_guardianDemo);
         }
+        if(_categoria is not null and not CategoriaMasterdataR3.Transportadoras)
+        {
+            barra.Controls.Clear();principal.RowStyles[0].Height=64;
+            var atualizarStatus=new Button{Text="Atualizar status",Width=150,Height=32};
+            atualizarStatus.Click+=(_,_)=>AtualizarVisual();barra.Controls.Add(atualizarStatus);
+            barra.Controls.Add(new Label{Text="Acompanhamento da categoria. Nenhuma sincronização é iniciada ao abrir esta tela.",AutoSize=true,Padding=new Padding(12,8,0,0)});
+        }
         principal.Controls.Add(barra, 0, 0);
 
         var abas = new TabControl { Dock = DockStyle.Fill };
-        foreach (var categoria in Enum.GetValues<CategoriaMasterdataR3>())
+        foreach (var categoriaDaTela in Enum.GetValues<CategoriaMasterdataR3>().Where(c=>_categoria is null||c==_categoria))
         {
-            var tab = new TabPage(categoria.ToString());
+            var tab = new TabPage(_categoria is null ? categoriaDaTela.ToString() : FrmCadastros.NomeCategoria(categoriaDaTela));
             var visual = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.None,
                 BackColor = SystemColors.Window, Font = new Font("Consolas", 11), ScrollBars = ScrollBars.Vertical };
             tab.Controls.Add(visual);
-            _painelCategoria.Add(categoria, visual);
+            _painelCategoria.Add(categoriaDaTela, visual);
             abas.TabPages.Add(tab);
         }
         var paginaLog = new TabPage("Logs de Sincronização");
@@ -184,7 +197,7 @@ public sealed class FrmCadastrosGuardianR3 : Form
             if(_sapDemo is not null)_sapDemo.Enabled=!_readOnlyRunning&&_demo.CanQuery(_bp.Text.Trim());
             if(_guardianDemo is not null)_guardianDemo.Enabled=!_readOnlyRunning&&_demo.CanQuery(_bp.Text.Trim())&&_guardianAttested.Checked&&_demo.GuardianRead?.Available==true&&!string.IsNullOrWhiteSpace(_guardianScope.Text);
             var r=_demo.LastSap;
-            _painelCategoria[CategoriaMasterdataR3.Transportadoras].Text=$"BP autorizado: {_demo.InitialBp}\r\nSAP: {(r is null?"NÃO CONSULTADO":r.State)}\r\nHTTP: {r?.HttpStatus?.ToString()??"NÃO EXECUTADO"}\r\nIdentidade BP: {(r?.IdentityMatch==true?"CONFIRMADA":"NÃO APURADA")}\r\nCRM010: {r?.Crm010Eligibility??"NÃO APURADO"}\r\nNome / razão social presentes: {r?.NamePresent.ToString()??"NÃO APURADO"} / {r?.LegalNamePresent.ToString()??"NÃO APURADO"}\r\n\r\nGuardian: {_demo.GuardianStatus}\r\n{_demo.GuardianHistoricalStatus}\r\n\r\nJournal / checkpoint PostgreSQL: NÃO COMPROVADOS. Nenhuma escrita autorizada.";
+            if(_painelCategoria.TryGetValue(CategoriaMasterdataR3.Transportadoras,out var demoTransportadoras))demoTransportadoras.Text=$"BP autorizado: {_demo.InitialBp}\r\nSAP: {(r is null?"NÃO CONSULTADO":r.State)}\r\nHTTP: {r?.HttpStatus?.ToString()??"NÃO EXECUTADO"}\r\nIdentidade BP: {(r?.IdentityMatch==true?"CONFIRMADA":"NÃO APURADA")}\r\nCRM010: {r?.Crm010Eligibility??"NÃO APURADO"}\r\nNome / razão social presentes: {r?.NamePresent.ToString()??"NÃO APURADO"} / {r?.LegalNamePresent.ToString()??"NÃO APURADO"}\r\n\r\nGuardian: {_demo.GuardianStatus}\r\n{_demo.GuardianHistoricalStatus}\r\n\r\nJournal / checkpoint PostgreSQL: NÃO COMPROVADOS. Nenhuma escrita autorizada.";
             foreach(var entry in _painelCategoria.Where(e=>e.Key!=CategoriaMasterdataR3.Transportadoras))
                 entry.Value.Text=$"Categoria: {entry.Key}\r\nStatus: BLOQUEADO — consulta e escrita não disponíveis nesta demo.\r\nNenhuma execução realizada.";
             _logs.Text="BLOQUEADO: histórico operacional PostgreSQL indisponível. Evidências históricas não representam logs de execução desta sessão.";
@@ -194,7 +207,7 @@ public sealed class FrmCadastrosGuardianR3 : Form
         _sync.Enabled=_lifecycle?.Reconciliation is null&&!_manualRunning&&_lifecycle?.Snapshot.Active==true&&!_lifecycle.Snapshot.Cycling&&!string.IsNullOrWhiteSpace(_bp.Text);
 
         _readOnly.Enabled=!_readOnlyRunning&&_lifecycle?.ManualReadOnlyAvailable(_bp.Text.Trim())==true;
-        var estados = _orquestrador.Estados();
+        var estados = _orquestrador.Estados().Where(e=>_categoria is null||e.Categoria==_categoria).ToArray();
         foreach (var e in estados)
         {
             if (!_painelCategoria.TryGetValue(e.Categoria, out var visual)) continue;
@@ -206,14 +219,19 @@ public sealed class FrmCadastrosGuardianR3 : Form
                 $"Pendentes: {Exibir(e.Pendentes)}\r\n" +
                 $"Falhas: {Exibir(e.Falhas)}\r\n" +
                 $"Checkpoint: {e.Checkpoint ?? "NÃO COMPROVADO"}\r\n" +
-                $"Motivo: {e.Motivo}\r\n";
+                $"Motivo: {(_categoria is not null && e.Motivo is "NOT_HOMOLOGATED_OR_UNCONFIGURED" or "CATEGORY_OR_WRITES_NOT_APPROVED" ? "Integração desta categoria não conectada nesta sessão; nenhum dado foi consultado." : e.Motivo)}\r\n";
         }
         if(_lifecycle?.LastReconciliation is {} reconciliation&&_painelCategoria.TryGetValue(CategoriaMasterdataR3.Transportadoras,out var panel))
             panel.Text=$"Reconciliação SAP somente leitura: {reconciliation.State}\r\nCódigo: {reconciliation.Code}\r\nBPs observados: {reconciliation.CachedBps}\r\nCheckpoint PostgreSQL: NÃO COMPROVADO\r\nNão autoriza escrita Guardian.";
-        _logs.Lines = _orquestrador.Logs().Select(l =>
+        _logs.Lines = _orquestrador.Logs().Where(l=>_categoria is null||l.Categoria==_categoria).Select(l =>
             $"{l.QuandoUtc:u} | {l.Origem} | {l.Categoria?.ToString() ?? "GLOBAL"} | {l.Codigo}").ToArray();
         var ultima = estados.Where(e => e.UltimaExecucaoUtc.HasValue)
             .Select(e => e.UltimaExecucaoUtc!.Value).DefaultIfEmpty().Max();
+        if(_categoria is not null and not CategoriaMasterdataR3.Transportadoras)
+        {
+            _resumo.Text="Status da categoria — última execução: "+(ultima==default?"NÃO EXECUTADA":ultima.ToLocalTime().ToString("g"))+". Sem execução empresarial por esta tela.";
+            return;
+        }
         _resumo.Text = "Última execução: " + (ultima == default ? "NÃO EXECUTADA" : ultima.ToString("u")) +
             "    | Próxima consulta: " + (_lifecycle?.Snapshot.NextQueryUtc?.ToString("u")??"INATIVA") +
             "    | Intervalo: 30 s | Eventos UI locais; logs operacionais no PostgreSQL" + (_lifecycle?.Snapshot.Active==true?"":" | HML BLOQUEADO");

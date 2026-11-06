@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net.Http.Json;
 using FugaTES.Aplicacao.Consultas.Monitor;
 using FugaTES.Persistencia.Consultas.Monitor;
@@ -133,6 +134,16 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
     Task<IReadOnlyList<ContratoAcmLeitura>> IContratosAcmReadRepository.ConsultarAsync(string centro,CancellationToken ct)=>ReadContractsAsync(centro,ct);
     public Task<IReadOnlyList<ContratoAcmLeitura>> ReadContractsAsync(string centro,CancellationToken ct)
         =>ReadUnifiedAsync<IReadOnlyList<ContratoAcmLeitura>>("contracts",centro,ct);
+    public async Task<FugaTES.Aplicacao.Modelos.Mm.MmRemoteReadback> ReadMmAsync(CancellationToken ct)
+    {
+        var view=await ReadUnifiedAsync<FugaTES.Aplicacao.Modelos.Mm.MmRemoteReadback>("mm",null,ct);
+        try { FugaTES.Infraestrutura.Mm.MmFileSnapshotStore.Validate(view.Snapshot); }
+        catch(Exception error) when(error is InvalidOperationException or System.Text.Json.JsonException or ArgumentException or NullReferenceException)
+        { throw new PhysicalConnectionException("MM_VM_OBSERVATION_DOCUMENT_REJECTED",resourceOnly:true); }
+        if(view.Provenance!="VM_SNAPSHOT_NOT_JOURNAL"||view.Snapshot.RuntimeMode!="VM"||view.Snapshot.Host!="vm-fugatesbio"||view.Snapshot.IntervalSeconds!=180||view.ReadAtUtc>DateTimeOffset.UtcNow.AddSeconds(5)||DateTimeOffset.UtcNow-view.ReadAtUtc>TimeSpan.FromSeconds(30))
+            throw new PhysicalConnectionException("MM_VM_OBSERVATION_SCOPE_REJECTED",resourceOnly:true);
+        return view;
+    }
     public Task<DevMasterdataSnapshot> ReadMasterdataAsync(string? bp,CancellationToken ct)
         =>ReadUnifiedAsync<DevMasterdataSnapshot>("masterdata",bp,ct);
     public Task<FugaTES.Aplicacao.Consultas.RecebimentosToledo.RecebimentosToledoSnapshot> ConsultarRecebimentosAsync(string? busca,CancellationToken ct)
@@ -151,6 +162,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
         if(data.Original.ReciboId!=reciboId)throw new InvalidOperationException("TOLEDO_READ_FOREIGN_RECEIPT");
         return data;
     }
+    private sealed record MmReadFailure(string? Scope,string? Code,DevDatabaseIdentity? Identity);
     async Task<T> ReadUnifiedAsync<T>(string resource,string? selector,CancellationToken ct)
     {
         if(!unified)throw new PhysicalConnectionException("UNIFIED_DEV_ROUTE_UNAVAILABLE");
@@ -161,8 +173,36 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
             using var response=await http.GetAsync(path,ct);
             if(response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)throw new PhysicalConnectionException("READ_KEY_REJECTED");
             if(response.StatusCode==System.Net.HttpStatusCode.NotFound)throw new PhysicalConnectionException("UNIFIED_DEV_ROUTE_UNAVAILABLE");
+            if(resource=="mm"&&response.StatusCode==System.Net.HttpStatusCode.ServiceUnavailable)
+            {
+                // A scoped failure is trusted only after the API proves the same physical read identity.
+                var failure=await response.Content.ReadFromJsonAsync<MmReadFailure>(ct);
+                if(failure?.Scope=="mm"&&failure.Code is "MM_VM_OBSERVATION_SCOPE_REJECTED" or "MM_VM_OBSERVATION_DOCUMENT_REJECTED" or "MM_VM_OBSERVATION_UNAVAILABLE" or "MM_VM_OBSERVATION_NOT_CONFIGURED")
+                {
+                    if(failure.Identity is null)throw new PhysicalConnectionException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
+                    failure.Identity.Validate();
+                    throw new PhysicalConnectionException(failure.Code,resourceOnly:true);
+                }
+            }
             response.EnsureSuccessStatusCode();
-            var envelope=await response.Content.ReadFromJsonAsync<DevReadEnvelope<T>>(ct)??throw new InvalidOperationException("UNIFIED_DEV_EMPTY_RESPONSE");
+            DevReadEnvelope<T> envelope;
+            if(resource=="mm")
+            {
+                // Validate physical identity independently of the MM document schema.
+                var document=await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(ct);
+                var identity=document.GetProperty("identity").Deserialize<DevDatabaseIdentity>(System.Text.Json.JsonSerializerOptions.Web)
+                    ??throw new PhysicalConnectionException("UNIFIED_DEV_DATABASE_IDENTITY_REJECTED");
+                identity.Validate();
+                try
+                {
+                    var data=document.GetProperty("data").Deserialize<T>(System.Text.Json.JsonSerializerOptions.Web);
+                    if(data is null)throw new InvalidOperationException();
+                    envelope=new(identity,data);
+                }
+                catch(Exception error) when(error is System.Text.Json.JsonException or KeyNotFoundException or InvalidOperationException)
+                {throw new PhysicalConnectionException("MM_VM_OBSERVATION_DOCUMENT_REJECTED",resourceOnly:true);}
+            }
+            else envelope=await response.Content.ReadFromJsonAsync<DevReadEnvelope<T>>(ct)??throw new InvalidOperationException("UNIFIED_DEV_EMPTY_RESPONSE");
             envelope.Identity.Validate();if(envelope.Data is null)throw new InvalidOperationException("UNIFIED_DEV_EMPTY_RESPONSE");
             Connection=new(){Connected=true,Cluster=envelope.Identity.Cluster,ServerPort=envelope.Identity.Port,Database=envelope.Identity.Database,
                 Role=envelope.Identity.Role,LastSuccessUtc=envelope.Identity.CapturedUtc,PilotOnly=false,Message="Leitura unificada DEV validada pela API privada."};
@@ -170,6 +210,7 @@ public sealed class PhysicalMonitorClient : IMonitorReadRepository, IContratosAc
         }
         catch(Exception error) when(!ct.IsCancellationRequested)
         {
+            if(error is PhysicalConnectionException {ResourceOnly:true})throw;
             Connection=Connection.Failure(error is PhysicalConnectionException e?e.Code:error is OperationCanceledException?"READBACK_TIMEOUT":error.Message);
             ConnectionChanged?.Invoke();throw;
         }

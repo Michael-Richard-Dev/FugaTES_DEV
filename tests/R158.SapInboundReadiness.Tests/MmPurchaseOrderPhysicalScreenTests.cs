@@ -1,3 +1,4 @@
+using FugaTES.Aplicacao.Modelos.Mm;
 using System.Drawing;
 using System.Security.Cryptography;
 using System.Text.Json;

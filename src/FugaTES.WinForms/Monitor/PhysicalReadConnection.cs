@@ -2,7 +2,9 @@ namespace FugaTES.WinForms.Monitor;
 
 public sealed class PhysicalConnectionException(string code):InvalidOperationException(code)
 {
+    public PhysicalConnectionException(string code,bool resourceOnly):this(code){ResourceOnly=resourceOnly;}
     public string Code{get;}=code;
+    public bool ResourceOnly{get;}
 }
 
 public sealed record PhysicalReadConnection
@@ -47,6 +49,10 @@ public sealed record PhysicalReadConnection
         "SSH_CONNECT_FAILED"=>"Túnel SSH indisponível: confira autenticação, host conhecido e acesso de rede.",
         "INTEGRATION_NOT_FOUND"=>"IntegrationId não encontrado na API física autorizada.",
         "UNIFIED_DEV_DATABASE_IDENTITY_REJECTED" or "R165AL_PHYSICAL_READBACK_IDENTITY_REJECTED" or "R165AL_SUCCESSFUL_TERMINAL_FACTS_REQUIRED"=>"Identidade ou estado físico retornado não corresponde ao contrato de leitura autorizado.",
+        "MM_VM_OBSERVATION_SCOPE_REJECTED"=>"Leitura MM recusada: ambiente ou identidade do snapshot não corresponde ao motor autorizado.",
+        "MM_VM_OBSERVATION_DOCUMENT_REJECTED"=>"Leitura MM recusada: snapshot incompatível ou inválido. Conferir a versão do leitor MM; isso não indica indisponibilidade das outras consultas.",
+        "MM_VM_OBSERVATION_UNAVAILABLE"=>"Snapshot MM indisponível para leitura. As outras consultas usam fontes independentes.",
+        "MM_VM_OBSERVATION_NOT_CONFIGURED"=>"Leitura do motor MM não configurada na API privada.",
         "READBACK_TIMEOUT"=>"Tempo limite na leitura da API privada. Nenhum dado de demonstração substituiu a consulta.",
         _=>"Backend privado indisponível ou resposta inválida. Nenhum serviço remoto foi iniciado; tente Atualizar."}};
 }

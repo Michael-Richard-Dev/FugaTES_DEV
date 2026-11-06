@@ -27,6 +27,15 @@ public sealed class CarrierSystemdCredentials(string directory)
             (directoryMode==owner||directoryMode==serviceGroup)&&
             (parentMode&(UnixFileMode.GroupWrite|UnixFileMode.OtherWrite))==0;
     }
+    public static bool IsApprovedMmRuntimeDirectory(string name,string directory,string? runtimeDirectory,
+        UnixFileMode directoryMode,UnixFileMode parentMode,bool hasLinks)
+    {
+        const string expected="/run/credentials/fugates-mm-purchase-orders.service";
+        var owner=UnixFileMode.UserRead|UnixFileMode.UserExecute;
+        var group=owner|UnixFileMode.GroupRead|UnixFileMode.GroupExecute;
+        return RequiredNames.Contains(name,StringComparer.Ordinal)&&directory==expected&&runtimeDirectory==expected&&!hasLinks&&
+            (directoryMode==owner||directoryMode==group)&&(parentMode&(UnixFileMode.GroupWrite|UnixFileMode.OtherWrite))==0;
+    }
     public string Read(string name)
     {
         ValidateName(name);
@@ -43,6 +52,8 @@ public sealed class CarrierSystemdCredentials(string directory)
                 var folder=new DirectoryInfo(directory);var parent=folder.Parent;
                 if(parent is not null)approvedRuntime=IsApprovedToledoRuntimeDirectory(name,directory,
                     Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY"),File.GetUnixFileMode(directory),
+                    File.GetUnixFileMode(parent.FullName),folder.LinkTarget is not null||parent.LinkTarget is not null) || IsApprovedMmRuntimeDirectory(name,directory,
+                    Environment.GetEnvironmentVariable("CREDENTIALS_DIRECTORY"),File.GetUnixFileMode(directory),
                     File.GetUnixFileMode(parent.FullName),folder.LinkTarget is not null||parent.LinkTarget is not null);
             }
             ValidateMode(mode,approvedRuntime);
@@ -56,12 +67,15 @@ public sealed class CarrierSystemdCredentials(string directory)
     public void ValidateRequired(){foreach(var name in RequiredNames)_=Read(name);}
 }
 
-public sealed class CarrierLinuxGuardianCredentials(CarrierLinuxRuntimeBootstrap runtime):ICredenciaisGuardianSet26Provider
+public sealed class CarrierLinuxGuardianCredentials:ICredenciaisGuardianSet26Provider
 {
+    private readonly CarrierSystemdCredentials credentials;
+    public CarrierLinuxGuardianCredentials(CarrierLinuxRuntimeBootstrap runtime):this(runtime.Credentials){}
+    public CarrierLinuxGuardianCredentials(CarrierSystemdCredentials credentials){this.credentials=credentials;}
     public Task<CredenciaisGuardianSet26> ObterAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        return Task.FromResult(new CredenciaisGuardianSet26(runtime.Credentials.Read("carrier-hml-guardian-email"),runtime.Credentials.Read("carrier-hml-guardian-password"),runtime.Credentials.Read("carrier-hml-guardian-signature")));
+        return Task.FromResult(new CredenciaisGuardianSet26(credentials.Read("carrier-hml-guardian-email"),credentials.Read("carrier-hml-guardian-password"),credentials.Read("carrier-hml-guardian-signature")));
     }
 }
 public sealed class CarrierLinuxSapAuthentication:IAutenticacaoSap
