@@ -135,7 +135,21 @@ public static class SdProtocoloComposition
         try { cadeia = new NpgsqlConnectionStringBuilder(conexao); }
         catch { throw new InvalidOperationException("SD_MOTOR_BANCO_NAO_CONFERE_COM_O_AMBIENTE"); }
 
-        if (cadeia.Port != 5433 || cadeia.SearchPath != "fugates"
+        // SEARCH PATH: ausente E VALIDO, e esta e uma correcao de uma exigencia que eu inventei.
+        //
+        // A primeira versao desta guarda, em 06/11/2026, exigia SearchPath="fugates". O motor do
+        // DEV110 roda ha semanas SEM ele na cadeia - e teria parado de subir na publicacao
+        // seguinte. O conferir-guarda-motor.sh pegou isso antes.
+        //
+        // E a exigencia era vazia de qualquer forma: TODAS as consultas dos repositorios SD
+        // qualificam o schema ("fugates.protocolo_sd_ordem_venda"), entao o search_path nao e o
+        // que decide onde se grava. Exigir um valor que nao protege nada so cria uma forma nova
+        // de o servico nao subir.
+        //
+        // Declarado diferente de "fugates" ainda e recusado: quem escreve um schema na cadeia
+        // esta afirmando algo, e afirmar o errado e diferente de nao afirmar.
+        if (cadeia.Port != 5433
+            || (cadeia.SearchPath is { Length: > 0 } sp && sp != "fugates")
             || (cadeia.Host != "127.0.0.1" && cadeia.Host != "localhost")
             || cadeia.Database != bancoDoAmbiente.Banco
             || cadeia.Username != bancoDoAmbiente.PapelSd)

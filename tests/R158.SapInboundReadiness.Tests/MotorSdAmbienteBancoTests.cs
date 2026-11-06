@@ -66,15 +66,32 @@ public sealed class MotorSdAmbienteBancoTests
         Assert.Equal("SD_MOTOR_BANCO_NAO_CONFERE_COM_O_AMBIENTE", Montar(sap, banco, papel)?.Message);
     }
 
-    /// <summary>O resto da guarda nasceu junto: porta, schema e host tambem sao exigidos.</summary>
+    /// <summary>Porta, host e schema DECLARADO ERRADO continuam sendo recusados.</summary>
     [Theory]
     [InlineData("Host=127.0.0.1;Port=5432;Database=fugates_dev;Search Path=fugates;Username=fugates_sd_app")]
     [InlineData("Host=10.0.0.9;Port=5433;Database=fugates_dev;Search Path=fugates;Username=fugates_sd_app")]
     [InlineData("Host=127.0.0.1;Port=5433;Database=fugates_dev;Search Path=public;Username=fugates_sd_app")]
-    public void Porta_schema_e_host_continuam_exigidos(string cadeia)
+    public void Porta_host_e_schema_errado_continuam_exigidos(string cadeia)
     {
         var erro = Record.Exception(() => SdProtocoloComposition.ExigirBancoDoAmbiente(cadeia, AmbientesSap.Dev110));
 
         Assert.Equal("SD_MOTOR_BANCO_NAO_CONFERE_COM_O_AMBIENTE", erro?.Message);
     }
+
+    /// <summary>
+    /// SEARCH PATH AUSENTE E VALIDO - e esta e a configuracao REAL do motor do DEV110, que roda
+    /// ha semanas assim.
+    ///
+    /// A primeira versao desta guarda exigia "fugates" e teria impedido o motor de subir na
+    /// publicacao seguinte. A exigencia era vazia de qualquer forma: todas as consultas dos
+    /// repositorios SD qualificam o schema, entao o search_path nao e o que decide onde se grava.
+    ///
+    /// Este teste existe para que a exigencia nao volte por engano.
+    /// </summary>
+    [Theory]
+    [InlineData("Host=127.0.0.1;Port=5433;Database=fugates_dev;Username=fugates_sd_app")]
+    [InlineData("Host=localhost;Port=5433;Database=fugates_dev;Username=fugates_sd_app")]
+    public void Search_path_ausente_e_aceito(string cadeia)
+        => Assert.Null(Record.Exception(
+            () => SdProtocoloComposition.ExigirBancoDoAmbiente(cadeia, AmbientesSap.Dev110)));
 }

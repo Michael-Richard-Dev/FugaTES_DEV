@@ -91,7 +91,7 @@ mostrar "Host"        "$HOST"     "exige 127.0.0.1 ou localhost"
 mostrar "Port"        "$PORTA"    "exige 5433"
 mostrar "Database"    "$BANCO"    "exige o banco do ambiente SAP do servico"
 mostrar "Username"    "$USUARIO"  "exige o papel SD daquele ambiente"
-mostrar "Search Path" "$SCHEMA"   "exige fugates"
+mostrar "Search Path" "$SCHEMA"   "fugates OU ausente"
 mostrar "Password"    "$TEM_SENHA"   "(valor nunca impresso)"
 mostrar "Passfile"    "$TEM_PASSFILE" "(caminho nunca impresso)"
 echo
@@ -105,7 +105,15 @@ conferir() {
 echo "veredito:"
 case "$HOST" in 127.0.0.1|localhost) printf '  OK      Host\n';; *) printf '  RECUSA  Host: configurado "%s", exigido 127.0.0.1 ou localhost\n' "${HOST:-(ausente)}"; FALHAS=$((FALHAS+1));; esac
 conferir "Port" "$PORTA" "5433"
-conferir "Search Path" "$SCHEMA" "fugates"
+# Ausente E VALIDO: as consultas dos repositorios SD qualificam o schema, entao o search_path nao
+# decide onde se grava. A primeira versao da guarda exigia "fugates" e teria impedido o motor do
+# DEV110 de subir - ele roda ha semanas sem declarar schema.
+case "$SCHEMA" in
+  "")        printf '  OK      Search Path: ausente (as consultas qualificam o schema)\n' ;;
+  fugates)   printf '  OK      Search Path\n' ;;
+  *)         printf '  RECUSA  Search Path: declarado "%s"; so "fugates" ou ausente valem\n' "$SCHEMA"
+             FALHAS=$((FALHAS+1)) ;;
+esac
 
 # O par banco+papel depende do ambiente SAP deste servico, que vem da mesma configuracao.
 # A ultima definicao vence, como no systemd. O "|| true" existe pelo mesmo motivo de campo():
