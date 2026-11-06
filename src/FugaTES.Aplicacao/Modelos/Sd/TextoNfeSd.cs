@@ -35,7 +35,19 @@ public static class TextoNfeSd
         // forma grudada de eventuais ordens antigas tambem continua sendo reconhecida.
         RotuloTestemunha,
         // Os dois modelos. A comparacao ignora caixa, entao "MOTORISTA:" cai em "Motorista:".
-        "Mot.:", "Motorista:", "CPF:", "Placas:", "Placa:", "Lacre:", "Transportadora:"
+        "Mot.:", "Motorista:", "CPF:", "Placas:", "Placa:", "Lacre:", "Transportadora:",
+        // O vizinho que CONTEM um rotulo nosso. Na remessa 80003934, em 06/11/2026, a ordem
+        // trazia "Placa:  Placa Transportadora: " na mesma linha e deu dois defeitos de uma vez:
+        //
+        //   - o espaco de "Placa:" ia ate o proximo rotulo CONHECIDO, e como este nao era um
+        //     deles o espaco engolia a palavra "Placa" dele, parecia preenchido, e a placa ficava
+        //     de fora;
+        //   - "Transportadora:" casa DENTRO dele, entao a transportadora foi escrita num campo
+        //     que espera PLACA.
+        //
+        // Estar nesta lista resolve o primeiro. O segundo precisou tambem que a comparacao
+        // recusasse casamento parcial - ver MapeadorTextoNfeSd.PedacoDeRotuloMaior.
+        "Placa Transportadora:", "Placa Transportador:"
     ];
 
     /// <summary>Rotulo de cada dado da balanca, na ordem em que sao acrescentados ao fim.</summary>

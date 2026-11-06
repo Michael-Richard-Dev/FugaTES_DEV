@@ -124,9 +124,38 @@ public static class MapeadorTextoNfeSd
         for (var i = Math.Max(desde, 0); i <= texto.Length; i++)
         {
             var tamanho = Casa(texto, i, rotulo);
-            if (tamanho >= 0) return (i, tamanho);
+            if (tamanho >= 0 && !PedacoDeRotuloMaior(texto, i, i + tamanho, rotulo)) return (i, tamanho);
         }
         return null;
+    }
+
+    /// <summary>
+    /// Se este casamento e, na verdade, o FIM de um rotulo MAIOR que o contem - "Transportadora:"
+    /// dentro de "Placa Transportadora:".
+    ///
+    /// Sem isto o rotulo curto encontra lugar dentro do longo e o dado vai para o campo errado:
+    /// na remessa 80003934, em 06/11/2026, a transportadora foi escrita em "Placa
+    /// Transportadora:", que espera placa. Conhecer o vizinho nao bastava - ele precisa VENCER a
+    /// disputa pela posicao, e quem vence e o mais especifico.
+    ///
+    /// A comparacao tolera diferenca de espaco (ver <see cref="Casa"/>), entao o rotulo maior nao
+    /// comeca num ponto previsivel: procura-se numa janela atras, e nao numa posicao exata.
+    /// </summary>
+    private static bool PedacoDeRotuloMaior(string texto, int inicio, int fim, string rotulo)
+    {
+        foreach (var maior in TextoNfeSd.Rotulos)
+        {
+            if (maior.Length <= rotulo.Length) continue;
+            if (!maior.EndsWith(rotulo, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var limite = Math.Max(0, inicio - maior.Length - 8);
+            for (var j = inicio - 1; j >= limite; j--)
+            {
+                var tamanho = Casa(texto, j, maior);
+                if (tamanho >= 0 && j + tamanho == fim) return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>
