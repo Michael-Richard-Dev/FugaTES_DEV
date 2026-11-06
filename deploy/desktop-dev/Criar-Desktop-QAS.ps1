@@ -42,6 +42,8 @@ $SapQasClient = '120'
 $BancoQas     = 'fugates_qas'
 $PapelSdQas   = 'fugates_qas_sd_app'
 $AlvoCredQas  = 'FugaTES/QAS120/PostgreSQL/SD'
+$PapelMmQas   = 'fugates_qas_mm_app'
+$AlvoCredMm   = 'FugaTES/QAS120/PostgreSQL/MM'
 $PortaTunelQas = 15434
 
 if (-not (Test-Path -LiteralPath $Origem)) { throw "Origem nao existe: $Origem" }
@@ -190,6 +192,26 @@ switch ($Acao) {
     Escrever-JsonSemBom $sd $sdPath
     Write-Host '== FugaTES.sd.json: banco, papel, alvo da credencial e porta do tunel trocados'
 
+    # MM: banco, papel e alvo da credencial. A porta local NAO entra: ConexaoMmPostgreSql escolhe
+    # uma livre em tempo de execucao (TcpListener na porta 0), entao o valor do perfil nao e usado
+    # e trocar por trocar so criaria divergencia entre o que o arquivo diz e o que acontece.
+    #
+    # ConexaoMmPostgreSql.AbrirAsync deriva o ambiente do carrier.json e exige que o perfil case:
+    # banco, papel MM daquele ambiente, schema fugates e o destino remoto 5433. Sem esta conversao
+    # a tela de MM recusaria com MM_DATABASE_PROFILE_REJECTED - corretamente, porque o perfil seria
+    # do DEV numa janela de QAS.
+    $mmPath = Join-Path $Destino 'FugaTES.mm.json'
+    if (Test-Path -LiteralPath $mmPath) {
+        $mm = Get-Content -LiteralPath $mmPath -Raw | ConvertFrom-Json
+        $mm.Database.Database         = $BancoQas
+        $mm.Database.Username         = $PapelMmQas
+        $mm.Database.CredentialTarget = $AlvoCredMm
+        Escrever-JsonSemBom $mm $mmPath
+        Write-Host '== FugaTES.mm.json: banco, papel e alvo da credencial trocados'
+    } else {
+        Write-Host '== FugaTES.mm.json nao existe na origem; nada a converter'
+    }
+
     # A REESCRITA PRESERVOU O RESTO? ConvertTo-Json reordena, reescreve e pode perder o que
     # estiver alem da profundidade. Conferir o EFEITO, e nao supor que a serializacao deu certo:
     # comparar as folhas dos dois arquivos, menos as que eu troquei de proposito.
@@ -205,7 +227,8 @@ switch ($Acao) {
     $trocadas = @('Sap.BaseUrl', 'Sap.SapClient', 'Database.Database', 'Database.Username',
                   'Database.CredentialTarget', 'Database.Port')
     $perdidas = @()
-    foreach ($par in @(@{o='FugaTES.carrier.json'}, @{o='FugaTES.sd.json'})) {
+    foreach ($par in @(@{o='FugaTES.carrier.json'}, @{o='FugaTES.sd.json'}, @{o='FugaTES.mm.json'})) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Origem $par.o))) { continue }
         $antes  = Folhas (Get-Content -LiteralPath (Join-Path $Origem  $par.o) -Raw | ConvertFrom-Json)
         $depois = Folhas (Get-Content -LiteralPath (Join-Path $Destino $par.o) -Raw | ConvertFrom-Json)
         foreach ($k in $antes.Keys) {
