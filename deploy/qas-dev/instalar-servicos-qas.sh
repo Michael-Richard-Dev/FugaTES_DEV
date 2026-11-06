@@ -324,6 +324,29 @@ aplicar)
   done
   echo "== passfile em modo 600, com linha para os dois papeis do QAS120"
 
+  # NENHUMA CHAVE HERDADA PODE TER FICADO VAZIA.
+  #
+  # A contagem de chaves fechar (49+8=57 no receptor) prova que nada se PERDEU - nao prova que os
+  # valores foram LIDOS. Se valor_efetivo falhasse numa chave, ela sairia como "Chave=" e seria
+  # contada como herdada: um ApprovalReference vazio, um ExecutionAuthorized vazio. Nenhum deles
+  # da erro; eles DESLIGAM a guarda, e o servico sobe dizendo que esta tudo bem.
+  #
+  # Esta e a sexta vez hoje que um verificador precisa conferir o EFEITO em vez do codigo de
+  # retorno. So os NOMES sao impressos; valor nenhum aparece.
+  #
+  # Chave vazia no DEV e legitima e nao e acusada: o que se compara e com a origem.
+  for a in "$ENV_QAS/callback.env" "$ENV_QAS/motor.env"; do
+    case "$a" in *callback.env) DEVO="$DEV_CB" ;; *) DEVO="$DEV_MT" ;; esac
+    while IFS= read -r k; do
+      if [ -n "$(valor_efetivo "$DEVO" "$k")" ]; then
+        echo "$(basename "$a"): $k ficou VAZIA, mas tem valor no DEV."
+        echo "   Uma aprovacao vazia nao da erro: ela desliga a guarda."
+        FALTA=1
+      fi
+    done < <(grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$a" | grep -E '=[[:space:]]*$' | cut -d= -f1)
+  done
+  [ "${FALTA:-0}" = 0 ] && echo "== nenhuma chave herdada ficou vazia"
+
   # PGPASSWORD DEFINIDO FAZ A FABRICA RECUSAR (R165R_EXPLICIT_ACM_PASSFILE_REQUIRED): uma senha
   # no ambiente poderia sobrepor o passfile, e o codigo prefere nao subir a subir sem saber de
   # onde veio a credencial.
