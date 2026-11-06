@@ -1,6 +1,11 @@
 # Publicação do motor SD — 06/11/2026, terceira do dia
 
-**Só o motor desta vez.** Commit `c499569`.
+**Só o motor desta vez.** Commit `83449a6`.
+
+> **Se você guardou o pacote de sha `5b67baf0...`, descarte-o.** Ele tinha o $batch no cliente mas
+> nao a liberacao dele na guarda de rota, que e fail-closed: o ajuste seria recusado com
+> `SD_MOTOR_SAP_ROTA_OU_METODO_PROIBIDO` em TODA remessa. O pacote valido e o de sha `e3410bc7...`,
+> e o enviador confere isso antes de mandar.
 
 As duas publicações anteriores mexiam no `FugaTES.Aplicacao.dll`, que os dois serviços carregam.
 Esta mexe no `FugaTES.Integracao.SAP.dll`, e quem usa o que mudou são três clientes SD — criar
@@ -43,13 +48,23 @@ cabeçalho a partir dos itens, e em 02/11 isso já custou um cabeçalho 1199/699
 gravações mudou. Juntar no mesmo commit mudaria quando o recálculo acontece em relação à nossa
 escrita, e isso não se confere sem SAP na frente.
 
+## A guarda de rota
+
+O motor e a tela so alcancam as rotas que estao numa lista - o que nao esta nela nao sai. O `$batch`
+vai para um caminho proprio (`.../API_OUTBOUND_DELIVERY_SRV;v=2/$batch`), e ele precisou entrar na
+lista das duas. E POST por ser o verbo do envelope: o que vai dentro sao os mesmos PATCHes de item
+que ja eram permitidos.
+
+O limite continua: outras colecoes do mesmo servico, sufixos parecidos, outros verbos na rota do
+lote e outra origem seguem recusados, e isso esta travado em teste.
+
 ## Como publicar
 
 ```powershell
 cd "C:\Visual Studio 2026\Projetos\Fuga\FugaTES\FugaTES_DEV\deploy\sd-dev\publicacao-20261106-3"; .\Enviar-MotorSd.ps1
 ```
 
-Tem que imprimir `sha256 ... 5b67baf0...`.
+Tem que imprimir `sha256 ... e3410bc7...`.
 
 ```bash
 sudo ~/instalar-motor-sd.sh conferir
