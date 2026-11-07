@@ -73,3 +73,56 @@ public sealed class LeituraPrivadaIngressoTests
         Assert.Throws<PhysicalConnectionException>(() => LocalReadTunnel.BuildArguments(o));
     }
 }
+
+/// <summary>
+/// A LISTA DOS CANAIS E UMA SO, E OS TRES LADOS A USAM.
+///
+/// Em 06/11/2026 a mesma regra estava escrita em tres lugares - receptor, tunel do desktop e
+/// sessao unificada. Converti dois e escrevi em comentario que eram "duas listas": um numero que
+/// nao conferi. O terceiro exigia 18762 e recusou o QAS120 com uma mensagem que nao menciona
+/// porta nenhuma.
+/// </summary>
+public sealed class LeituraPrivadaListaUnicaTests
+{
+    [Theory]
+    [InlineData("DEV110", 18762)]
+    [InlineData("QAS120", 18764)]
+    public void Cada_ambiente_tem_o_seu_canal(string ambiente, int porta)
+        => Assert.Equal(porta,
+            FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.PorAmbiente(ambiente)!.PortaRemota);
+
+    /// <summary>A frase de aprovacao vale JUNTO com o ambiente, nunca sozinha.</summary>
+    [Theory]
+    [InlineData("DEV110", "FUGATES-UNIFIED-POSTGRESQL-QAS120")]
+    [InlineData("QAS120", "FUGATES-UNIFIED-POSTGRESQL-DEV")]
+    [InlineData("QAS120", "")]
+    public void Frase_de_outro_ambiente_nao_abre_canal(string ambiente, string frase)
+        => Assert.Null(FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.Por(ambiente, frase));
+
+    /// <summary>Os canais nao compartilham porta - seria um ambiente servindo pelo outro.</summary>
+    [Fact]
+    public void Os_canais_nao_compartilham_porta()
+    {
+        var portas = Array.ConvertAll(
+            FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.Aprovados, i => i.PortaRemota);
+        Assert.Equal(portas.Length, portas.Distinct().Count());
+    }
+
+    /// <summary>
+    /// 18763 NAO e canal de leitura: e do servico fugates-acm-manual-retry, conferido na VM. Foi
+    /// a primeira escolha para o QAS e colidia com um servico em uso.
+    /// </summary>
+    [Theory]
+    [InlineData(18763)]
+    [InlineData(18765)]
+    [InlineData(18087)]
+    [InlineData(5433)]
+    public void Porta_que_nao_e_canal_e_recusada(int porta)
+        => Assert.False(FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.EhPortaRemotaAprovada(porta));
+
+    /// <summary>A ponta LOCAL do tunel e aceita: ela e a de ca, fixa por desenho.</summary>
+    [Fact]
+    public void A_porta_local_do_tunel_e_aceita()
+        => Assert.True(FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.EhPortaRemotaAprovada(
+            FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.PortaLocal));
+}

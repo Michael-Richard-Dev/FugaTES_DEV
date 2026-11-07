@@ -25,14 +25,14 @@ public sealed class LocalReadTunnel(LocalReadTunnelOptions options):IDisposable
     public static string SshExecutable=>Path.Combine(Environment.SystemDirectory,"OpenSSH","ssh.exe");
     public static string[] BuildArguments(LocalReadTunnelOptions o)
     {
-        // 18764 e a porta da API privada de leitura do QAS120; 18762 e a do DEV110, e 18761 e a
-        // ponta LOCAL do tunel, que entra aqui por ser o padrao historico do perfil.
+        // A porta remota sai de LeituraPrivadaIngressos, que e a lista UNICA dos canais.
         //
-        // Esta lista e a mesma decisao que LeituraPrivadaIngresso, no receptor, escrita em dois
-        // lugares porque os dois lados sao binarios diferentes. Acrescentar um ambiente la sem
-        // acrescentar aqui deixa a tela sem conectar, e o sintoma aparece como "API privada
-        // indisponivel" - que manda procurar o servidor quando o recusador e o cliente.
-        if(!o.Enabled || o.Host!="192.168.17.40" || o.User!="michael" || o.RemoteReadPort is not(18761 or 18762 or 18764) ||
+        // Ate 06/11/2026 esta era uma das tres copias da mesma regra - receptor, tunel e sessao
+        // unificada -, e eu converti duas achando que eram so essas. A terceira exigia 18762 e
+        // recusou o QAS120 com "Binding SSH de leitura ausente ou invalido": mensagem que nao
+        // aponta para porta nenhuma, num lugar que eu tinha certeza de ter coberto.
+        if(!o.Enabled || o.Host!="192.168.17.40" || o.User!="michael" ||
+            !FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.EhPortaRemotaAprovada(o.RemoteReadPort) ||
             !Path.IsPathFullyQualified(o.IdentityFile) || !Path.IsPathFullyQualified(o.KnownHostsFile) ||
             o.IdentityFile.Any(char.IsControl) || o.KnownHostsFile.Any(char.IsControl))
             throw new PhysicalConnectionException("SSH_BINDING_REQUIRED");

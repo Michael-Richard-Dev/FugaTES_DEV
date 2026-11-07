@@ -81,7 +81,21 @@ public sealed class UnifiedDesktopSession:IDisposable
             if(!profile.PhysicalReadbackEnabled || profile.IntegrationId==Guid.Empty || string.IsNullOrWhiteSpace(profile.ApprovalReference)
                 || !Path.IsPathFullyQualified(profile.ReadKeyFile))throw new PhysicalConnectionException("READ_PROFILE_REQUIRED");
             if(profile.Tunnel is not {Enabled:true})throw new PhysicalConnectionException("SSH_BINDING_REQUIRED");
-            if(profile.Tunnel.RemoteReadPort!=(profile.UnifiedDatabaseReadback?18762:18761))throw new PhysicalConnectionException("SSH_BINDING_REQUIRED");
+            // A PORTA ESPERADA VEM DO AMBIENTE DESTA JANELA, e nao de um literal.
+            //
+            // Ate 06/11/2026 isto era "!= (readback ? 18762 : 18761)", com o 18762 do DEV110
+            // escrito aqui. O desktop do QAS120, apontado para a porta 18764 do canal DELE,
+            // recusava com SSH_BINDING_REQUIRED - "Binding SSH de leitura ausente ou invalido",
+            // que nao menciona porta e manda procurar chave, host ou usuario.
+            //
+            // Era a TERCEIRA copia da mesma regra. Eu converti o receptor e o tunel e escrevi,
+            // num comentario, que eram "duas listas" - um numero que nao conferi. A lista agora
+            // e uma so, em LeituraPrivadaIngressos.
+            var canal=FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.PorAmbiente(ReadEnvironment(directory).Nome);
+            var portaEsperada=profile.UnifiedDatabaseReadback
+                ? canal?.PortaRemota ?? FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.Dev110.PortaRemota
+                : FugaTES.Aplicacao.Configuracao.LeituraPrivadaIngressos.PortaLocal;
+            if(profile.Tunnel.RemoteReadPort!=portaEsperada)throw new PhysicalConnectionException("SSH_BINDING_REQUIRED");
             PilotPlan plan;
             try{plan=JsonSerializer.Deserialize<PilotPlan>(File.ReadAllText(Path.GetFullPath(profile.PlanFile,directory)),new JsonSerializerOptions(JsonSerializerDefaults.Web))!;plan.Validate();}
             catch{throw new PhysicalConnectionException("READ_PROFILE_REQUIRED");}

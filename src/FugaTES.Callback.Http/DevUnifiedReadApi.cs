@@ -8,38 +8,6 @@ using Npgsql;
 
 namespace FugaTES.Callback.Http;
 
-/// <summary>
-/// Os ingressos aprovados da API privada de leitura: ambiente, frase de aprovacao e porta.
-///
-/// OS TRES VALEM JUNTOS. A porta e a identidade do ingresso - e por ela que o tunel do desktop
-/// chega - e a frase de aprovacao e o que o operador declara. Aceitar a frase do DEV numa porta
-/// de QAS, ou o contrario, seria servir dados de um ambiente por um canal autorizado para outro.
-///
-/// Ate 06/11/2026 havia um so: a frase estava comparada com um literal e a porta 18762 escrita
-/// dentro do CreateReadOnlyHostBuilder. O banco, o diretorio de MM e a origem SAP ja eram
-/// derivados do ambiente - so o canal nao era.
-///
-/// A porta do QAS e 18764. Conferido na VM: 18762 ja serve o DEV e 18763 e do servico
-/// fugates-acm-manual-retry - a primeira escolha colidia com ele, e so o inventario mostrou.
-/// Quem a reconhece do outro lado e o LocalReadTunnel, no desktop: as duas listas sao a mesma
-/// decisao escrita em dois lugares, e mudar uma sem a outra deixa a tela sem conectar.
-/// </summary>
-internal sealed record LeituraPrivadaIngresso(string Ambiente, string Aprovacao, int Porta)
-{
-    private static readonly LeituraPrivadaIngresso[] Aprovados =
-    [
-        new("DEV110", "FUGATES-UNIFIED-POSTGRESQL-DEV",    18762),
-        new("QAS120", "FUGATES-UNIFIED-POSTGRESQL-QAS120", 18764),
-    ];
-
-    /// <summary>O ingresso deste par, ou nulo quando a frase nao e a do ambiente.</summary>
-    internal static LeituraPrivadaIngresso? Por(string? ambiente, string? aprovacao)
-        => Array.Find(Aprovados, i => i.Ambiente == ambiente && i.Aprovacao == aprovacao);
-
-    /// <summary>As portas servidas, para quem precisa reconhece-las sem saber o ambiente.</summary>
-    internal static int[] Portas => Array.ConvertAll(Aprovados, i => i.Porta);
-}
-
 // Explicit DEV-only host mode. It does not configure inbound, callbacks, workers, Guardian or SAP.
 public static class DevUnifiedReadApi
 {
@@ -56,7 +24,7 @@ public static class DevUnifiedReadApi
         // configuracao era lida mais abaixo; subiu porque a autorizacao depende dela.
         var configuracao=new ConfigurationBuilder().AddEnvironmentVariables().Build();
         var ambienteDoProcesso=FugaTES.HostIntegracao.AcmEnvironmentBinding.Banco(configuracao);
-        var ingresso=LeituraPrivadaIngresso.Por(ambienteDoProcesso.Nome,
+        var ingresso=LeituraPrivadaIngressos.Por(ambienteDoProcesso.Nome,
             Environment.GetEnvironmentVariable("FUGATES_DEV_READ_APPROVAL"))
             ?? throw new InvalidOperationException("UNIFIED_DEV_READ_MODE_NOT_AUTHORIZED");
         var keyFile=Reference("FUGATES_DEV_READ_KEY_FILE");
@@ -71,7 +39,7 @@ public static class DevUnifiedReadApi
         // A role configurada atravessa o store: sem isto o guard de identidade compara current_user
         // com a role ACM compartilhada e recusa a identidade GET-only na partida.
         var store=new DevUnifiedReadStore(source,RoleDeLeitura(ambiente),ambiente);await store.IdentityAsync(CancellationToken.None);
-        var builder=CreateReadOnlyHostBuilder(ingresso.Porta);
+        var builder=CreateReadOnlyHostBuilder(ingresso.PortaRemota);
         await using var app=builder.Build();
         var mmDirectory=Environment.GetEnvironmentVariable("FUGATES_DEV_MM_SNAPSHOT_DIRECTORY");
         if(mmDirectory is not null&&mmDirectory!=(ambiente==AmbientesBanco.Dev110?"/var/lib/fugates-mm":"/var/lib/fugates-mm-qas"))throw new InvalidOperationException("MM_VM_OBSERVATION_DIRECTORY_REJECTED");
