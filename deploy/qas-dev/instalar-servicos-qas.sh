@@ -186,7 +186,20 @@ preparar)
   echo "   receptor ... $REL_CB/$MARCA"
   echo "   motor ...... $REL_MT/$MARCA"
 
+  # O DIRETORIO PRECISA SER ATRAVESSAVEL PELO SERVICO, E NAO SO O ARQUIVO LEGIVEL.
+  #
+  # "install -d -m 0750" cria root:root. O passfile dentro dele e fugates-http:fugates-http 600,
+  # o que PARECE suficiente - mas para abrir um arquivo e preciso atravessar o diretorio, e
+  # fugates-http nao e root nem esta no grupo root.
+  #
+  # Em 06/11/2026 isso derrubou o receptor com UnauthorizedAccessException no passfile, e o
+  # sintoma enganou duas vezes: o servico vinha subindo normalmente, porque o EnvironmentFile e
+  # lido pelo SYSTEMD, como root, antes de largar privilegio. So quebrou quando um worker foi ler
+  # o arquivo por conta propria. E eu diagnostiquei dono do ARQUIVO primeiro, que estava certo.
+  #
+  # Compare com /etc/fugates, que e drwxr-xr-x: o passfile do DEV sempre funcionou por isso.
   install -d -m 0750 "$ENV_QAS"
+  chown root:"$U" "$ENV_QAS" 2>/dev/null || true
 
   for alvo in cb mt; do
     case "$alvo" in
@@ -407,6 +420,28 @@ aplicar)
     fi
   done
   echo "== passfile em modo 600, com linha para os dois papeis do QAS120"
+
+  # O usuario do servico, derivado do DEV. Ele tambem e calculado mais abaixo, na hora de
+  # escrever as unidades; aqui e necessario antes, porque a conferencia seguinte roda COMO ele.
+  U="$(usuario_de "$DEV_CB")"; [ -n "$U" ] || U=fugates-http
+
+  # O SERVICO CONSEGUE ATRAVESSAR O DIRETORIO ATE O PASSFILE?
+  #
+  # Dono do arquivo correto nao basta, e foi o que me enganou em 06/11/2026: eu confirmei
+  # fugates-http:fugates-http 600 no arquivo e dei o diagnostico por errado. O diretorio era
+  # root:root 0750, e sem travessia o arquivo e inalcancavel.
+  #
+  # "sudo -u" executa o teste COMO o servico, em vez de eu deduzir permissao de cabeca.
+  if ! sudo -u "$U" test -r "$PASSFILE" 2>/dev/null; then
+    echo "O usuario $U NAO consegue ler $PASSFILE."
+    echo "   arquivo ...: $(stat -c '%U:%G %a' "$PASSFILE" 2>/dev/null)"
+    echo "   diretorio .: $(stat -c '%U:%G %a' "$(dirname "$PASSFILE")" 2>/dev/null)"
+    echo "   Dono do arquivo nao basta: para abri-lo e preciso ATRAVESSAR o diretorio."
+    echo "   Corrija com:  sudo chown root:$U $(dirname "$PASSFILE") && sudo chmod 0750 $(dirname "$PASSFILE")"
+    echo "Nada foi alterado."
+    CONCLUIDO=1; exit 1
+  fi
+  echo "== o usuario $U consegue ler o passfile"
 
   # NENHUMA CHAVE HERDADA PODE TER FICADO VAZIA.
   #

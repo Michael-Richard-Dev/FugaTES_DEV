@@ -112,6 +112,7 @@ aplicar)
   echo "== passfile tem a linha do papel de leitura do QAS"
 
   install -d -m 0750 "$ENV_QAS"
+  chown root:"$U" "$ENV_QAS" 2>/dev/null || true
   install -d -m 0755 "$MM_DIR"
   chown "$U":"$U" "$MM_DIR" 2>/dev/null || true
 
