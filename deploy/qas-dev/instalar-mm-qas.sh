@@ -174,7 +174,7 @@ EOF
   herdadas="$(systemctl cat "$DEV_MM" 2>/dev/null \
     | awk '/^\[Service\]/{d=1;next} /^\[/{d=0} d' \
     | grep -vE '^[[:space:]]*([#;]|$)' \
-    | grep -vE '^[[:space:]]*(ExecStart|ExecStartPre|EnvironmentFile|WorkingDirectory|SyslogIdentifier|SetCredential|User|Group|Environment=HostIntegracao__Mode)[[:space:]]*=')"
+    | grep -vE '^[[:space:]]*(ExecStart|ExecStartPre|EnvironmentFile|WorkingDirectory|SyslogIdentifier|SetCredential|User|Group|StateDirectory|StateDirectoryMode|ReadWritePaths|Environment=HostIntegracao__Mode)[[:space:]]*=')"
 
   {
     echo "[Unit]"
@@ -184,6 +184,19 @@ EOF
     echo
     echo "[Service]"
     printf '%s\n' "$herdadas"
+    # O DIRETORIO DE ESTADO E O DESTE AMBIENTE, e nao o que a unidade do DEV declara.
+    #
+    # A unidade do DEV traz StateDirectory=fugates-mm e ReadWritePaths=/var/lib/fugates-mm.
+    # Copiadas, elas dariam ao motor do QAS o diretorio do DEV - e, com ProtectSystem=strict,
+    # ele nao conseguiria escrever no proprio. Em 06/11/2026 foi isso que o deixou em
+    # "activating" sem nunca subir.
+    #
+    # E a mesma armadilha do ExecStart e do WorkingDirectory, que eu ja excluia: diretiva que
+    # carrega caminho do ambiente de origem nao se copia. So que estas duas eu nao tinha visto -
+    # de novo, a lista do que excluir era o que eu tinha lembrado.
+    echo "StateDirectory=$(basename "$MM_DIR")"
+    echo "StateDirectoryMode=0700"
+    echo "ReadWritePaths=$MM_DIR"
     echo "Environment=HostIntegracao__Mode=MmPurchaseOrders"
     echo "Environment=Sap__BaseUrl=$SAP_QAS_URL"
     echo "Environment=Sap__SapClient=$SAP_QAS_CLI"
@@ -206,6 +219,24 @@ EOF
     CONCLUIDO=1; exit 1; }
 
   echo "== unidade escrita, para voce conferir:"
+
+  # NENHUMA DIRETIVA DA UNIDADE DO QAS PODE CITAR UM CAMINHO DO DEV.
+  #
+  # A copia por texto traz tudo - e e isso que a torna fiel -, mas diretiva que carrega caminho
+  # do ambiente de origem precisa ser trocada, nao herdada. Em 06/11/2026 escaparam duas:
+  # StateDirectory e ReadWritePaths, as duas apontando /var/lib/fugates-mm.
+  #
+  # Esta conferencia procura o que sobrou, em vez de eu confiar na minha lista de exclusao -
+  # que ja falhou duas vezes hoje por ser lembrança, e nao derivacao.
+  restos="$(grep -nE '/var/lib/fugates-mm([^-]|$)|/etc/fugates/mm/|fugates_dev|fugates_mm_app' \
+            "$UNIDADES/$UNIDADE.service" || true)"
+  if [ -n "$restos" ]; then
+    echo "A unidade do QAS ficou com caminho ou papel do DEV:"
+    printf '%s\n' "$restos" | sed 's/^/   /'
+    echo "Nada sobe assim. Me mande estas linhas: e defeito do script."
+    CONCLUIDO=1; exit 1
+  fi
+  echo "== a unidade do QAS nao cita caminho nem papel do DEV"
   sed 's/^/      /' "$UNIDADES/$UNIDADE.service"
 
   systemctl daemon-reload
