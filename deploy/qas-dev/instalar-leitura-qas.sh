@@ -64,7 +64,7 @@ conferir)
   echo "portas de leitura:"
   for p in "$PORTA_DEV" "$PORTA_QAS"; do
     if porta_livre "$p"; then printf '   %-6s livre\n' "$p"
-    else printf '   %-6s ocupada por: %s\n' "$p" "$(ss -lntp 2>/dev/null | awk -v P=":$p " '$4 ~ P {print $NF}' | head -1)"; fi
+    else printf '   %-6s ocupada por: %s\n' "$p" "$(ss -lntp 2>/dev/null | awk -v P=":$p$" '$4 ~ P {print $NF}' | head -1)"; fi
   done
   echo
   echo "o release do receptor do QAS (a API de leitura usa o MESMO binario):"
@@ -89,7 +89,7 @@ aplicar)
   # "escolhi a porta de outro servico".
   if ! porta_livre "$PORTA_QAS"; then
     echo "A porta $PORTA_QAS ja esta ocupada:"
-    ss -lntp 2>/dev/null | awk -v P=":$PORTA_QAS " '$4 ~ P' | sed 's/^/   /'
+    ss -lntp 2>/dev/null | awk -v P=":$PORTA_QAS$" '$4 ~ P' | sed 's/^/   /'
     echo "Escolha outra com PORTA_LEITURA_QAS=... e me avise, porque a lista no CODIGO"
     echo "(LeituraPrivadaIngresso e LocalReadTunnel) tambem precisa mudar. Nada foi alterado."
     CONCLUIDO=1; exit 1
@@ -184,7 +184,7 @@ EOF
     echo "   NAO. Veja o porque:  sudo journalctl -u $UNIDADE -n 40 --no-pager"
     CONCLUIDO=1; exit 1
   fi
-  ss -lntp 2>/dev/null | awk -v P=":$PORTA_QAS " '$4 ~ P' | sed 's/^/   /'
+  ss -lntp 2>/dev/null | awk -v P=":$PORTA_QAS$" '$4 ~ P' | sed 's/^/   /'
   echo
   echo "== a leitura do DEV continua intocada?"
   if porta_livre "$PORTA_DEV"; then echo "   a $PORTA_DEV nao esta servida (ela ja estava assim?)"
