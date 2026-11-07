@@ -52,6 +52,14 @@ trap '[ "$CONCLUIDO" = 1 ] || echo "
 INTERROMPIDO na linha ${FALHOU:-?}, sem concluir. Defeito DESTE script: me mande esta saida." >&2' EXIT
 
 ativo() { systemctl is-active "$1" 2>/dev/null || true; }
+# Um literal do .NET esta no assembly em UTF-16: "q\0a\0s\0...". Um grep de bytes ASCII NAO o
+# encontra, e foi isso que fez esta guarda recusar um binario CORRETO em 06/11/2026 - a mesma
+# armadilha do marcador "loteRemessa" e da porta 18764, no mesmo dia.
+#
+# Tirar os NUL antes transforma o UTF-16 em ASCII e nao depende de perl, strings nem python -
+# nenhum dos tres e garantido nesta VM (o "strings" ja faltou aqui, e devolveu vazio em silencio).
+tem_literal() { tr -d '\0' < "$1" 2>/dev/null | grep -qa "$2"; }
+
 
 # O release do QAS ja instalado: o motor MM e o MESMO binario do motor SD, com outro Mode.
 release_do_qas() {
@@ -75,10 +83,10 @@ conferir)
   echo "o que falta:"
   [ -f "$RUNTIME" ] && echo "   $RUNTIME ... ja existe" || echo "   $RUNTIME ... sera criado"
   [ -d "$MM_DIR" ] && echo "   $MM_DIR ... presente" || echo "   $MM_DIR ... sera criado"
-  echo "   CALLBACK_QAS ...................... ${CALLBACK_QAS:+informado}${CALLBACK_QAS:-NAO INFORMADO}"
+  echo "   CALLBACK_QAS ...................... ${CALLBACK_QAS:+informado: $CALLBACK_QAS}${CALLBACK_QAS:-NAO INFORMADO}"
   echo
   echo "o binario instalado ja deriva o caminho do runtime pelo ambiente?"
-  if [ -n "$r" ] && grep -qa 'qas120/mm-runtime.json' "$r/FugaTES.HostIntegracao.dll" 2>/dev/null; then
+  if [ -n "$r" ] && tem_literal "$r/FugaTES.HostIntegracao.dll" "qas120/mm-runtime.json"; then
     echo "   sim"
   else
     echo "   NAO - este motor leria /etc/fugates/mm/runtime.json, a configuracao do DEV."
@@ -107,7 +115,7 @@ aplicar)
 
   # O BINARIO PRECISA DERIVAR O CAMINHO. Sem a correcao publicada, este motor leria o
   # runtime.json do DEV e gravaria em fugates_dev - com credencial valida e sem erro nenhum.
-  if ! grep -qa 'qas120/mm-runtime.json' "$REL/FugaTES.HostIntegracao.dll" 2>/dev/null; then
+  if ! tem_literal "$REL/FugaTES.HostIntegracao.dll" "qas120/mm-runtime.json"; then
     echo "O binario em $REL nao conhece /etc/fugates/qas120/mm-runtime.json."
     echo "Ele leria a configuracao do DEV e gravaria no banco do DEV. Publique o motor novo"
     echo "antes de aplicar. Nada foi alterado."
