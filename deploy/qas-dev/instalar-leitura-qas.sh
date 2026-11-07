@@ -87,8 +87,22 @@ aplicar)
   # A PORTA, CONFERIDA ANTES. 18763 parecia livre e e do fugates-acm-manual-retry; sem esta
   # conferencia a unidade subiria e morreria em "address already in use", que ninguem le como
   # "escolhi a porta de outro servico".
+  #
+  # MAS O PROPRIO SERVICO DESTE SCRIPT NAO CONTA. Em 06/11/2026 esta guarda tornou o aplicar
+  # IMPOSSIVEL DE REPETIR: a porta estava ocupada pela unidade que ele mesmo gerencia, e ele
+  # recusava mandando escolher outra porta. Pior momento possivel - a chave tinha acabado de ser
+  # apagada para ser trocada, e o script nao conseguia gerar a nova.
+  #
+  # Guarda que impede o conserto nao esta protegendo nada; esta travando a porta pelo lado de
+  # dentro. Entao o servico e parado primeiro, e so DEPOIS a porta e conferida: o que sobrar
+  # ocupando ela e de outro, que e exatamente o que a conferencia existe para achar.
+  if [ "$(ativo "$UNIDADE")" = active ]; then
+    echo "== parando $UNIDADE antes de conferir a porta (ele a ocupa legitimamente)"
+    systemctl stop "$UNIDADE" || true
+    sleep 2
+  fi
   if ! porta_livre "$PORTA_QAS"; then
-    echo "A porta $PORTA_QAS ja esta ocupada:"
+    echo "A porta $PORTA_QAS esta ocupada por OUTRO processo:"
     ss -lntp 2>/dev/null | awk -v P=":$PORTA_QAS$" '$4 ~ P' | sed 's/^/   /'
     echo "Escolha outra com PORTA_LEITURA_QAS=... e me avise, porque a lista no CODIGO"
     echo "(LeituraPrivadaIngresso e LocalReadTunnel) tambem precisa mudar. Nada foi alterado."
@@ -194,13 +208,21 @@ EOF
   echo "=============================================================="
   echo " FALTA VOCE - a chave tem de existir dos DOIS lados"
   echo "=============================================================="
-  echo "  No Windows, copie o conteudo de $CHAVE para um arquivo proprio e aponte o"
-  echo "  FugaTES.unified.json do QAS para ele. A chave nao e impressa aqui: copie com"
+  echo "  A chave precisa existir no Windows tambem. NAO a imprima na tela: um \"cat\" poe o"
+  echo "  segredo no terminal, no scrollback e em qualquer lugar para onde a saida for colada."
+  echo "  Transfira o ARQUIVO:"
   echo ""
-  echo "     sudo cat $CHAVE"
+  echo "     # aqui, uma copia legivel por voce, temporaria:"
+  echo "     sudo install -m 0400 -o \$SUDO_USER -g \$SUDO_USER $CHAVE ~/leitura.key"
   echo ""
-  echo "  e cole num arquivo .key em C:\\Users\\TI\\AppData\\Local\\FugaTES\\QAS120\\"
-  echo "  SEM quebra de linha no fim - a API confere o tamanho, e um \\n faria 65 bytes."
+  echo "     # no Windows:"
+  echo "     scp \$SUDO_USER@192.168.17.40:~/leitura.key 'C:\\Users\\TI\\AppData\\Local\\FugaTES\\QAS120\\READ_API_KEY'"
+  echo ""
+  echo "     # de volta aqui, para nao deixar copia:"
+  echo "     shred -u ~/leitura.key"
+  echo ""
+  echo "  O arquivo tem 64 bytes SEM quebra de linha - a API confere o tamanho, e um \\n faria 65."
+  echo "  O scp preserva isso; copiar e colar nao necessariamente."
   echo ""
   echo "  Depois, no FugaTES.unified.json de C:\\FugaTES_QAS120:"
   echo "     \"ReadKeyFile\": o arquivo que voce acabou de criar"
