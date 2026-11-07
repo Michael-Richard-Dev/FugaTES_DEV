@@ -339,9 +339,19 @@ preparar)
   echo "=============================================================="
   echo "  sudo nano $PASSFILE"
   echo
-  echo "  Duas linhas, as senhas que voce definiu com \password para:"
-  echo "     $PAPEL_ACM   (receptor)"
-  echo "     $PAPEL_SD    (motor)"
+  # A LISTA CRESCEU COM O AMBIENTE, e a mensagem precisa crescer junto. Ate 06/11/2026 ela dizia
+  # "duas linhas" e nomeava so o ACM e o SD; depois vieram o papel de leitura e o de MM. Mensagem
+  # que descreve uma versao anterior do proprio sistema e lida como verdade - o mesmo defeito do
+  # rotulo "as origens que serao reaproveitadas", no instalador das rotas.
+  echo "  Uma linha por papel, com a senha que voce definiu com \password:"
+  echo "     $PAPEL_ACM     (receptor)"
+  echo "     $PAPEL_SD      (motor SD)"
+  echo "     fugates_qas_read_app    (API privada de leitura)"
+  echo "     fugates_qas_mm_app      (motor MM)"
+  echo
+  echo "  Sem a senha ficar no historico, uma de cada vez:"
+  echo "     read -rs -p 'senha: ' S && printf '127.0.0.1:5433:$BANCO_QAS:<papel>:%s\\n' \"\$S\" \\"
+  echo "       | sudo tee -a $PASSFILE > /dev/null; unset S"
   echo
   echo "  Os dois .env ja estao completos: nada de <PREENCHER> neles."
   echo "  Confira se quiser:  sudo diff <(sudo cat $ENV_QAS/motor.env) /dev/null | head -40"
@@ -420,6 +430,20 @@ aplicar)
     fi
   done
   echo "== passfile em modo 600, com linha para os dois papeis do QAS120"
+
+  # LINHA DUPLICADA NO PASSFILE E AMBIGUIDADE, e nao redundancia. O libpq usa a PRIMEIRA que
+  # casa; se as duas tiverem senhas diferentes, qual vale depende da ordem no arquivo - e o
+  # sintoma seria "autenticacao falhou" para uma senha que esta la.
+  #
+  # Aconteceu em 06/11/2026 com o papel de MM: o comando de acrescentar rodou duas vezes.
+  dups="$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$PASSFILE" | cut -d: -f1-4 | sort | uniq -d)"
+  if [ -n "$dups" ]; then
+    echo "O $PASSFILE tem linha repetida para:"
+    printf '%s\n' "$dups" | sed 's/^/   /'
+    echo "   O libpq usa a primeira que casa. Remova as repetidas e deixe uma por papel:"
+    echo "      sudo sed -i '/<papel>/d' $PASSFILE   # e acrescente de novo, uma vez"
+    FALTA=1
+  fi
 
   # O usuario do servico, derivado do DEV. Ele tambem e calculado mais abaixo, na hora de
   # escrever as unidades; aqui e necessario antes, porque a conferencia seguinte roda COMO ele.
