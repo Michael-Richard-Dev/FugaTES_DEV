@@ -6,7 +6,7 @@ namespace R158.SapInboundReadiness.Tests;
 /// A API PRIVADA DE LEITURA TEM UM CANAL POR AMBIENTE, E AS DUAS PONTAS PRECISAM CONCORDAR.
 ///
 /// O receptor serve a API numa porta derivada do ingresso aprovado (DEV110 em 18762, QAS120 em
-/// 18763); o desktop chega por um tunel SSH que SO aceita as portas que conhece. As duas listas
+/// 18764); o desktop chega por um tunel SSH que SO aceita as portas que conhece. As duas listas
 /// sao a mesma decisao escrita em dois binarios diferentes.
 ///
 /// Acrescentar um ambiente num lado sem o outro deixa a tela sem conectar, e o sintoma que aparece
@@ -28,7 +28,7 @@ public sealed class LeituraPrivadaIngressoTests
     /// <summary>As portas dos dois ambientes sao aceitas pelo tunel do desktop.</summary>
     [Theory]
     [InlineData(18762)]  // DEV110
-    [InlineData(18763)]  // QAS120
+    [InlineData(18764)]  // QAS120
     public void O_tunel_aceita_a_porta_de_cada_ambiente(int porta)
     {
         var argumentos = LocalReadTunnel.BuildArguments(Opcoes(porta));
@@ -43,7 +43,8 @@ public sealed class LeituraPrivadaIngressoTests
     /// autoriza.
     /// </summary>
     [Theory]
-    [InlineData(18764)]
+    [InlineData(18765)]
+    [InlineData(18763)]  // fugates-acm-manual-retry: servico legitimo, e nao canal de leitura
     [InlineData(5433)]
     [InlineData(22)]
     [InlineData(18087)]
@@ -61,7 +62,7 @@ public sealed class LeituraPrivadaIngressoTests
     [InlineData("desligado")]
     public void As_demais_exigencias_do_tunel_continuam(string oQueMuda)
     {
-        var o = Opcoes(18763);
+        var o = Opcoes(18764);
         o = oQueMuda switch
         {
             "host" => o with { Host = "10.0.0.9" },

@@ -19,7 +19,8 @@ namespace FugaTES.Callback.Http;
 /// dentro do CreateReadOnlyHostBuilder. O banco, o diretorio de MM e a origem SAP ja eram
 /// derivados do ambiente - so o canal nao era.
 ///
-/// A porta do QAS e 18763, vizinha da do DEV e fora das faixas ja usadas (18080, 18086, 18087).
+/// A porta do QAS e 18764. Conferido na VM: 18762 ja serve o DEV e 18763 e do servico
+/// fugates-acm-manual-retry - a primeira escolha colidia com ele, e so o inventario mostrou.
 /// Quem a reconhece do outro lado e o LocalReadTunnel, no desktop: as duas listas sao a mesma
 /// decisao escrita em dois lugares, e mudar uma sem a outra deixa a tela sem conectar.
 /// </summary>
@@ -28,7 +29,7 @@ internal sealed record LeituraPrivadaIngresso(string Ambiente, string Aprovacao,
     private static readonly LeituraPrivadaIngresso[] Aprovados =
     [
         new("DEV110", "FUGATES-UNIFIED-POSTGRESQL-DEV",    18762),
-        new("QAS120", "FUGATES-UNIFIED-POSTGRESQL-QAS120", 18763),
+        new("QAS120", "FUGATES-UNIFIED-POSTGRESQL-QAS120", 18764),
     ];
 
     /// <summary>O ingresso deste par, ou nulo quando a frase nao e a do ambiente.</summary>
