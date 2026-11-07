@@ -49,7 +49,7 @@ foreach ($par in $pacotes.GetEnumerator()) {
 Write-Host ''
 Write-Host 'enviando pacotes e scripts'
 scp publicacao/fugates-callback.tgz publicacao/fugates-motor.tgz `
-    instalar-servicos-qas.sh instalar-rotas-qas.sh instalar-leitura-qas.sh conferir-guarda-motor.sh "${Destino}:~/"
+    instalar-servicos-qas.sh instalar-rotas-qas.sh instalar-leitura-qas.sh instalar-mm-qas.sh conferir-guarda-motor.sh "${Destino}:~/"
 if ($LASTEXITCODE -ne 0) { throw "scp falhou com codigo $LASTEXITCODE." }
 
 Write-Host ''
